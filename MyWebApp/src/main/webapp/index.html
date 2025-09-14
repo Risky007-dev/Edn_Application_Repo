@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coming Soon — 🍿</title>
+  <style>
+    :root{
+      --bg1:#0f0f14;
+      --bg2:#1b1b24;
+      --card:#14141cdd;
+      --accent:#ff3b3b;
+      --accent-2:#ffd24a;
+      --text:#e9e9ef;
+      --muted:#b2b2c3;
+      --glass: 12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background: radial-gradient(1000px 600px at 20% -10%, #27273a 0%, transparent 60%),
+                  radial-gradient(900px 500px at 120% 10%, #1e263c 0%, transparent 60%),
+                  linear-gradient(160deg, var(--bg1), var(--bg2));
+      color:var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display:grid;
+      place-items:center;
+      padding:28px;
+    }
+
+    .card{
+      width:min(900px, 96vw);
+      background: var(--card);
+      border:1px solid #2a2a38;
+      border-radius:24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);
+      padding: clamp(20px, 6vw, 48px);
+      backdrop-filter: blur(10px) saturate(110%);
+      text-align:center;
+    }
+
+    /* Popcorn logo */
+    .logo{
+      width:140px;
+      height:auto;
+      margin:0 auto 16px;
+      display:block;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,.45));
+      animation: float 4.5s ease-in-out infinite;
+    }
+    @keyframes float{
+      0%,100%{ transform: translateY(0) }
+      50%{ transform: translateY(-6px) }
+    }
+    /* Little popping kernels */
+    .pop{
+      animation: pop 1.8s ease-in-out infinite;
+      transform-origin: center;
+    }
+    .pop.delay-1{ animation-delay:.3s }
+    .pop.delay-2{ animation-delay:.6s }
+    @keyframes pop{
+      0%   { transform: translateY(0) scale(1) }
+      50%  { transform: translateY(-6px) scale(1.08) }
+      100% { transform: translateY(0) scale(1) }
+    }
+
+    h1{
+      margin: 8px 0 6px;
+      font-size: clamp(28px, 5vw, 48px);
+      letter-spacing:.4px;
+    }
+    p.lead{
+      margin:0 0 22px;
+      color:var(--muted);
+      font-size: clamp(16px, 2.6vw, 18px);
+    }
+
+    /* Countdown */
+    .countdown{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(90px, 1fr));
+      gap:14px;
+      margin: 24px 0 26px;
+    }
+    .tile{
+      background:#101018;
+      border:1px solid #29293a;
+      border-radius:16px;
+      padding:16px 8px;
+    }
+    .num{
+      font-weight:700;
+      font-size: clamp(26px, 5vw, 40px);
+      line-height:1;
+    }
+    .label{
+      margin-top:6px;
+      color:var(--muted);
+      font-size:12px;
+      letter-spacing:.8px;
+      text-transform:uppercase;
+    }
+
+    /* Email capture (front-end only) */
+    .row{
+      display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+      margin: 14px 0 6px;
+    }
+    input[type="email"]{
+      width:min(520px, 80vw);
+      padding:14px 16px;
+      background:#0e0e15;
+      color:var(--text);
+      border:1px solid #2c2c3c;
+      border-radius:12px;
+      outline:none;
+      transition: border .2s, box-shadow .2s;
+    }
+    input[type="email"]::placeholder{ color:#7e7e96 }
+    input[type="email"]:focus{
+      border-color:#3e3e62;
+      box-shadow:0 0 0 4px rgba(88,88,140,.25);
+    }
+    button{
+      padding:14px 18px;
+      border-radius:12px;
+      border:1px solid #ff5858;
+      background: linear-gradient(180deg, #ff6363, #ff3b3b);
+      color:white; font-weight:600; letter-spacing:.3px;
+      cursor:pointer;
+      transition: transform .04s ease, filter .2s ease;
+    }
+    button:hover{ filter:brightness(1.08) }
+    button:active{ transform: translateY(1px) }
+
+    .note{
+      color:#9aa0b6; font-size:13px; margin-top:10px;
+    }
+
+    footer{
+      margin-top: 28px;
+      color:#8e93aa; font-size:12px;
+    }
+    a{ color:var(--accent-2); text-decoration:none }
+    a:hover{ text-decoration:underline }
+  </style>
+</head>
+<body>
+  <main class="card" role="main" aria-label="Coming soon">
+    <!-- Popcorn Logo (SVG) -->
+    <svg class="logo" viewBox="0 0 200 220" role="img" aria-label="Popcorn logo">
+      <!-- Bucket -->
+      <defs>
+        <linearGradient id="bucket" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff4b4b"/>
+          <stop offset="1" stop-color="#e93333"/>
+        </linearGradient>
+      </defs>
+      <g>
+        <path d="M40 80 h120 l-18 116 a10 10 0 0 1 -10 8 H68 a10 10 0 0 1 -10 -8 z" fill="url(#bucket)"/>
+        <!-- White stripes -->
+        <rect x="56" y="80" width="16" height="124" fill="#fff" opacity=".9"/>
+        <rect x="88" y="80" width="16" height="124" fill="#fff" opacity=".9"/>
+        <rect x="120" y="80" width="16" height="124" fill="#fff" opacity=".9"/>
+        <!-- Rim -->
+        <rect x="32" y="72" width="136" height="18" rx="9" fill="#f7f7f9"/>
+        <rect x="36" y="76" width="128" height="10" rx="5" fill="#e6e6ef"/>
+      </g>
+
+      <!-- Popcorn puffs -->
+      <g fill="#ffd966" stroke="#e1b94a" stroke-width="2">
+        <circle class="pop" cx="58" cy="70" r="16"/>
+        <circle class="pop delay-1" cx="86" cy="60" r="18"/>
+        <circle class="pop delay-2" cx="116" cy="62" r="16"/>
+        <circle class="pop" cx="144" cy="70" r="15"/>
+        <circle class="pop delay-2" cx="101" cy="46" r="12"/>
+      </g>
+    </svg>
+
+    <h1>We’re Popping Soon</h1>
+    <p class="lead">A fresh batch is almost ready. Leave your email and we’ll ping you when we go live.</p>
+
+    <!-- Countdown -->
+    <section aria-live="polite" class="countdown" id="countdown">
+      <div class="tile"><div class="num" id="d">00</div><div class="label">Days</div></div>
+      <div class="tile"><div class="num" id="h">00</div><div class="label">Hours</div></div>
+      <div class="tile"><div class="num" id="m">00</div><div class="label">Minutes</div></div>
+      <div class="tile"><div class="num" id="s">00</div><div class="label">Seconds</div></div>
+    </section>
+
+    <!-- Email capture (no backend; demo only) -->
+    <form id="notify" class="row" novalidate>
+      <input type="email" id="email" placeholder="you@example.com" aria-label="Email address" required />
+      <button type="submit" aria-label="Notify me">Notify Me</button>
+    </form>
+    <div class="note" id="note" role="status" aria-live="polite">We only email once when we launch.</div>
+
+    <footer>© <span id="year"></span> Popcorn Co. · <a href="#" onclick="return false;">Privacy</a></footer>
+  </main>
+
+  <script>
+    // ======= Count down to launch (edit this!) =======
+    const launchDate = new Date('2025-12-01T15:00:00Z'); // <-- set your date/time
+
+    const d = document.getElementById('d');
+    const h = document.getElementById('h');
+    const m = document.getElementById('m');
+    const s = document.getElementById('s');
+    const countdownEl = document.getElementById('countdown');
+
+    function pad(n){ return String(n).padStart(2, '0'); }
+
+    function tick(){
+      const now = new Date();
+      let diff = Math.max(0, launchDate - now);
+
+      const days = Math.floor(diff / (1000*60*60*24));
+      diff -= days * (1000*60*60*24);
+      const hours = Math.floor(diff / (1000*60*60));
+      diff -= hours * (1000*60*60);
+      const mins = Math.floor(diff / (1000*60));
+      diff -= mins * (1000*60);
+      const secs = Math.floor(diff / 1000);
+
+      d.textContent = pad(days);
+      h.textContent = pad(hours);
+      m.textContent = pad(mins);
+      s.textContent = pad(secs);
+
+      if (launchDate - now <= 0){
+        document.querySelector('h1').textContent = "We’re Live!";
+        document.querySelector('.lead').textContent = "Thanks for waiting — refresh to see what’s new.";
+        countdownEl.style.display = 'none';
+        clearInterval(timer);
+      }
+    }
+    const timer = setInterval(tick, 1000); tick();
+
+    // ======= Email capture (front-end demo) =======
+    const form = document.getElementById('notify');
+    const email = document.getElementById('email');
+    const note = document.getElementById('note');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = email.value.trim();
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+      if(!ok){
+        note.textContent = "Please enter a valid email address.";
+        note.style.color = "#ffb3b3";
+        email.focus();
+        return;
+      }
+      note.textContent = "Thanks! We’ll let you know when we launch.";
+      note.style.color = "#9ee37d";
+      email.value = "";
+      // TODO: send `val` to your backend/Newsletter API
+      console.log("Captured email:", val);
+    });
+
+    // Footer year
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
