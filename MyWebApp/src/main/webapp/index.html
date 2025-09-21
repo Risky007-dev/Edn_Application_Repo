@@ -40,6 +40,7 @@
       text-align:center;
     }
 
+    /* Popcorn logo */
     .logo{
       width:140px;
       height:auto;
@@ -52,6 +53,7 @@
       0%,100%{ transform: translateY(0) }
       50%{ transform: translateY(-6px) }
     }
+    /* Little popping kernels */
     .pop{
       animation: pop 1.8s ease-in-out infinite;
       transform-origin: center;
@@ -75,6 +77,7 @@
       font-size: clamp(16px, 2.6vw, 18px);
     }
 
+    /* Countdown */
     .countdown{
       display:grid;
       grid-template-columns: repeat(4, minmax(90px, 1fr));
@@ -100,6 +103,7 @@
       text-transform:uppercase;
     }
 
+    /* Email capture (front-end only) */
     .row{
       display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
       margin: 14px 0 6px;
@@ -145,9 +149,34 @@
 </head>
 <body>
   <main class="card" role="main" aria-label="Coming soon">
-    <!-- Popcorn Logo -->
+    <!-- Popcorn Logo (SVG) -->
     <svg class="logo" viewBox="0 0 200 220" role="img" aria-label="Popcorn logo">
-      <!-- (SVG omitted for brevity) -->
+      <!-- Bucket -->
+      <defs>
+        <linearGradient id="bucket" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff4b4b"/>
+          <stop offset="1" stop-color="#e93333"/>
+        </linearGradient>
+      </defs>
+      <g>
+        <path d="M40 80 h120 l-18 116 a10 10 0 0 1 -10 8 H68 a10 10 0 0 1 -10 -8 z" fill="url(#bucket)"/>
+        <!-- White stripes -->
+        <rect x="56" y="80" width="16" height="124" fill="#fff" opacity=".9"/>
+        <rect x="88" y="80" width="16" height="124" fill="#fff" opacity=".9"/>
+        <rect x="120" y="80" width="16" height="124" fill="#fff" opacity=".9"/>
+        <!-- Rim -->
+        <rect x="32" y="72" width="136" height="18" rx="9" fill="#f7f7f9"/>
+        <rect x="36" y="76" width="128" height="10" rx="5" fill="#e6e6ef"/>
+      </g>
+
+      <!-- Popcorn puffs -->
+      <g fill="#ffd966" stroke="#e1b94a" stroke-width="2">
+        <circle class="pop" cx="58" cy="70" r="16"/>
+        <circle class="pop delay-1" cx="86" cy="60" r="18"/>
+        <circle class="pop delay-2" cx="116" cy="62" r="16"/>
+        <circle class="pop" cx="144" cy="70" r="15"/>
+        <circle class="pop delay-2" cx="101" cy="46" r="12"/>
+      </g>
     </svg>
 
     <h1>We’re Popping Soon!</h1>
@@ -161,7 +190,7 @@
       <div class="tile"><div class="num" id="s">00</div><div class="label">Seconds</div></div>
     </section>
 
-    <!-- Email capture -->
+    <!-- Email capture (no backend; demo only) -->
     <form id="notify" class="row" novalidate>
       <input type="email" id="email" placeholder="you@example.com" aria-label="Email address" required />
       <button type="submit" aria-label="Notify me">Notify Me</button>
@@ -172,8 +201,9 @@
   </main>
 
   <script>
-    // ======= Count down to launch =======
-    const launchDate = new Date('2025-12-01T15:00:00Z');
+    // ======= Count down to launch (edit this!) =======
+    const launchDate = new Date('2025-12-01T15:00:00Z'); // <-- set your date/time
+
     const d = document.getElementById('d');
     const h = document.getElementById('h');
     const m = document.getElementById('m');
@@ -181,6 +211,7 @@
     const countdownEl = document.getElementById('countdown');
 
     function pad(n){ return String(n).padStart(2, '0'); }
+
     function tick(){
       const now = new Date();
       let diff = Math.max(0, launchDate - now);
@@ -207,42 +238,28 @@
     }
     const timer = setInterval(tick, 1000); tick();
 
-    // ======= Email capture (API Gateway integration) =======
+    // ======= Email capture (front-end demo) =======
     const form = document.getElementById('notify');
     const email = document.getElementById('email');
     const note = document.getElementById('note');
-
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const val = email.value.trim();
       const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-
-      if (!ok) {
+      if(!ok){
         note.textContent = "Please enter a valid email address.";
         note.style.color = "#ffb3b3";
         email.focus();
         return;
       }
-
-      // ✅ Replace <api-id> and <region> with your values
-      fetch(https://llhfkd1adg.execute-api.us-east-2.amazonaws.com/prod/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: val })
-      })
-      .then(res => res.json())
-      .then(data => {
-        note.textContent = "Thanks! We’ll let you know when we launch.";
-        note.style.color = "#9ee37d";
-        email.value = "";
-      })
-      .catch(err => {
-        console.error("Error:", err);
-        note.textContent = "Something went wrong. Try again later.";
-        note.style.color = "#ff3b3b";
-      });
+      note.textContent = "Thanks! We’ll let you know when we launch.";
+      note.style.color = "#9ee37d";
+      email.value = "";
+      // TODO: send `val` to your backend/Newsletter API
+      console.log("Captured email:", val);
     });
 
+    // Footer year
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 </body>
