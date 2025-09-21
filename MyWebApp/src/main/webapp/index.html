@@ -255,8 +255,42 @@
       note.textContent = "Thanks! We’ll let you know when we launch.";
       note.style.color = "#9ee37d";
       email.value = "";
-      // TODO: send `val` to your backend/Newsletter API
-      console.log("Captured email:", val);
+     // ======= Email capture (front-end demo) =======
+const form = document.getElementById('notify');
+const email = document.getElementById('email');
+const note = document.getElementById('note');
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const val = email.value.trim();
+  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
+  if (!ok) {
+    note.textContent = "Please enter a valid email address.";
+    note.style.color = "#ffb3b3";
+    email.focus();
+    return;
+  }
+
+  // ✅ Send email to API Gateway
+  fetch("https://llhfkd1adg.execute-api.us-east-2.amazonaws.com/prod/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: val })
+  })
+  .then(res => res.json())
+  .then(data => {
+    note.textContent = "Thanks! We’ll let you know when we launch.";
+    note.style.color = "#9ee37d";
+    email.value = "";
+  })
+  .catch(err => {
+    console.error("Error:", err);
+    note.textContent = "Something went wrong. Try again later.";
+    note.style.color = "#ff3b3b";
+  });
+});
+
     });
 
     // Footer year
