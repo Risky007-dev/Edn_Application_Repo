@@ -256,7 +256,7 @@
       note.style.color = "#9ee37d";
       email.value = "";
       // TODO: send `val` to your backend/Newsletter API
-      fetch("https://llhfkd1adg.execute-api.us-east-2.amazonaws.com/prod.execute-api.us-east-2.amazonaws.com/prod/subscribe", {
+      fetch("https://llhfkd1adg.execute-api.us-east-2.amazonaws.com/subscribe", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ email: val })
