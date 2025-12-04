@@ -1,7 +1,7 @@
 from flask import Flask, render_template, send_from_directory
 
 # Tell Flask where your HTML/CSS/JS live
-WEBAPP_DIR = "src/main/webapp"
+WEBAPP_DIR = "MyWebApp"
 
 app = Flask(
     __name__,
