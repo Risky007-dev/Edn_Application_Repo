@@ -1,0 +1,28 @@
+{
+  "name": "edn_application_repo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Risky007-dev/Edn_Application_Repo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Risky007-dev/Edn_Application_Repo/issues"
+  },
+  "homepage": "https://github.com/Risky007-dev/Edn_Application_Repo#readme",
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}

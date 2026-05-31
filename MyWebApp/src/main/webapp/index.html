@@ -252,27 +252,37 @@
         email.focus();
         return;
       }
-      note.textContent = "Thanks! We’ll let you know when we launch this page.";
-      note.style.color = "#9ee37d";
-      email.value = "";
+      note.textContent = "Subscribing...";
+      note.style.color = "#9aa0b6";
+      email.disabled = true;
+      form.querySelector('button').disabled = true;
       // TODO: send `val` to your backend/Newsletter API
-      fetch("https://llhfkd1adg.execute-api.us-east-2.amazonaws.com/subscribe", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email: val })
-})
-})
-.then(res => res.json())
-.then(data => {
-  note.textContent = "Thanks! We’ll let you know when we launch.";
-  note.style.color = "#9ee37d";
-  email.value = "";
-})
-.catch(err => {
-  note.textContent = "Error saving email. Try again later.";
-  note.style.color = "#ffb3b3";
-  console.error(err);
-});
+      fetch("/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: val })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.success){
+          note.textContent = "✓ Thanks! Check your email for confirmation.";
+          note.style.color = "#9ee37d";
+          email.value = "";
+        } else {
+          note.textContent = data.message || "Error subscribing. Try again.";
+          note.style.color = "#ffb3b3";
+          email.disabled = false;
+          form.querySelector('button').disabled = false;
+          email.focus();
+        }
+      })
+      .catch(err => {
+        note.textContent = "Error saving email. Try again later.";
+        note.style.color = "#ffb3b3";
+        email.disabled = false;
+        form.querySelector('button').disabled = false;
+        console.error(err);
+      });
 
     });
 
