@@ -1,0 +1,8 @@
+# Custom OTel Collector image with its config baked in.
+# ECS task definitions can't inline a collector config as a volume ("configData"
+# is not a real ECS field), so the config must ship inside the image instead.
+FROM otel/opentelemetry-collector:latest
+
+COPY otel-collector-config.yaml /etc/otel/config.yaml
+
+CMD ["--config=/etc/otel/config.yaml"]

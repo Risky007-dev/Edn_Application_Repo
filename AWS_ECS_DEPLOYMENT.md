@@ -21,7 +21,7 @@ Create an ECR repository to store your Docker image:
 $AWS_REGION = "us-east-1"  # Change to your region
 $AWS_ACCOUNT_ID = "YOUR_ACCOUNT_ID"  # Get from: aws sts get-caller-identity
 $ECR_REPO_NAME = "popcorn-maths"
-
+n 
 # Create ECR repository
 aws ecr create-repository `
   --repository-name $ECR_REPO_NAME `

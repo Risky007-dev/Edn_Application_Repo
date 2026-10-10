@@ -1,0 +1,97 @@
+{
+  "family": "edn-app-with-otel",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "containerDefinitions": [
+    {
+      "name": "edn-app",
+      "image": "900161312392.dkr.ecr.us-east-2.amazonaws.com/edn-app:latest",
+      "portMappings": [
+        {
+          "containerPort": 5001,
+          "hostPort": 5001,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "5001"
+        },
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+          "value": "http://localhost:4317"
+        },
+        {
+          "name": "OTEL_SERVICE_NAME",
+          "value": "edn-app"
+        },
+        {
+          "name": "OTEL_TRACES_EXPORTER",
+          "value": "otlp"
+        },
+        {
+          "name": "OTEL_METRICS_EXPORTER",
+          "value": "otlp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/edn-app",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "dependsOn": [
+        {
+          "containerName": "otel-collector",
+          "condition": "START"
+        }
+      ]
+    },
+    {
+      "name": "otel-collector",
+      "image": "900161312392.dkr.ecr.us-east-2.amazonaws.com/edn-otel-collector:latest",
+      "portMappings": [
+        {
+          "containerPort": 4317,
+          "hostPort": 4317,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 4318,
+          "hostPort": 4318,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 8888,
+          "hostPort": 8888,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "GOGC",
+          "value": "80"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/otel-collector",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "executionRoleArn": "arn:aws:iam::900161312392:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::900161312392:role/ecsTaskRole"
+}
