@@ -10,8 +10,7 @@ services:
     environment:
       - PORT=5001
       - NODE_ENV=production
-    volumes:
-      - ./subscribers.json:/app/subscribers.json
+      - AWS_REGION=us-east-2
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]

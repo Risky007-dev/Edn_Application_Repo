@@ -1,7 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const fs = require('fs');
 const path = require('path');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 require('dotenv').config();
 
 const app = express();
@@ -11,32 +12,35 @@ const PORT = process.env.PORT || 5001;
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'MyWebApp/src/main/webapp')));
 
-// Database file path
-const dbFile = path.join(__dirname, 'subscribers.json');
+// DynamoDB setup — credentials come from the EC2 instance role, never stored here
+const TABLE_NAME = process.env.DYNAMODB_TABLE || 'popcorn-maths-subscribers';
+const ddbClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-2' });
+const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-// Initialize database file if it doesn't exist
-if (!fs.existsSync(dbFile)) {
-  fs.writeFileSync(dbFile, JSON.stringify({ subscribers: [] }, null, 2));
-}
-
-// Helper function to read subscribers
-function getSubscribers() {
+// Helper function to read all subscribers
+async function getSubscribers() {
   try {
-    const data = fs.readFileSync(dbFile, 'utf8');
-    return JSON.parse(data).subscribers || [];
+    const result = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
+    return result.Items || [];
   } catch (err) {
     console.error('Error reading subscribers:', err);
     return [];
   }
 }
 
-// Helper function to save subscribers
-function saveSubscribers(subscribers) {
+// Helper function to look up a single subscriber by email
+async function findSubscriber(email) {
+  const result = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { email } }));
+  return result.Item;
+}
+
+// Helper function to save a new subscriber
+async function addSubscriber(subscriber) {
   try {
-    fs.writeFileSync(dbFile, JSON.stringify({ subscribers }, null, 2));
+    await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: subscriber }));
     return true;
   } catch (err) {
-    console.error('Error saving subscribers:', err);
+    console.error('Error saving subscriber:', err);
     return false;
   }
 }
@@ -115,10 +119,10 @@ app.post('/subscribe', async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const subscribers = getSubscribers();
 
     // Check if already subscribed
-    if (subscribers.some(s => s.email === cleanEmail)) {
+    const existing = await findSubscriber(cleanEmail);
+    if (existing) {
       return res.status(409).json({
         success: false,
         message: 'Email already subscribed'
@@ -132,10 +136,7 @@ app.post('/subscribe', async (req, res) => {
       confirmed: false
     };
 
-    subscribers.push(newSubscriber);
-
-    // Save to file
-    if (!saveSubscribers(subscribers)) {
+    if (!await addSubscriber(newSubscriber)) {
       return res.status(500).json({
         success: false,
         message: 'Error saving email. Try again later.'
@@ -161,9 +162,9 @@ app.post('/subscribe', async (req, res) => {
 });
 
 // GET /subscribers - Get all subscribers (admin endpoint)
-app.get('/subscribers', (req, res) => {
+app.get('/subscribers', async (req, res) => {
   try {
-    const subscribers = getSubscribers();
+    const subscribers = await getSubscribers();
     return res.json({
       total: subscribers.length,
       subscribers: subscribers
@@ -185,7 +186,7 @@ app.listen(PORT, () => {
 ╚════════════════════════════════════╝
 
 ✅ Server running on http://localhost:${PORT}
-📧 Email storage: ${dbFile}
+📧 Email storage: DynamoDB table "${TABLE_NAME}"
 📊 View subscribers: http://localhost:${PORT}/subscribers
 
 Press Ctrl+C to stop the server
