@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/Risky007-dev/Edn_Application_Repo#readme",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "@aws-sdk/lib-dynamodb": "^3.1149.0",
     "body-parser": "^2.2.2",
     "dotenv": "^17.4.2",
     "express": "^5.2.1"
