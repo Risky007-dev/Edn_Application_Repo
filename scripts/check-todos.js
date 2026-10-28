@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
-const TEMP_PORT = 5004;
+const TEMP_PORT = 5006;
 const TEMP_DATA_DIR = path.join(__dirname, '../tests/temp_check_todos_data');
 const TEMP_SUBS_FILE = path.join(TEMP_DATA_DIR, 'subscribers.json');
 
@@ -26,6 +26,10 @@ const PAGE_ROUTES = [
   '/services/popcorn-maths',
   '/services/specialist-support',
   '/popcorn-maths/presenter',
+  '/popcorn-maths/game',
+  '/find-your-programme',
+  '/popcorn-maths/school-partnership',
+  '/resources',
   '/book',
   '/contact',
   '/faq'

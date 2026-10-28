@@ -398,6 +398,107 @@ function validateContactForm(body) {
   return errors;
 }
 
+// 6. School Partnership Enquiry Form
+const SCHOOL_ENQUIRY_FIELDS = [
+  'schoolName',
+  'contactPerson',
+  'roleTitle',
+  'email',
+  'phone',
+  'locationDistrict',
+  'studentAgeGroup',
+  'estimatedStudentCount',
+  'programmeType',
+  'targetDate',
+  'message',
+  'consent',
+  '_gotcha'
+];
+
+const ALLOWED_STUDENT_AGE_GROUPS = ['8-10', '11-13', 'Mixed'];
+const ALLOWED_PROGRAMME_TYPES = ['Workshop', 'After-school club', 'Event'];
+
+function validateSchoolEnquiryForm(body) {
+  const errors = [];
+
+  const unknown = checkUnknownFields(body, SCHOOL_ENQUIRY_FIELDS);
+  if (unknown) return [unknown];
+
+  if (!validateConsent(body)) {
+    errors.push('Consent to the privacy policy is required.');
+  }
+
+  if (!body.schoolName || typeof body.schoolName !== 'string' || body.schoolName.trim().length < 2) {
+    errors.push('School name is required (minimum 2 characters).');
+  } else if (body.schoolName.length > 100) {
+    errors.push('School name exceeds maximum length of 100 characters.');
+  }
+
+  if (!body.contactPerson || typeof body.contactPerson !== 'string' || body.contactPerson.trim().length < 2) {
+    errors.push('Contact person name is required (minimum 2 characters).');
+  } else if (body.contactPerson.length > 100) {
+    errors.push('Contact person name exceeds maximum length of 100 characters.');
+  }
+
+  if (!body.roleTitle || typeof body.roleTitle !== 'string' || body.roleTitle.trim().length < 2) {
+    errors.push('Role title is required (e.g. Principal, Head of Math).');
+  } else if (body.roleTitle.length > 100) {
+    errors.push('Role title exceeds maximum length of 100 characters.');
+  }
+
+  if (!body.email || !isValidEmail(body.email)) {
+    errors.push('A valid email address is required.');
+  } else if (body.email.length > 150) {
+    errors.push('Email exceeds maximum length of 150 characters.');
+  }
+
+  if (!body.phone || !isValidPhone(body.phone)) {
+    errors.push('A valid phone number is required.');
+  } else if (body.phone.length > 25) {
+    errors.push('Phone number exceeds maximum length of 25 characters.');
+  }
+
+  if (!body.locationDistrict || typeof body.locationDistrict !== 'string' || body.locationDistrict.trim().length < 2) {
+    errors.push('Location or district is required.');
+  } else if (body.locationDistrict.length > 100) {
+    errors.push('Location exceeds maximum length of 100 characters.');
+  }
+
+  if (!body.studentAgeGroup || !ALLOWED_STUDENT_AGE_GROUPS.includes(body.studentAgeGroup)) {
+    errors.push('Student age group must be one of: 8-10, 11-13, Mixed.');
+  }
+
+  const count = Number(body.estimatedStudentCount);
+  if (
+    body.estimatedStudentCount === undefined ||
+    body.estimatedStudentCount === '' ||
+    isNaN(count) ||
+    !Number.isInteger(count) ||
+    count < 10 ||
+    count > 500
+  ) {
+    errors.push('Estimated student count must be an integer between 10 and 500.');
+  }
+
+  if (!body.programmeType || !ALLOWED_PROGRAMME_TYPES.includes(body.programmeType)) {
+    errors.push('Programme type must be one of: Workshop, After-school club, Event.');
+  }
+
+  if (body.targetDate !== undefined && body.targetDate !== null && typeof body.targetDate === 'string') {
+    if (body.targetDate.length > 50) {
+      errors.push('Target date exceeds maximum length of 50 characters.');
+    }
+  }
+
+  if (body.message !== undefined && body.message !== null && typeof body.message === 'string') {
+    if (body.message.length > 500) {
+      errors.push('Message exceeds maximum length of 500 characters.');
+    }
+  }
+
+  return errors;
+}
+
 module.exports = {
   isValidEmail,
   isValidPhone,
@@ -408,5 +509,6 @@ module.exports = {
   validateConciergeForm,
   validatePresenterForm,
   validateLearningNeedsForm,
-  validateContactForm
+  validateContactForm,
+  validateSchoolEnquiryForm
 };

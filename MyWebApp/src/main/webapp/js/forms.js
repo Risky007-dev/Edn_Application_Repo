@@ -105,6 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Boolean conversion for checkboxes
         if (key === 'consent' || key === 'ageConfirmation') {
           payload[key] = true;
+        } else if (key === 'estimatedStudentCount') {
+          payload[key] = value !== '' && !isNaN(Number(value)) ? parseInt(value, 10) : value;
         } else {
           payload[key] = typeof value === 'string' ? value.trim() : value;
         }

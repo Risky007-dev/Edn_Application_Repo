@@ -1,10 +1,51 @@
 /**
  * Main Client Application Script
  * Strict CSP compliant: No inline event handlers or scripts.
- * Manages responsive hamburger navigation and accessible keyboard dropdowns.
+ * Manages responsive hamburger navigation, accessible keyboard dropdowns, and theme switcher.
  */
 
+// Initialize theme immediately to prevent layout flashes
+(function initThemeEarly() {
+  try {
+    var saved = localStorage.getItem('tt_theme');
+    var theme = saved === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+  } catch (e) {
+    // Fallback if localStorage is inaccessible
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+
+function updateThemeToggleButton(theme) {
+  var btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  var isDark = theme === 'dark';
+  btn.setAttribute('aria-label', isDark ? 'Switch to bright kid-friendly mode' : 'Switch to dark mode');
+  btn.setAttribute('title', isDark ? 'Switch to bright mode' : 'Switch to dark mode');
+  var textEl = btn.querySelector('.theme-mode-text');
+  if (textEl) {
+    textEl.textContent = isDark ? 'Dark' : 'Light';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // 0. Theme Toggle Switcher
+  var themeBtn = document.getElementById('theme-toggle-btn');
+  var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  updateThemeToggleButton(currentTheme);
+
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      var activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
+      var nextTheme = activeTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', nextTheme);
+      try {
+        localStorage.setItem('tt_theme', nextTheme);
+      } catch (e) {}
+      updateThemeToggleButton(nextTheme);
+    });
+  }
+
   // 1. Mobile Hamburger Navigation
   const hamburgerBtn = document.getElementById('hamburger-btn');
   const siteNav = document.getElementById('site-nav');

@@ -52,17 +52,19 @@ function request(options, postData = null) {
   });
 }
 
-function waitForServer(port, maxRetries = 20) {
+function waitForServer(port, maxRetries = 40) {
   return new Promise((resolve, reject) => {
     let retries = 0;
+    let lastErr = '';
     const check = () => {
-      const req = http.get(`http://localhost:${port}/`, (res) => {
+      const req = http.get(`http://127.0.0.1:${port}/`, (res) => {
         resolve();
       });
-      req.on('error', () => {
+      req.on('error', (err) => {
+        lastErr = err.message;
         retries++;
         if (retries >= maxRetries) {
-          reject(new Error(`Server failed to start on port ${port} after ${maxRetries} retries`));
+          reject(new Error(`Server failed to start on port ${port} after ${maxRetries} retries: ${lastErr}`));
         } else {
           setTimeout(check, 250);
         }
@@ -95,7 +97,9 @@ async function runTestSuite() {
   });
 
   let serverStderr = '';
+  let serverStdout = '';
   serverProc.stderr.on('data', (d) => { serverStderr += d.toString(); });
+  serverProc.stdout.on('data', (d) => { serverStdout += d.toString(); });
 
   let passed = 0;
   let failed = 0;
@@ -116,7 +120,7 @@ async function runTestSuite() {
     // 1. Core Pages & Security Middleware
     console.log('--- 1. Core Pages & Security Middleware ---');
     const resHome = await request({
-      hostname: 'localhost',
+      hostname: '127.0.0.1',
       port: TEST_PORT,
       path: '/',
       method: 'GET',
@@ -130,7 +134,7 @@ async function runTestSuite() {
     assert(!resHome.body.includes('2026-12-01'), 'Invented countdown date removed');
 
     const resIndexHtml = await request({
-      hostname: 'localhost',
+      hostname: '127.0.0.1',
       port: TEST_PORT,
       path: '/index.html',
       method: 'GET'
@@ -408,6 +412,8 @@ async function runTestSuite() {
 
   } catch (err) {
     console.error('Fatal test error:', err);
+    if (serverStderr) console.error('Server STDERR:', serverStderr);
+    if (serverStdout) console.error('Server STDOUT:', serverStdout);
     failed++;
   } finally {
     // Terminate test server process

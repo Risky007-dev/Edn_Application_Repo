@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node tests/stage1.test.js && node tests/stage2.test.js",
+    "test": "node tests/stage1.test.js && node tests/stage2.test.js && node tests/stage3.test.js",
     "check:todos": "node scripts/check-todos.js",
     "check:copy": "node scripts/check-copy.js"
   },

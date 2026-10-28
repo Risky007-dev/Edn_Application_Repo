@@ -38,9 +38,12 @@ const CONTENT = {
       href: '/services/popcorn-maths',
       dropdown: [
         { label: 'About Popcorn Math', href: '/services/popcorn-maths' },
+        { label: 'Play & Learn', href: '/popcorn-maths/game' },
+        { label: 'School Partnerships', href: '/popcorn-maths/school-partnership' },
         { label: 'Become a Presenter', href: '/popcorn-maths/presenter' }
       ]
     },
+    { label: 'RESOURCES', href: '/resources' },
     { label: 'FAQ', href: '/faq' },
     { label: 'CONTACT', href: '/contact' },
     { label: 'BOOK NOW', href: '/book', isCta: true }
@@ -224,6 +227,37 @@ const CONTENT = {
     lead: { text: 'Dedicated to inspiring academic confidence and joyful learning.', status: 'PROPOSED-COPY' },
     mission: { text: 'Details coming soon.', status: 'STUB', todo: 'content' },
     biography: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
+  },
+
+  gamePage: {
+    title: { text: 'Popcorn Math Mini-Game', status: 'PROPOSED-COPY' },
+    headline: { text: 'CAN YOU MAKE THE POPCORN POP?', status: 'PROPOSED-COPY' },
+    subhead: { text: 'Solve 3 Math Questions to Fill Your Popcorn Bucket!', status: 'PROPOSED-COPY' },
+    starTitle: { text: "YOU'RE A POPCORN MATH STAR!", status: 'PROPOSED-COPY' },
+    starLead: { text: 'Want more exciting mathematics challenges? Join our next Popcorn Math session!', status: 'PROPOSED-COPY' },
+    starCta: { text: 'EXPLORE POPCORN MATH', status: 'PROPOSED-COPY' },
+    privacyNotice: { text: 'This game does not collect or store any personal data or responses.', status: 'APPROVED' }
+  },
+
+  finderPage: {
+    title: { text: 'Smart Service Finder', status: 'PROPOSED-COPY' },
+    headline: { text: 'Not Sure Which Programme Is Right for Your Child?', status: 'PROPOSED-COPY' },
+    subhead: { text: 'Answer three quick questions to discover the most relevant educational programme for your child.', status: 'PROPOSED-COPY' },
+    privacyNotice: { text: 'Your answers are held in memory only and are never saved or sent to a server.', status: 'APPROVED' }
+  },
+
+  schoolEnquiryPage: {
+    title: { text: 'Bring Popcorn Math to Your School', status: 'PROPOSED-COPY' },
+    headline: { text: 'BRING POPCORN MATH TO YOUR SCHOOL!', status: 'PROPOSED-COPY' },
+    tagline: { text: 'Transform Ordinary Mathematics Lessons Into Extraordinary Learning Experiences!', status: 'PROPOSED-COPY' },
+    overview: { text: 'Our interactive mathematics sessions are designed to engage students through movement, games, problem-solving, and collaborative challenges.', status: 'PROPOSED-COPY' },
+    disclaimer: { text: 'Please note: Submitting this form is an enquiry to discuss custom school workshops and scheduling; it is not a confirmed booking.', status: 'APPROVED' }
+  },
+
+  resourcesPage: {
+    title: { text: 'Educational Resources', status: 'PROPOSED-COPY' },
+    headline: { text: 'Educational Resources', status: 'PROPOSED-COPY' },
+    details: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
   }
 };
 

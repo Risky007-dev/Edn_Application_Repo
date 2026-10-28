@@ -27,8 +27,13 @@ const {
   renderBookPage,
   renderContactPage,
   renderFaqPage,
-  renderAboutPage
+  renderAboutPage,
+  renderPopcornGamePage,
+  renderServiceFinderPage,
+  renderSchoolPartnershipPage,
+  renderResourcesPage
 } = require('./src/shared/templates/pages');
+const { sanitizeInterestHint } = require('./src/shared/finder/serviceFinder');
 
 // Middleware
 app.use(requestLogger);
@@ -160,6 +165,27 @@ app.get('/faq', (req, res) => {
 // GET /about - About page stub
 app.get('/about', (req, res) => {
   res.send(renderAboutPage());
+});
+
+// GET /popcorn-maths/game - TT-13 Popcorn Math Mini-Game
+app.get('/popcorn-maths/game', (req, res) => {
+  res.send(renderPopcornGamePage());
+});
+
+// GET /find-your-programme - TT-14 Smart Service Finder
+app.get('/find-your-programme', (req, res) => {
+  const hint = sanitizeInterestHint(req.query.interest);
+  res.send(renderServiceFinderPage(hint));
+});
+
+// GET /popcorn-maths/school-partnership - TT-15 School Partnership Enquiry
+app.get('/popcorn-maths/school-partnership', (req, res) => {
+  res.send(renderSchoolPartnershipPage());
+});
+
+// GET /resources - TT-16 Resources Page Stub
+app.get('/resources', (req, res) => {
+  res.send(renderResourcesPage());
 });
 
 // Favicon routes

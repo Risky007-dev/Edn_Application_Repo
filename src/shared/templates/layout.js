@@ -14,7 +14,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function renderLayout({ title, description, bodyHtml, currentPath = '/' }) {
+function renderLayout({ title, description, bodyHtml, currentPath = '/', extraScripts = [] }) {
   const whatsappNum = (process.env.WHATSAPP_PHONE_NUMBER || '').trim();
   const whatsappLink = whatsappNum ? `https://wa.me/${whatsappNum.replace(/[^0-9]/g, '')}` : '';
 
@@ -40,12 +40,6 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/' }) {
         <span class="brand-title">Tutor Time</span>
       </a>
 
-      <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="site-nav">
-        <span class="bar"></span>
-        <span class="bar"></span>
-        <span class="bar"></span>
-      </button>
-
       <nav class="site-nav" id="site-nav" aria-label="Main Navigation">
         <ul class="nav-list">
           <li class="nav-item"><a href="/" class="nav-link ${currentPath === '/' ? 'active' : ''}">Home</a></li>
@@ -68,15 +62,32 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/' }) {
             </button>
             <ul class="dropdown-menu">
               <li><a href="/services/popcorn-maths" class="dropdown-link">About Popcorn Math</a></li>
+              <li><a href="/popcorn-maths/game" class="dropdown-link">Play &amp; Learn</a></li>
+              <li><a href="/popcorn-maths/school-partnership" class="dropdown-link">School Partnerships</a></li>
               <li><a href="/popcorn-maths/presenter" class="dropdown-link">Become a Presenter</a></li>
             </ul>
           </li>
 
+          <li class="nav-item"><a href="/resources" class="nav-link ${currentPath === '/resources' ? 'active' : ''}">Resources</a></li>
           <li class="nav-item"><a href="/faq" class="nav-link ${currentPath === '/faq' ? 'active' : ''}">FAQ</a></li>
           <li class="nav-item"><a href="/contact" class="nav-link ${currentPath === '/contact' ? 'active' : ''}">Contact</a></li>
           <li class="nav-item nav-cta"><a href="/book" class="btn btn-primary nav-book-btn">Book Now</a></li>
         </ul>
       </nav>
+
+      <div class="header-actions">
+        <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Switch visual theme" title="Toggle between Bright Kid-Friendly Mode and Dark Mode">
+          <span class="theme-icon light-icon" aria-hidden="true">☀️</span>
+          <span class="theme-icon dark-icon" aria-hidden="true">🌙</span>
+          <span class="theme-mode-text">Theme</span>
+        </button>
+
+        <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="site-nav">
+          <span class="bar"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -104,6 +115,8 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/' }) {
           <li><a href="/services/concierge">Concierge Academic Coaching</a></li>
           <li><a href="/services/popcorn-maths">Popcorn Math</a></li>
           <li><a href="/services/specialist-support">Individualised Learning Support</a></li>
+          <li><a href="/find-your-programme">Find Your Programme</a></li>
+          <li><a href="/resources">Resources</a></li>
         </ul>
       </div>
 
@@ -111,6 +124,8 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/' }) {
         <h4>Join Our Team</h4>
         <ul class="footer-links">
           <li><a href="/popcorn-maths/presenter">Become a Popcorn Math Presenter</a></li>
+          <li><a href="/popcorn-maths/school-partnership">School Partnerships</a></li>
+          <li><a href="/popcorn-maths/game">Play &amp; Learn</a></li>
           <li><a href="/contact?subject=tutor-application">Become a Tutor</a></li>
         </ul>
       </div>
@@ -141,6 +156,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/' }) {
 
   <script src="/js/main.js"></script>
   <script src="/js/forms.js"></script>
+  ${extraScripts.map(s => `<script src="${escapeHtml(s)}"></script>`).join('\n  ')}
 </body>
 </html>`;
 }

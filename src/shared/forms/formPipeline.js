@@ -19,7 +19,8 @@ const {
   validateConciergeForm,
   validatePresenterForm,
   validateLearningNeedsForm,
-  validateContactForm
+  validateContactForm,
+  validateSchoolEnquiryForm
 } = require('./validators');
 
 // In-memory telemetry counter (no personal data stored or exposed)
@@ -29,6 +30,7 @@ const submissionMetrics = {
   'presenter-application': 0,
   'learning-needs': 0,
   'contact': 0,
+  'school-enquiry': 0,
   'other': 0
 };
 
@@ -45,6 +47,8 @@ function getValidator(formType) {
       return validateLearningNeedsForm;
     case 'contact':
       return validateContactForm;
+    case 'school-enquiry':
+      return validateSchoolEnquiryForm;
     default:
       return null;
   }

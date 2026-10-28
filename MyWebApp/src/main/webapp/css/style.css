@@ -7,6 +7,25 @@
 @import url("./tokens.css");
 @import url("./components.css");
 
+/* --- Global Kids & Educational Typography --- */
+h1, h2, h3, h4, h5, h6,
+.hero-headline,
+.section-title,
+.banner-title,
+.card-title,
+.btn,
+.nav-link,
+.dropdown-link {
+  font-family: var(--font-family-heading);
+}
+
+.hero-tagline,
+.card-tagline,
+.brand-subtitle,
+.playful-handwriting {
+  font-family: var(--font-family-playful);
+}
+
 /* --- Accessibility & Focus --- */
 .skip-link {
   position: absolute;
@@ -48,10 +67,11 @@
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(15, 15, 20, 0.9);
+  background: var(--color-header-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border-subtle);
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
 }
 
 .header-container {
@@ -61,6 +81,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-3) var(--space-4);
+  gap: var(--space-4);
 }
 
 .brand-link {
@@ -80,9 +101,60 @@
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--color-brand-tt-accent) 0%, var(--color-brand-tt-primary) 50%, var(--color-brand-tt-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .brand-title {
   background: linear-gradient(135deg, #ffffff 40%, var(--color-brand-tt-primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--color-card-border);
+  transform: translateY(-1px);
+}
+
+/* Light mode icon display */
+[data-theme="light"] .theme-icon.dark-icon,
+:root:not([data-theme="dark"]) .theme-icon.dark-icon {
+  display: none;
+}
+[data-theme="light"] .theme-icon.light-icon,
+:root:not([data-theme="dark"]) .theme-icon.light-icon {
+  display: inline-block;
+}
+
+/* Dark mode icon display */
+[data-theme="dark"] .theme-icon.light-icon {
+  display: none;
+}
+[data-theme="dark"] .theme-icon.dark-icon {
+  display: inline-block;
 }
 
 .hamburger-btn {
@@ -121,9 +193,10 @@
   top: 100%;
   left: 0;
   right: 0;
-  background: rgba(15, 15, 20, 0.98);
+  background: var(--color-mobile-nav-bg);
   border-bottom: 1px solid var(--color-border-subtle);
   padding: var(--space-4);
+  box-shadow: var(--shadow-md);
 }
 
 .site-nav.open {
@@ -159,8 +232,8 @@
 .nav-link:hover,
 .nav-link:focus,
 .nav-link.active {
-  color: var(--color-text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-brand-tt-primary);
+  background: var(--color-brand-tt-bg-glow);
 }
 
 .dropdown-menu {
@@ -189,8 +262,8 @@
 
 .dropdown-link:hover,
 .dropdown-link:focus {
-  color: var(--color-text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-brand-tt-primary);
+  background: var(--color-brand-tt-bg-glow);
 }
 
 .nav-book-btn {
@@ -228,8 +301,8 @@
     top: 100%;
     left: 0;
     min-width: 240px;
-    background: var(--color-bg-secondary);
-    border: 1px solid var(--color-border-subtle);
+    background: var(--color-dropdown-bg);
+    border: 1px solid var(--color-card-border);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
     padding: var(--space-2);
@@ -246,7 +319,7 @@
 .hero-section {
   padding: var(--space-12) var(--space-4);
   text-align: center;
-  background: radial-gradient(circle at 50% 20%, rgba(72, 209, 204, 0.12), transparent 70%);
+  background: var(--color-hero-bg);
 }
 
 .hero-container {
@@ -263,10 +336,13 @@
 }
 
 .hero-tagline {
-  font-size: clamp(1.2rem, 3vw, 1.6rem);
-  color: var(--color-brand-tt-primary);
-  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-playful);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  color: var(--color-brand-tt-secondary);
+  font-weight: 400;
   margin-bottom: var(--space-3);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
 }
 
 .hero-subhead {
@@ -684,9 +760,10 @@
 /* --- Footer --- */
 .site-footer {
   margin-top: auto;
-  background: #09090d;
-  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-footer-bg);
+  border-top: 1px solid var(--color-footer-border);
   padding-top: var(--space-12);
+  transition: background-color var(--transition-normal);
 }
 
 .footer-container {
@@ -739,15 +816,16 @@
   color: var(--color-text-secondary);
   text-decoration: none;
   font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
 }
 
 .footer-links a:hover {
-  color: #fff;
+  color: var(--color-brand-tt-primary);
 }
 
 .footer-bottom {
   margin-top: var(--space-10);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--color-footer-border);
   padding: var(--space-6) 0;
 }
 
@@ -768,5 +846,339 @@
   .footer-bottom-container {
     flex-direction: row;
     justify-content: space-between;
+  }
+}
+
+/* ==========================================================================
+   STAGE 3 COMPONENTS: MINI-GAME, SERVICE FINDER, SCHOOL ENQUIRY
+   ========================================================================== */
+
+/* --- TT-13 Mini-Game --- */
+.game-container {
+  max-width: 760px;
+  margin: var(--space-8) auto;
+  text-align: center;
+}
+
+.game-privacy-notice, .finder-privacy-notice {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+
+.mascot-placeholder {
+  margin: var(--space-4) auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-box {
+  border: 2px dashed var(--color-card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  background: var(--color-card-bg);
+}
+
+.bucket-stage {
+  margin: var(--space-6) auto;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.bucket-visual-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+.bucket-slots {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.kernel-item {
+  font-size: 2rem;
+  opacity: 0.15;
+  transform: scale(0.7);
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.kernel-item.kernel-popped {
+  opacity: 1;
+  transform: scale(1.15) translateY(-6px);
+  animation: popBounce 0.4s ease-out;
+}
+
+@keyframes popBounce {
+  0% { transform: scale(0.5) translateY(10px); }
+  60% { transform: scale(1.3) translateY(-10px); }
+  100% { transform: scale(1.15) translateY(-6px); }
+}
+
+.game-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-md);
+  margin-top: var(--space-4);
+}
+
+.question-tracker {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.question-prompt {
+  font-family: var(--font-family-heading);
+  font-size: clamp(1.8rem, 4vw, 2.75rem);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-6);
+}
+
+.answers-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.btn-answer {
+  min-height: 54px;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-card-border);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-answer:hover, .btn-answer:focus-visible {
+  border-color: var(--color-brand-tt-primary);
+  background: var(--color-brand-tt-bg-glow);
+  transform: translateY(-2px);
+}
+
+.btn-answer.answer-correct {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10B981;
+  color: #059669;
+}
+
+.btn-answer.answer-retry {
+  animation: gentleShake 0.4s ease;
+  border-color: var(--color-brand-popcorn-accent);
+}
+
+@keyframes gentleShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.game-feedback {
+  min-height: 32px;
+  margin-top: var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  font-family: var(--font-family-heading);
+}
+
+.game-feedback.pop-success {
+  color: var(--color-brand-popcorn-primary);
+}
+
+.game-feedback.pop-retry {
+  color: var(--color-brand-tt-secondary);
+}
+
+.game-star-screen {
+  background: var(--color-card-bg);
+  border: 2px solid var(--color-brand-popcorn-secondary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-10) var(--space-6);
+  box-shadow: var(--shadow-lg);
+  margin-top: var(--space-4);
+}
+
+.star-badge {
+  font-size: 3.5rem;
+  margin-bottom: var(--space-2);
+}
+
+.star-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: center;
+  margin-top: var(--space-6);
+}
+
+/* --- TT-14 Smart Service Finder --- */
+.finder-cta-section {
+  padding: var(--space-8) 0;
+}
+
+.finder-cta-card {
+  background: linear-gradient(135deg, var(--color-card-bg) 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-start;
+  box-shadow: var(--shadow-md);
+}
+
+@media (min-width: 768px) {
+  .finder-cta-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.badge-accent {
+  display: inline-block;
+  background: rgba(255, 124, 36, 0.15);
+  color: var(--color-brand-tt-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-2);
+}
+
+.finder-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-md);
+  max-width: 800px;
+  margin: var(--space-6) auto;
+}
+
+.finder-step {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.finder-legend {
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-3);
+  display: block;
+}
+
+.finder-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+}
+
+@media (min-width: 600px) {
+  .finder-options-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.finder-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-height: 48px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.finder-option:hover, .finder-option:focus-within {
+  border-color: var(--color-brand-tt-primary);
+  background: var(--color-brand-tt-bg-glow);
+}
+
+.finder-option input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-brand-tt-primary);
+}
+
+.finder-recommendation {
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-brand-tt-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.recommendation-badge {
+  display: inline-block;
+  background: var(--color-brand-tt-primary);
+  color: #FFFFFF;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-2);
+}
+
+.rec-reason {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  max-width: 600px;
+  margin: var(--space-2) auto 0;
+  line-height: var(--line-height-relaxed);
+}
+
+.rec-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+/* --- TT-15 School Partnerships --- */
+.offerings-section {
+  margin-bottom: var(--space-8);
+}
+
+/* Reduced Motion Guardrail */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

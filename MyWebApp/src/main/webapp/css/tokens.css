@@ -8,7 +8,9 @@
   /* ==========================================================================
      1. GLOBAL TYPOGRAPHY & LAYOUT
      ========================================================================== */
-  --font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-family-base: "Quicksand", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-family-heading: "Fredoka", "Quicksand", system-ui, sans-serif;
+  --font-family-playful: "Reenie Beanie", cursive, sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --font-size-xs: 0.75rem;    /* 12px */
@@ -44,66 +46,114 @@
   --space-16: 4rem;     /* 64px */
 
   /* ==========================================================================
-     3. RADII & ELEVATIONS
+     3. RADII & ELEVATIONS (Friendly & Soft)
      ========================================================================== */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
   --radius-full: 9999px;
-
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
 
   /* ==========================================================================
-     4. BASE NEUTRAL THEME (Dark Mode Glassmorphism)
+     4. DEFAULT THEME: BRIGHT, WARM & PLAYFUL (KIDS & FAMILY EDUCATION)
      ========================================================================== */
-  --color-bg-primary: #0f0f14;
-  --color-bg-secondary: #1b1b24;
-  --color-card-bg: rgba(20, 20, 28, 0.85);
-  --color-card-border: #2a2a38;
-  --color-border-subtle: #242432;
-  --color-text-primary: #f3f3f8;
-  --color-text-secondary: #b2b2c3;
-  --color-text-muted: #7e7e96;
-  --color-input-bg: #0e0e15;
+  --color-bg-primary: #FFFDF9;
+  --color-bg-secondary: #FFF8EE;
+  --color-bg-subtle: #F6F3EB;
+  --color-card-bg: #FFFFFF;
+  --color-card-border: #EFE7DA;
+  --color-border-subtle: #E8E0D2;
+  --color-text-primary: #1C2434;
+  --color-text-secondary: #4A5568;
+  --color-text-muted: #718096;
+  --color-input-bg: #FFFFFF;
+  --color-input-border: #CBD5E1;
+  --color-header-bg: rgba(255, 253, 249, 0.94);
+  --color-mobile-nav-bg: rgba(255, 253, 249, 0.98);
+  --color-dropdown-bg: #FFFFFF;
+  --color-footer-bg: #F9F5EC;
+  --color-footer-border: #E8E0D2;
+  --color-hero-bg: radial-gradient(circle at 50% 20%, rgba(255, 208, 0, 0.18), rgba(72, 209, 204, 0.12), transparent 70%);
+
+  --shadow-sm: 0 2px 8px rgba(180, 100, 20, 0.05);
+  --shadow-md: 0 8px 24px rgba(180, 100, 20, 0.08);
+  --shadow-lg: 0 16px 36px rgba(180, 100, 20, 0.1), 0 2px 6px rgba(0, 0, 0, 0.03);
+
+  --body-bg-gradient:
+    radial-gradient(900px 500px at 10% -5%, rgba(255, 208, 0, 0.15) 0%, transparent 60%),
+    radial-gradient(800px 500px at 90% 10%, rgba(72, 209, 204, 0.15) 0%, transparent 60%),
+    linear-gradient(170deg, var(--color-bg-primary), var(--color-bg-secondary));
 
   /* ==========================================================================
      5. SERVICE BRAND COLOR TOKENS
      Owner: Update values below when finalized brand guidelines are delivered.
      ========================================================================== */
 
-  /* --- Tutor Time Main Platform (From Official Logo) --- */
-  --color-brand-tt-primary: #48d1cc;
-  --color-brand-tt-secondary: #ff7c24;
+  /* --- Tutor Time Main Platform (Deep Turquoise in light mode for readability) --- */
+  --color-brand-tt-primary: #00A896;
+  --color-brand-tt-secondary: #FF7C24;
   --color-brand-tt-accent: #028090;
-  --color-brand-tt-bg-glow: rgba(72, 209, 204, 0.15);
+  --color-brand-tt-bg-glow: rgba(0, 168, 150, 0.12);
 
   /* --- Service 1: Popcorn Math (From Official Logo) --- */
-  --color-brand-popcorn-primary: #e62b25;
-  --color-brand-popcorn-secondary: #ffd000;
-  --color-brand-popcorn-accent: #ff4742;
-  --color-brand-popcorn-bg-glow: rgba(230, 43, 37, 0.15);
+  --color-brand-popcorn-primary: #E62B25;
+  --color-brand-popcorn-secondary: #FFD000;
+  --color-brand-popcorn-accent: #FF4742;
+  --color-brand-popcorn-bg-glow: rgba(230, 43, 37, 0.12);
 
   /* --- Service 2: Personalised Tutoring & Academic Support --- */
   --color-brand-traditional-primary: #028090;
-  --color-brand-traditional-secondary: #00a896;
-  --color-brand-traditional-accent: #05668d;
-  --color-brand-traditional-bg-glow: rgba(2, 128, 144, 0.15);
+  --color-brand-traditional-secondary: #00A896;
+  --color-brand-traditional-accent: #05668D;
+  --color-brand-traditional-bg-glow: rgba(2, 128, 144, 0.12);
 
   /* --- Service 3: Concierge Academic Coaching --- */
-  --color-brand-concierge-primary: #d97706;
-  --color-brand-concierge-secondary: #f59e0b;
-  --color-brand-concierge-accent: #b45309;
-  --color-brand-concierge-bg-glow: rgba(217, 119, 6, 0.15);
+  --color-brand-concierge-primary: #D97706;
+  --color-brand-concierge-secondary: #F59E0B;
+  --color-brand-concierge-accent: #B45309;
+  --color-brand-concierge-bg-glow: rgba(217, 119, 6, 0.12);
 
   /* --- Service 4: Individualised Learning Support --- */
   --color-brand-specialist-primary: #059669;
-  --color-brand-specialist-secondary: #10b981;
+  --color-brand-specialist-secondary: #10B981;
   --color-brand-specialist-accent: #047857;
-  --color-brand-specialist-bg-glow: rgba(5, 150, 105, 0.15);
+  --color-brand-specialist-bg-glow: rgba(5, 150, 105, 0.12);
+}
+
+/* ==========================================================================
+   6. OPTIONAL DARK THEME (TOGGLEABLE)
+   ========================================================================== */
+[data-theme="dark"] {
+  --color-bg-primary: #0F0F14;
+  --color-bg-secondary: #1B1B24;
+  --color-bg-subtle: #242432;
+  --color-card-bg: rgba(20, 20, 28, 0.9);
+  --color-card-border: #2A2A38;
+  --color-border-subtle: #242432;
+  --color-text-primary: #F3F3F8;
+  --color-text-secondary: #B2B2C3;
+  --color-text-muted: #7E7E96;
+  --color-input-bg: #0E0E15;
+  --color-input-border: #2A2A38;
+  --color-header-bg: rgba(15, 15, 20, 0.92);
+  --color-mobile-nav-bg: rgba(15, 15, 20, 0.98);
+  --color-dropdown-bg: #1B1B24;
+  --color-footer-bg: #09090D;
+  --color-footer-border: rgba(255, 255, 255, 0.05);
+  --color-hero-bg: radial-gradient(circle at 50% 20%, rgba(72, 209, 204, 0.12), transparent 70%);
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+
+  --body-bg-gradient:
+    radial-gradient(1000px 600px at 20% -10%, #27273a 0%, transparent 60%),
+    radial-gradient(900px 500px at 120% 10%, #1e263c 0%, transparent 60%),
+    linear-gradient(160deg, var(--color-bg-primary), var(--color-bg-secondary));
+
+  --color-brand-tt-primary: #48D1CC;
+  --color-brand-tt-bg-glow: rgba(72, 209, 204, 0.15);
 }
