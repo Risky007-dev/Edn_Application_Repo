@@ -1,0 +1,109 @@
+/* ==========================================================================
+   TUTOR TIME / POPCORN MATHS - DESIGN TOKENS
+   Shared CSS custom properties for brand colors, typography, spacing, and radius.
+   Owner note: Brand colors for each service are easily swappable below.
+   ========================================================================== */
+
+:root {
+  /* ==========================================================================
+     1. GLOBAL TYPOGRAPHY & LAYOUT
+     ========================================================================== */
+  --font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 2rem;      /* 32px */
+  --font-size-4xl: 2.75rem;   /* 44px */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.65;
+
+  /* ==========================================================================
+     2. SPACING SCALE
+     ========================================================================== */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* ==========================================================================
+     3. RADII & ELEVATIONS
+     ========================================================================== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* ==========================================================================
+     4. BASE NEUTRAL THEME (Dark Mode Glassmorphism)
+     ========================================================================== */
+  --color-bg-primary: #0f0f14;
+  --color-bg-secondary: #1b1b24;
+  --color-card-bg: rgba(20, 20, 28, 0.85);
+  --color-card-border: #2a2a38;
+  --color-border-subtle: #242432;
+  --color-text-primary: #f3f3f8;
+  --color-text-secondary: #b2b2c3;
+  --color-text-muted: #7e7e96;
+  --color-input-bg: #0e0e15;
+
+  /* ==========================================================================
+     5. SERVICE BRAND COLOR TOKENS
+     Owner: Update values below when finalized brand guidelines are delivered.
+     ========================================================================== */
+
+  /* --- Tutor Time Main Platform (From Official Logo) --- */
+  --color-brand-tt-primary: #48d1cc;
+  --color-brand-tt-secondary: #ff7c24;
+  --color-brand-tt-accent: #028090;
+  --color-brand-tt-bg-glow: rgba(72, 209, 204, 0.15);
+
+  /* --- Service 1: Popcorn Math (From Official Logo) --- */
+  --color-brand-popcorn-primary: #e62b25;
+  --color-brand-popcorn-secondary: #ffd000;
+  --color-brand-popcorn-accent: #ff4742;
+  --color-brand-popcorn-bg-glow: rgba(230, 43, 37, 0.15);
+
+  /* --- Service 2: Personalised Tutoring & Academic Support --- */
+  --color-brand-traditional-primary: #028090;
+  --color-brand-traditional-secondary: #00a896;
+  --color-brand-traditional-accent: #05668d;
+  --color-brand-traditional-bg-glow: rgba(2, 128, 144, 0.15);
+
+  /* --- Service 3: Concierge Academic Coaching --- */
+  --color-brand-concierge-primary: #d97706;
+  --color-brand-concierge-secondary: #f59e0b;
+  --color-brand-concierge-accent: #b45309;
+  --color-brand-concierge-bg-glow: rgba(217, 119, 6, 0.15);
+
+  /* --- Service 4: Individualised Learning Support --- */
+  --color-brand-specialist-primary: #059669;
+  --color-brand-specialist-secondary: #10b981;
+  --color-brand-specialist-accent: #047857;
+  --color-brand-specialist-bg-glow: rgba(5, 150, 105, 0.15);
+}

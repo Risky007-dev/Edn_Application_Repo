@@ -7,12 +7,63 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Middleware
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'MyWebApp/src/main/webapp')));
+// Trust Proxy Configuration (default off)
+if (process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
 
-// Database file path
-const dbFile = path.join(__dirname, 'subscribers.json');
+// Shared Infrastructure & Modular Middleware
+const requestLogger = require('./src/shared/middleware/logger');
+const { helmetMiddleware, generalApiLimiter } = require('./src/shared/middleware/security');
+const brand = require('./src/shared/brand');
+const formPipeline = require('./src/shared/forms/formPipeline');
+const {
+  renderHomePage,
+  renderTraditionalTutoringPage,
+  renderConciergePage,
+  renderPopcornMathsPage,
+  renderSpecialistSupportPage,
+  renderPresenterPage,
+  renderBookPage,
+  renderContactPage,
+  renderFaqPage,
+  renderAboutPage
+} = require('./src/shared/templates/pages');
+
+// Middleware
+app.use(requestLogger);
+app.use(helmetMiddleware);
+app.use(bodyParser.json());
+
+// Deny requests for sensitive file extensions, legacy paths, or path traversal
+app.use((req, res, next) => {
+  const urlPath = (req.path || '').toLowerCase();
+  if (
+    urlPath.endsWith('.py') ||
+    urlPath.endsWith('.xml') ||
+    urlPath.endsWith('.json') ||
+    urlPath.endsWith('.md') ||
+    urlPath.includes('/web-inf') ||
+    urlPath.includes('flasktest') ||
+    urlPath.includes('pom.xml') ||
+    urlPath.includes('..')
+  ) {
+    return res.status(404).send('Not Found');
+  }
+  next();
+});
+
+app.use('/api', generalApiLimiter);
+app.use('/api', formPipeline);
+
+// Explicit Static Asset Serving (pages, css, js, assets only)
+app.use('/css', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/css')));
+app.use('/js', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/js')));
+app.use('/assets', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/assets')));
+app.use('/finalnewmathapo-01.png', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/finalnewmathapo-01.png')));
+
+// Database file path (supports test isolation via SUBSCRIBERS_DB_FILE)
+const dbFile = process.env.SUBSCRIBERS_DB_FILE || path.join(__dirname, 'subscribers.json');
 
 // Initialize database file if it doesn't exist
 if (!fs.existsSync(dbFile)) {
@@ -48,60 +99,79 @@ function isValidEmail(email) {
 }
 
 // Helper function to send confirmation email
-async function sendConfirmationEmail(email) {
-  try {
-    // For now, we'll just log it. In production, use nodemailer or similar
-    console.log(`✉️  Confirmation email sent to: ${email}`);
-    
-    // Optional: Actually send email if configured
-    // This is commented out because it requires nodemailer setup
-    // const nodemailer = require('nodemailer');
-    // const transporter = nodemailer.createTransport({
-    //   service: 'gmail',
-    //   auth: {
-    //     user: process.env.SENDER_EMAIL,
-    //     pass: process.env.SENDER_PASSWORD
-    //   }
-    // });
-    // await transporter.sendMail({
-    //   from: process.env.SENDER_EMAIL,
-    //   to: email,
-    //   subject: '🍿 Welcome to Popcorn Maths - Launch Notification',
-    //   html: getEmailTemplate(email)
-    // });
-    
-    return true;
-  } catch (err) {
-    console.error('Error sending email:', err);
-    return false;
-  }
-}
-
-// Email template
-function getEmailTemplate(email) {
-  return `
-    <html>
-      <body style="font-family: system-ui, -apple-system, sans-serif; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #ff3b3b;">🍿 Welcome to Popcorn Maths!</h2>
-          <p>Thanks for signing up for our launch notification.</p>
-          <p>We'll send you an email as soon as we go live with the freshest batch of educational content.</p>
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-          <p style="color: #999; font-size: 12px;">You're receiving this because you subscribed to Popcorn Maths launch notifications.</p>
-        </div>
-      </body>
-    </html>
-  `;
+function sendConfirmationEmail(email) {
+  console.log(`✉️  Confirmation email sent to: ${email}`);
+  return Promise.resolve(true);
 }
 
 // Routes
 
-// GET / - Serve index.html
+// GET / & /index.html - Serve dynamic server-rendered homepage
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'MyWebApp/src/main/webapp/index.html'));
+  res.send(renderHomePage());
 });
 
-// POST /subscribe - Subscribe a new email
+app.get('/index.html', (req, res) => {
+  res.send(renderHomePage());
+});
+
+// GET /services/:slug - Explicit route to serve the four service pages
+app.get('/services/:slug', (req, res) => {
+  const { slug } = req.params;
+  
+  if (!slug || !brand.isSlugAllowed(slug) || slug.includes('..')) {
+    return res.status(404).send('Service not found');
+  }
+
+  switch (slug) {
+    case 'traditional-tutoring':
+      return res.send(renderTraditionalTutoringPage());
+    case 'concierge':
+      return res.send(renderConciergePage());
+    case 'popcorn-maths':
+      return res.send(renderPopcornMathsPage());
+    case 'specialist-support':
+      return res.send(renderSpecialistSupportPage());
+    default:
+      return res.status(404).send('Service not found');
+  }
+});
+
+// GET /popcorn-maths/presenter - We're hiring recruitment page
+app.get('/popcorn-maths/presenter', (req, res) => {
+  res.send(renderPresenterPage());
+});
+
+// GET /book - Book Now consultation request page
+app.get('/book', (req, res) => {
+  res.send(renderBookPage());
+});
+
+// GET /contact - Contact form and WhatsApp integration
+app.get('/contact', (req, res) => {
+  res.send(renderContactPage());
+});
+
+// GET /faq - FAQ accordion page
+app.get('/faq', (req, res) => {
+  res.send(renderFaqPage());
+});
+
+// GET /about - About page stub
+app.get('/about', (req, res) => {
+  res.send(renderAboutPage());
+});
+
+// Favicon routes
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, 'MyWebApp/src/main/webapp/assets/icons/favicon-32x32.png'));
+});
+
+app.get('/favicon.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'MyWebApp/src/main/webapp/assets/icons/favicon-32x32.png'));
+});
+
+// POST /subscribe - Subscribe a new email (PRESERVED - UNCHANGED)
 app.post('/subscribe', async (req, res) => {
   try {
     const { email } = req.body;

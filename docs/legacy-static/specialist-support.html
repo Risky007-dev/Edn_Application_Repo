@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Individualised Learning Support — Tutor Time</title>
+  <meta name="description" content="Individualised Learning Support: Structured routines, executive functioning assistance, and differentiated learning strategies." />
+
+  <!-- Shared Design Tokens & Component Stylesheets -->
+  <link rel="stylesheet" href="/css/tokens.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <style>
+    :root {
+      --card-accent-color: var(--color-brand-specialist-primary);
+    }
+    .service-hero {
+      text-align: center;
+      padding: var(--space-10) 0 var(--space-6);
+    }
+    .hero-service-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      margin: 0 auto var(--space-4);
+      display: block;
+      border: 1px solid var(--color-card-border);
+    }
+    .content-card {
+      background: var(--color-card-bg);
+      border: 1px solid var(--color-card-border);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      margin-bottom: var(--space-8);
+      backdrop-filter: blur(12px);
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-6);
+      margin-top: var(--space-6);
+    }
+    @media (min-width: 768px) {
+      .content-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation Header with Back Link -->
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+      <a href="/" class="brand-wrapper" aria-label="Tutor Time Homepage">
+        <img src="/assets/logos/TT_logo.jpg" alt="Tutor Time Logo" class="brand-logo-img" />
+        <div class="brand-text">
+          <span class="brand-title">Tutor Time</span>
+          <span class="brand-subtitle">with Tr. Cassie</span>
+        </div>
+      </a>
+      <a href="/" class="btn btn-secondary btn-sm" aria-label="Return to Main Overview Page">
+        &larr; Back to Overview
+      </a>
+    </div>
+  </header>
+
+  <main id="main-content" role="main">
+    <div class="container">
+      <!-- Service Hero Section -->
+      <section class="service-hero" aria-labelledby="service-title">
+        <img src="/assets/logos/TT_logo.jpg" alt="Tutor Time Logo" class="hero-service-logo" />
+        <div class="banner-badge" style="border-color: rgba(5, 150, 105, 0.4); color: #10b981; background: rgba(5, 150, 105, 0.15);">
+          Module 4 &middot; Differentiated Learning Support
+        </div>
+        <h1 id="service-title" class="banner-title">Individualised Learning Support</h1>
+        <p class="banner-subtitle" style="color: var(--color-brand-specialist-secondary);">
+          Structured routines, executive functioning, and differentiated learning
+        </p>
+      </section>
+
+      <!-- Program Overview & Description (TODO content placeholders) -->
+      <section class="content-card" aria-labelledby="overview-heading">
+        <h2 id="overview-heading" style="margin-top: 0; font-size: var(--font-size-2xl);">Differentiated Learning Focus</h2>
+        <p style="color: var(--color-text-secondary); line-height: var(--line-height-relaxed);">
+          TODO(content): Individualised support frameworks to be confirmed by project owner. This service provides structured, empathetic, and sensory-aware tutoring focusing on individual learning strengths, organization habits, and multi-modal instructional prompts.
+        </p>
+
+        <div class="content-grid">
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--color-card-border); border-radius: var(--radius-md); padding: var(--space-5);">
+            <h3 style="margin-top: 0; font-size: var(--font-size-lg); color: #10b981;">Executive Functioning &amp; Routines</h3>
+            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: 0;">
+              TODO(content): Chunked learning intervals, task planning systems, and consistent positive reinforcement milestones.
+            </p>
+          </div>
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--color-card-border); border-radius: var(--radius-md); padding: var(--space-5);">
+            <h3 style="margin-top: 0; font-size: var(--font-size-lg); color: #10b981;">Differentiated Curriculum Delivery</h3>
+            <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: 0;">
+              TODO(content): Customized pace and instructional formats tailored to student strengths and preferred modalities.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Coming Soon Status Block -->
+      <section class="countdown-container" aria-label="Service Launch Status">
+        <span class="banner-badge" style="margin-bottom: var(--space-2);">TODO(content): Official Launch Date Pending Owner Confirmation</span>
+        <h2 style="margin: var(--space-2) 0; font-size: var(--font-size-2xl);">Launching in Late 2026</h2>
+        <p style="color: var(--color-text-secondary); margin: 0 auto var(--space-6); max-width: 480px; font-size: var(--font-size-sm);">
+          Consultations for Individualised Learning Support will open in late 2026. Register on the main page to receive launch notices.
+        </p>
+        <div>
+          <a href="/" class="btn btn-primary">Return to Overview &amp; Register Interest</a>
+        </div>
+      </section>
+    </div>
+
+    <!--
+      AI CHATBOT (FUTURE): Reserved for conversational assistant.
+      Architecture placeholder for future integration.
+    -->
+  </main>
+
+  <!-- Site Footer -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <p>&copy; <span id="year">2026</span> Tutor Time with Teacher Cassie &middot; Learning Support &middot; <a href="/">Home</a></p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
