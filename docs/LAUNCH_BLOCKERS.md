@@ -1,6 +1,6 @@
 # Production Launch Blockers & Action Checklist
 
-> **DOCUMENT PURPOSE:** Definitive pre-launch operational checklist identifying the 13 required business, legal, design, and technical decisions required from the business owner / Cassie before full public launch.
+> **DOCUMENT PURPOSE:** Definitive pre-launch operational checklist identifying the 14 required business, legal, design, and technical decisions required from the business owner / Cassie before full public launch.
 
 ---
 
@@ -14,11 +14,11 @@
 
 ## 3. Presenter Vetting & Child Safeguarding
 - **Blocker:** Popcorn Math involves adult presenters interacting with children aged 8 to 13.
-- **Required Action:** Establish and document standardized background vetting protocols (police background checks, reference verifications, and safeguarding code of conduct) before any applicant works with children. Enforce minimum age 18 on all presenter hires.
+- **Required Action:** Establish and document standardized background vetting protocols (police background checks, reference verifications, and safeguarding code of conduct) before any applicant works with children. Vetting requirements depend on local legal requirements to be confirmed by the owner.
 
 ## 4. Under-18 Tutor Policy Alignment
-- **Blocker:** Legacy notes mentioned under-18 peer tutors; recent advisory cautions that minors cannot legally sign employment contracts or hold unsupervised duty-of-care.
-- **Required Action:** Reconcile role definitions: confirm that hired presenters are strictly age 18+, while any under-18 participation is classified as structured peer mentoring under direct adult supervision.
+- **Blocker:** The original brief mentioned under-18 tutors; their role is not defined.
+- **Required Action:** Owner to decide how under-18 participants (if any) are involved and safeguarded. Not designed yet.
 
 ## 5. `/subscribers` Endpoint Security & Future Disposition
 - **Blocker:** The `/subscribers` endpoint returns the list of email subscribers without authentication.
@@ -27,19 +27,19 @@
 ## 6. Amazon SES Domain Verification & Production Access
 - **Blocker:** Amazon SES defaults to Sandbox mode, restricting email dispatch to pre-verified email addresses only.
 - **Required Action:** 
-  1. Complete DNS verification for `tutortimewithcassie.com` in AWS SES us-east-2.
+  1. Complete DNS verification for popcornmaths.com (assumed; owner to confirm) in AWS SES us-east-2.
   2. Request SES Production Access from AWS Support to allow sending notification emails without sandbox recipient limits.
 
 ## 7. Custom Domain & DNS Configuration
-- **Blocker:** The application runs on local port or internal EC2 IP until DNS records are pointed.
-- **Required Action:** Configure Route 53 or registrar DNS records (A/AAAA or CNAME) pointing `tutortimewithcassie.com` and `www.tutortimewithcassie.com` to the production host/distribution with TLS certificate binding.
+- **Blocker:** popcornmaths.com is the one domain in the AWS account, registered in Route 53 with auto-renew, certificate issued in us-east-2; the owner has not confirmed which domain hosts the main site.
+- **Required Action:** Owner to confirm the domain, then point DNS and certificates at the production host.
 
 ## 8. Application Load Balancer (ALB) Retirement
 - **Blocker:** Existing AWS infrastructure incurs unnecessary idle hourly charges for an unused or legacy ALB.
 - **Required Action:** Execute the cost-reduction plan to retire the ALB, transitioning traffic directly through CloudFront / S3 / EC2 to maintain near-zero idle infrastructure cost.
 
 ## 9. Real Content Replacement for "Details coming soon."
-- **Blocker:** 14 pages currently render "Details coming soon." stubs (Our Mission, Teacher Cassie Biography, Presenter What We Offer, Office Hours/Locations, and Session Rates/Schedules).
+- **Blocker:** Several pages currently render "Details coming soon." stubs (see `docs/PLACEHOLDERS.md` for the full list of placeholders).
 - **Required Action:** Provide official finalized text for each of the stubs listed in `docs/PLACEHOLDERS.md`.
 
 ## 10. Official Popcorn Math Mascot Artwork
@@ -51,10 +51,14 @@
 - **Required Action:** Provide the official dedicated WhatsApp Business phone number for Teacher Cassie.
 
 ## 12. Self-Hosted Font Hosting & Web Performance
-- **Blocker:** External Google Fonts links were removed to guarantee zero CDN requests; styling currently falls back to system rounded fonts and cursive cursive chains.
+- **Blocker:** External Google Fonts links were removed to guarantee zero CDN requests; styling currently falls back to system rounded fonts and cursive chains.
 - **Required Action:** License or download local WOFF2 files for "Quicksand", "Fredoka", and "Reenie Beanie", place them in `MyWebApp/src/main/webapp/assets/fonts/`, and define `@font-face` rules in `tokens.css`.
 
 ## 13. Owner Approval of Proposed Copy & Service Colors
 - **Blocker:** 104 copy items are marked `PROPOSED-COPY`.
 - **Required Action:** Complete review of `docs/COPY_REVIEW.md`, approve or adjust the priority headlines and service descriptions, and confirm brand accent colors.
+
+## 14. `/subscribe` Local Storage vs. DynamoDB Integration
+- **Blocker:** `/subscribe` stores email signups in a local JSON file, not in DynamoDB. The existing DynamoDB table `popcorn-maths-subscribers` is not used by this repo's code.
+- **Required Action:** Owner to decide whether `/subscribe` should move to the storage layer (this requires changing `/subscribe`, which is currently frozen), and what to do with the 10 existing items.
 

@@ -42,8 +42,9 @@ Parameters:
 
   SiteOrigin:
     Type: String
-    Default: https://tutortimewithcassie.com
-    Description: Allowed origin for S3 presigned POST CORS requests.
+    AllowedPattern: '^https://[a-zA-Z0-9.-]+$'
+    ConstraintDescription: Must be an HTTPS origin (e.g., https://example.com).
+    Description: Allowed origin for S3 presigned POST CORS requests (REQUIRED; no default).
 
   CVRetentionDays:
     Type: Number
@@ -56,10 +57,10 @@ Parameters:
     Type: String
     Description: >
       ARN of the verified SES domain or email identity for notification delivery
-      (e.g., arn:aws:ses:us-east-2:<AWS_ACCOUNT_ID>:identity/tutortimewithcassie.com).
+      (e.g., arn:aws:ses:us-east-2:<AWS_ACCOUNT_ID>:identity/<SITE_DOMAIN>) (REQUIRED; no default).
 
 Conditions:
-  HasCustomBucketName: !Not [!Equals [!Ref UploadsBucketName, ""]]
+  HasBucketName: !Not [!Equals [!Ref UploadsBucketName, ""]]
 
 Resources:
   # ----------------------------------------------------------------------------
@@ -98,7 +99,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !If [HasCustomBucketName, !Ref UploadsBucketName, !Ref "AWS::NoValue"]
+      BucketName: !If [HasBucketName, !Ref UploadsBucketName, !Ref "AWS::NoValue"]
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
