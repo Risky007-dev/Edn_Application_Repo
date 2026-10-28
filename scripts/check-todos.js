@@ -1,7 +1,7 @@
 /**
  * Check TODOs and Content Markers in RENDERED HTTP Pages
  * Spawns the application on an isolated temporary port, fetches every rendered
- * page route over HTTP, and lists every visible "TODO(" and "data-todo" marker.
+ * page route over HTTP, and lists visible "TODO(" text vs hidden "data-todo" markers.
  */
 
 const http = require('http');
@@ -66,6 +66,18 @@ function waitForServer(maxRetries = 25) {
   });
 }
 
+function analyzeLine(line) {
+  const hasHiddenAttr = line.includes('data-todo=');
+  const hasComment = /<!--[\s\S]*?-->/.test(line) && line.includes('TODO');
+  const isHidden = hasHiddenAttr || hasComment;
+
+  const noComments = line.replace(/<!--[\s\S]*?-->/g, '');
+  const textOnly = noComments.replace(/<[^>]+>/g, '');
+  const isVisible = textOnly.includes('TODO(');
+
+  return { isVisible, isHidden };
+}
+
 async function runCheck() {
   const serverProcess = spawn('node', ['server.js'], {
     cwd: path.join(__dirname, '..'),
@@ -86,7 +98,8 @@ async function runCheck() {
     console.log('   TODO( AND data-todo MARKERS IN RENDERED HTTP PAGES           ');
     console.log('================================================================\n');
 
-    let totalMarkers = 0;
+    let totalVisible = 0;
+    let totalHidden = 0;
 
     for (const route of PAGE_ROUTES) {
       const { statusCode, body } = await fetchRoute(route);
@@ -99,10 +112,14 @@ async function runCheck() {
       const matches = [];
 
       lines.forEach((line, idx) => {
-        if (line.includes('TODO(') || line.includes('data-todo')) {
+        const { isVisible, isHidden } = analyzeLine(line);
+        if (isVisible || isHidden) {
+          if (isVisible) totalVisible++;
+          if (isHidden) totalHidden++;
           matches.push({
             lineNumber: idx + 1,
-            text: line.trim()
+            text: line.trim(),
+            type: isVisible ? 'VISIBLE TODO(' : 'HIDDEN marker'
           });
         }
       });
@@ -110,8 +127,7 @@ async function runCheck() {
       if (matches.length > 0) {
         console.log(`Route: ${route} (${matches.length} markers found)`);
         matches.forEach(m => {
-          console.log(`  Line ${String(m.lineNumber).padStart(3, ' ')}: ${m.text}`);
-          totalMarkers++;
+          console.log(`  Line ${String(m.lineNumber).padStart(3, ' ')} [${m.type}]: ${m.text}`);
         });
         console.log('');
       } else {
@@ -120,7 +136,9 @@ async function runCheck() {
     }
 
     console.log('================================================================');
-    console.log(`TOTAL RENDERED TODO( AND data-todo MARKERS: ${totalMarkers}`);
+    console.log(`VISIBLE TODO( MARKERS : ${totalVisible}`);
+    console.log(`HIDDEN data-todo / COMMENT MARKERS : ${totalHidden}`);
+    console.log(`TOTAL DETECTED : ${totalVisible + totalHidden}`);
     console.log('================================================================\n');
 
   } finally {

@@ -105,7 +105,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
           <h3>Tutor Time</h3>
         </div>
         <p class="footer-tagline">Where Learning Pops, Confidence Grows &amp; Students Succeed!</p>
-        <p class="footer-legal-notice" data-todo="content">Tutor Time provides educational coaching and instructional support. <span class="todo-badge">TODO(legal)</span></p>
+        <p class="footer-legal-notice" data-todo="legal">Details coming soon.</p>
       </div>
 
       <div class="footer-column">
@@ -144,11 +144,11 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
     <div class="footer-bottom">
       <div class="footer-bottom-container">
         <p class="copyright">&copy; ${new Date().getFullYear()} Tutor Time with Teacher Cassie. All rights reserved.</p>
-        <div class="footer-meta-links" data-todo="content">
+        <div class="footer-meta-links" data-todo="legal">
           <a href="/privacy">Privacy Policy</a>
           <span class="sep" aria-hidden="true">&bull;</span>
           <a href="/terms">Terms of Service</a>
-          <span class="todo-badge">TODO(legal)</span>
+          <span class="todo-badge">Details coming soon.</span>
         </div>
       </div>
     </div>

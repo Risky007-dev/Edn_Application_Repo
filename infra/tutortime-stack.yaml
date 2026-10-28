@@ -1,0 +1,209 @@
+# ==============================================================================
+# DRAFT INFRASTRUCTURE SPECIFICATION: Tutor Time & Popcorn Math
+# STATUS: DRAFT (NEVER AUTOMATICALLY APPLIED)
+# ==============================================================================
+# This template defines the AWS resources required for production storage
+# (DynamoDB), secure CV uploads (private S3 with TLS enforcement), and
+# least-privilege IAM permissions.
+#
+# HARD RULES:
+# - No account IDs, regions, IPs, or credentials hardcoded.
+# - DeletionPolicy: Retain on data stores (DynamoDB & S3).
+# - Strict least privilege: PutItem/Query only on DynamoDB table, PutObject only
+#   on cv-uploads/* in S3, and SendEmail only on the specified SES identity ARN.
+# - S3 Bucket: All 4 public access blocks enabled, SSE AES256, TLS-only policy.
+# ==============================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  DRAFT: Tutor Time with Teacher Cassie - Cloud Data Persistence,
+  Secure S3 Uploads, and Scoped IAM Access Policy.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+    Description: Deployment target environment name.
+
+  DynamoDBTableName:
+    Type: String
+    Default: tutortime-submissions
+    Description: Name of the DynamoDB table for form submissions.
+
+  UploadsBucketName:
+    Type: String
+    Default: ""
+    Description: >
+      Optional explicit name for the private uploads S3 bucket.
+      Leave empty for automatic CloudFormation naming.
+
+  SiteOrigin:
+    Type: String
+    Default: https://tutortimewithcassie.com
+    Description: Allowed origin for S3 presigned POST CORS requests.
+
+  CVRetentionDays:
+    Type: Number
+    Default: 90
+    Description: >
+      Number of days to retain uploaded CV documents before lifecycle expiration.
+      TODO(legal): Default 90 days pending owner legal review of data retention policy.
+
+  SesIdentityArn:
+    Type: String
+    Description: >
+      ARN of the verified SES domain or email identity for notification delivery
+      (e.g., arn:aws:ses:us-east-2:<AWS_ACCOUNT_ID>:identity/tutortimewithcassie.com).
+
+Conditions:
+  HasCustomBucketName: !Not [!Equals [!Ref UploadsBucketName, ""]]
+
+Resources:
+  # ----------------------------------------------------------------------------
+  # 1. DynamoDB Submissions Table (On-Demand / Pay-Per-Request)
+  # ----------------------------------------------------------------------------
+  SubmissionsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref DynamoDBTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: formType
+          AttributeType: S
+        - AttributeName: createdAt#id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: formType
+          KeyType: HASH
+        - AttributeName: createdAt#id
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 2. Private S3 Bucket for Presigned CV Uploads
+  # ----------------------------------------------------------------------------
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If [HasCustomBucketName, !Ref UploadsBucketName, !Ref "AWS::NoValue"]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - POST
+            AllowedOrigins:
+              - !Ref SiteOrigin
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldCvUploads
+            Prefix: cv-uploads/
+            Status: Enabled
+            ExpirationInDays: !Ref CVRetentionDays
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 3. S3 Bucket Policy (Enforce Secure Transport TLS Only)
+  # ----------------------------------------------------------------------------
+  UploadsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UploadsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonTLSRequests
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt UploadsBucket.Arn
+              - !Sub "${UploadsBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ----------------------------------------------------------------------------
+  # 4. Scoped IAM Managed Policy (Attached to Existing EC2 Instance Role)
+  # ----------------------------------------------------------------------------
+  AppManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "TutorTime-Application-Policy-${EnvironmentName}"
+      Description: Least-privilege access for Tutor Time application running on EC2.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # DynamoDB: Put and Query only on this specific table
+          - Sid: DynamoDBSubmissionsAccess
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:Query
+            Resource:
+              - !GetAtt SubmissionsTable.Arn
+
+          # S3: PutObject only within cv-uploads/ prefix
+          - Sid: S3CvUploadsPutAccess
+            Effect: Allow
+            Action:
+              - s3:PutObject
+            Resource:
+              - !Sub "${UploadsBucket.Arn}/cv-uploads/*"
+
+          # SES: SendEmail only for the verified SES identity
+          - Sid: SESNotificationEmailAccess
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+            Resource:
+              - !Ref SesIdentityArn
+
+Outputs:
+  SubmissionsTableName:
+    Description: DynamoDB table name for form submissions.
+    Value: !Ref SubmissionsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-SubmissionsTableName"
+
+  UploadsBucketName:
+    Description: Name of private S3 bucket for CV uploads.
+    Value: !Ref UploadsBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-UploadsBucketName"
+
+  AppManagedPolicyArn:
+    Description: ARN of managed IAM policy to attach to EC2 instance role.
+    Value: !Ref AppManagedPolicy
+    Export:
+      Name: !Sub "${AWS::StackName}-AppManagedPolicyArn"
+

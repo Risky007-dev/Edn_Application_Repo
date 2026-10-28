@@ -13,8 +13,8 @@ function renderConsentCheckbox() {
   return `
     <div class="form-group form-checkbox-group">
       <input type="checkbox" id="consent" name="consent" required class="form-checkbox">
-      <label for="consent" class="checkbox-label" data-todo="content">
-        ${escapeHtml(content.global.privacyNote.text)} <span class="todo-badge">TODO(legal)</span>
+      <label for="consent" class="checkbox-label" data-todo="legal">
+        ${escapeHtml(content.global.privacyNote.text)}
       </label>
     </div>
   `;
@@ -406,7 +406,7 @@ function renderPresenterPage() {
         </ul>
 
         <h3 class="mt-4">${escapeHtml(prs.whatWeOfferTitle.text)}</h3>
-        <p data-todo="content">${escapeHtml(prs.whatWeOfferContent.text)} <span class="todo-badge">TODO(content)</span></p>
+        <p data-todo="content">${escapeHtml(prs.whatWeOfferContent.text)}</p>
       </section>
 
       <section class="form-section mt-5" id="apply">
@@ -622,7 +622,7 @@ function renderContactPage() {
 
           <div class="service-notice mt-4" data-todo="content">
             <h4>Office Hours &amp; Locations</h4>
-            <p>${escapeHtml(content.global.detailsComingSoon.text)} <span class="todo-badge">TODO(content)</span></p>
+            <p>${escapeHtml(content.global.detailsComingSoon.text)}</p>
           </div>
         </div>
 
@@ -701,7 +701,6 @@ function renderFaqPage() {
               <div class="accordion-body">
                 <p ${item.answer.todo ? 'data-todo="content"' : ''}>
                   ${escapeHtml(item.answer.text)}
-                  ${item.answer.todo ? '<span class="todo-badge">TODO(content)</span>' : ''}
                 </p>
               </div>
             </details>
@@ -733,10 +732,10 @@ function renderAboutPage() {
     <div class="container content-container">
       <section class="content-block">
         <h2>Our Mission</h2>
-        <p data-todo="content">${escapeHtml(ab.mission.text)} <span class="todo-badge">TODO(content)</span></p>
+        <p data-todo="content">${escapeHtml(ab.mission.text)}</p>
 
         <h2 class="mt-4">Teacher Cassie &amp; Our Team</h2>
-        <p data-todo="content">${escapeHtml(ab.biography.text)} <span class="todo-badge">TODO(content)</span></p>
+        <p data-todo="content">${escapeHtml(ab.biography.text)}</p>
 
         <div class="cta-box mt-5">
           <h3>Learn More About Our Programmes</h3>
@@ -884,8 +883,12 @@ function renderServiceFinderPage(interestHint = null) {
               <span class="option-label">Reading and writing support</span>
             </label>
             <label class="finder-option">
-              <input type="radio" name="supportWanted" value="homework-exam">
-              <span class="option-label">Homework and assignment assistance / Exam preparation</span>
+              <input type="radio" name="supportWanted" value="homework-assistance">
+              <span class="option-label">Homework and assignment assistance</span>
+            </label>
+            <label class="finder-option">
+              <input type="radio" name="supportWanted" value="exam-prep">
+              <span class="option-label">Exam preparation</span>
             </label>
             <label class="finder-option">
               <input type="radio" name="supportWanted" value="organisation">
@@ -1085,14 +1088,14 @@ function renderResourcesPage() {
       <div class="container" data-canonical="Educational Resources">
         <span class="page-eyebrow">Resources</span>
         <h1>${escapeHtml(rp.headline.text)}</h1>
-        <p class="lead" data-todo="content">${escapeHtml(rp.details.text)} <span class="todo-badge">TODO(content)</span></p>
+        <p class="lead" data-todo="content">${escapeHtml(rp.details.text)}</p>
       </div>
     </div>
 
     <div class="container content-container">
       <section class="content-block">
         <div class="helper-box">
-          <p data-todo="content">${escapeHtml(rp.details.text)} <span class="todo-badge">TODO(content)</span></p>
+          <p data-todo="content">${escapeHtml(rp.details.text)}</p>
         </div>
         <div class="cta-box mt-4">
           <h3>Explore Our Current Programmes</h3>

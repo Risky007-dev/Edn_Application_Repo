@@ -17,6 +17,7 @@ const {
   isRoundComplete
 } = require('../src/shared/game/popcornGame');
 const {
+  FINDER_QUESTIONS,
   YEAR_GROUPS,
   SUPPORT_WANTED,
   LEVEL_OF_SUPPORT,
@@ -199,9 +200,9 @@ async function runTestSuite() {
     assert('Storage file exists in isolated directory', fs.existsSync(storageFile));
     const savedData = JSON.parse(fs.readFileSync(storageFile, 'utf8'));
     const savedRecords = Array.isArray(savedData) ? savedData : (savedData.submissions || []);
-    const schoolRecord = savedRecords.find(r => r.type === 'SCHOOL_ENQUIRY');
-    assert('Stored record has type SCHOOL_ENQUIRY', !!schoolRecord);
-    assert('Stored record matches school name', schoolRecord && schoolRecord.payload.schoolName === 'Island Academy');
+    const schoolRecord = savedRecords.find(r => r.formType === 'SCHOOL_ENQUIRY');
+    assert('Stored record has formType SCHOOL_ENQUIRY', !!schoolRecord);
+    assert('Stored record matches school name at top level', schoolRecord && schoolRecord.schoolName === 'Island Academy');
 
     // Validation Errors: Missing consent
     const resNoConsent = await request({ path: '/api/forms/school-enquiry', method: 'POST' }, {
@@ -278,6 +279,15 @@ async function runTestSuite() {
     assert('Fixed question list contains 10 questions', questions.length === 10);
     assert('Questions are suited for ages 8-13 (includes 8x7)', questions.some(q => q.prompt.includes('8 × 7')));
 
+    // Per-question validation: correct answer equals computed product, 4 distinct options, exactly one correct
+    questions.forEach((q, idx) => {
+      const computedProduct = q.factorA * q.factorB;
+      assert(`Question ${idx + 1} (${q.prompt}) correct answer equals computed product (${computedProduct})`, q.correctAnswer === computedProduct);
+      assert(`Question ${idx + 1} has exactly 4 options`, q.options.length === 4);
+      assert(`Question ${idx + 1} options are all distinct`, (new Set(q.options)).size === 4);
+      assert(`Question ${idx + 1} has exactly one option equal to the correct answer`, q.options.filter(o => o === q.correctAnswer).length === 1);
+    });
+
     const round1 = getRoundQuestions(0);
     assert('Round selection returns exactly 3 questions', round1.length === 3);
     assert('All 3 questions in round are distinct', (new Set(round1.map(q => q.id))).size === 3);
@@ -295,6 +305,7 @@ async function runTestSuite() {
 
     // --- TEST GROUP 4: TT-14 Smart Service Finder Pure Mapping Unit Tests ---
     console.log('\n--- TEST GROUP 4: Smart Service Finder Pure Mapping Unit Tests ---');
+    const expectedCombinations = YEAR_GROUPS.length * SUPPORT_WANTED.length * LEVEL_OF_SUPPORT.length;
     let totalCombinations = 0;
     let validRecommendations = 0;
 
@@ -309,8 +320,8 @@ async function runTestSuite() {
         }
       }
     }
-    assert(`Exhaustively tested ${totalCombinations} finder combinations (no unmapped inputs)`, totalCombinations === 72);
-    assert('All 72 combinations return valid recommendation objects', validRecommendations === totalCombinations);
+    assert(`Exhaustively tested ${totalCombinations} finder combinations (computed from question data: ${YEAR_GROUPS.length} x ${SUPPORT_WANTED.length} x ${LEVEL_OF_SUPPORT.length} = ${expectedCombinations})`, totalCombinations === expectedCombinations);
+    assert(`All ${expectedCombinations} combinations return valid recommendation objects`, validRecommendations === expectedCombinations);
 
     // Specific mapping verification
     const recComp = recommendService({ levelOfSupport: 'comprehensive' });

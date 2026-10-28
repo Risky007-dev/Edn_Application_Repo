@@ -1,9 +1,7 @@
 /**
  * AWS Production Storage Driver
  * Connects to Amazon DynamoDB, Amazon S3, and Amazon SESv2 using AWS SDK v3.
- *
- * NOTE: Per Stage 1 instructions, this driver is written and tested for syntax
- * but is NOT invoked in Stage 1 (STORAGE_DRIVER=local is active by default).
+ * Supports dependency injection for testing without cloud credentials.
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
@@ -14,16 +12,17 @@ const { SESv2Client, SendEmailCommand } = require('@aws-sdk/client-sesv2');
 const path = require('path');
 
 class AwsDriver {
-  constructor() {
-    this.region = process.env.AWS_REGION || 'us-east-2';
-    this.tableName = process.env.DYNAMODB_TABLE_NAME || 'tutortime-submissions';
-    this.bucketName = process.env.UPLOADS_BUCKET_NAME || '';
+  constructor(options = {}) {
+    this.region = options.region || process.env.AWS_REGION || 'us-east-2';
+    this.tableName = options.tableName || process.env.DYNAMODB_TABLE_NAME || 'tutortime-submissions';
+    this.bucketName = options.bucketName || process.env.UPLOADS_BUCKET_NAME || '';
     
-    // Clients authenticate automatically via EC2 Instance Profile (IAM Role)
-    this.dynamoClient = new DynamoDBClient({ region: this.region });
-    this.docClient = DynamoDBDocumentClient.from(this.dynamoClient);
-    this.s3Client = new S3Client({ region: this.region });
-    this.sesClient = new SESv2Client({ region: this.region });
+    // Injected or default AWS clients
+    this.dynamoClient = options.dynamoClient || new DynamoDBClient({ region: this.region });
+    this.docClient = options.docClient || DynamoDBDocumentClient.from(this.dynamoClient);
+    this.s3Client = options.s3Client || new S3Client({ region: this.region });
+    this.sesClient = options.sesClient || new SESv2Client({ region: this.region });
+    this.createPresignedPostFn = options.createPresignedPostFn || createPresignedPost;
   }
 
   generateId() {
@@ -34,13 +33,15 @@ class AwsDriver {
     const id = this.generateId();
     const now = new Date().toISOString();
 
+    // Canonical uniform record shape: identical to local driver
+    // Key fields, metadata, and form fields at top level (each stored once)
     const item = {
       formType,
       'createdAt#id': `${now}#${id}`,
       id,
       createdAt: now,
-      ...payload,
-      status: 'PENDING_REVIEW'
+      status: 'PENDING_REVIEW',
+      ...payload
     };
 
     const command = new PutCommand({
@@ -76,7 +77,7 @@ class AwsDriver {
     const now = new Date();
     const key = `cv-uploads/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${id}_${sanitized}`;
 
-    const presignedPost = await createPresignedPost(this.s3Client, {
+    const presignedPost = await this.createPresignedPostFn(this.s3Client, {
       Bucket: this.bucketName,
       Key: key,
       Conditions: [
@@ -124,4 +125,6 @@ class AwsDriver {
   }
 }
 
-module.exports = new AwsDriver();
+const defaultInstance = new AwsDriver();
+defaultInstance.AwsDriver = AwsDriver;
+module.exports = defaultInstance;

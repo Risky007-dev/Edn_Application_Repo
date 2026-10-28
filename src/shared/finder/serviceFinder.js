@@ -15,21 +15,44 @@ const ALLOWED_INTEREST_HINTS = [
   'school-partnership'
 ];
 
-const YEAR_GROUPS = ['early-primary', 'upper-primary', 'secondary'];
-const SUPPORT_WANTED = [
-  'maths',
-  'reading-writing',
-  'homework-exam',
-  'organisation',
-  'learning-support',
-  'enrichment'
+const FINDER_QUESTIONS = [
+  {
+    id: 'yearGroup',
+    prompt: "1. What is your child's current year group?",
+    options: [
+      { value: 'early-primary', label: 'Early Primary' },
+      { value: 'upper-primary', label: 'Upper Primary' },
+      { value: 'secondary', label: 'Secondary' }
+    ]
+  },
+  {
+    id: 'supportWanted',
+    prompt: "2. What support are you looking for?",
+    options: [
+      { value: 'maths', label: 'Improving mathematics skills' },
+      { value: 'reading-writing', label: 'Reading and writing support' },
+      { value: 'homework-assistance', label: 'Homework and assignment assistance' },
+      { value: 'exam-prep', label: 'Exam preparation' },
+      { value: 'organisation', label: 'Organisation and study skills' },
+      { value: 'learning-support', label: 'Learning support for ADHD or dyslexia' },
+      { value: 'enrichment', label: 'Enrichment and confidence building' }
+    ]
+  },
+  {
+    id: 'levelOfSupport',
+    prompt: "3. What level of support do you need?",
+    options: [
+      { value: 'occasional', label: 'Occasional academic assistance' },
+      { value: 'weekly', label: 'Weekly tutoring' },
+      { value: 'comprehensive', label: 'Comprehensive academic management' },
+      { value: 'group', label: 'Group learning experiences' }
+    ]
+  }
 ];
-const LEVEL_OF_SUPPORT = [
-  'occasional',
-  'weekly',
-  'comprehensive',
-  'group'
-];
+
+const YEAR_GROUPS = FINDER_QUESTIONS[0].options.map(o => o.value);
+const SUPPORT_WANTED = FINDER_QUESTIONS[1].options.map(o => o.value);
+const LEVEL_OF_SUPPORT = FINDER_QUESTIONS[2].options.map(o => o.value);
 
 function sanitizeInterestHint(hint) {
   if (!hint || typeof hint !== 'string') return null;
@@ -92,6 +115,7 @@ function recommendService(answers = {}) {
 
 module.exports = {
   ALLOWED_INTEREST_HINTS,
+  FINDER_QUESTIONS,
   YEAR_GROUPS,
   SUPPORT_WANTED,
   LEVEL_OF_SUPPORT,

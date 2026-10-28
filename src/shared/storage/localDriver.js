@@ -68,13 +68,11 @@ class LocalDriver {
     
     const record = {
       formType,
-      type: formType,
       'createdAt#id': `${now}#${id}`,
       id,
       createdAt: now,
-      payload: { ...payload },
-      ...payload,
-      status: 'PENDING_REVIEW'
+      status: 'PENDING_REVIEW',
+      ...payload
     };
 
     submissions.push(record);

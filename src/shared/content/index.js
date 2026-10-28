@@ -17,7 +17,7 @@ const CONTENT = {
     parentBrand: { text: 'Tutor Time', status: 'APPROVED' },
     tagline: { text: 'Where Learning Pops, Confidence Grows & Students Succeed!', status: 'PROPOSED-COPY' },
     subhead: { text: 'Personalised Academic Support. Innovative Learning. Real Results.', status: 'PROPOSED-COPY' },
-    privacyNote: { text: 'I agree to the processing of my details in accordance with the Privacy Policy. TODO(legal)', status: 'PROPOSED-COPY' },
+    privacyNote: { text: 'I agree to the processing of my details in accordance with the Privacy Policy. Details coming soon.', status: 'PROPOSED-COPY' },
     detailsComingSoon: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
   },
 
@@ -51,7 +51,7 @@ const CONTENT = {
 
   footer: {
     copyright: { text: `© ${new Date().getFullYear()} Tutor Time with Teacher Cassie. All rights reserved.`, status: 'APPROVED' },
-    legalNotice: { text: 'Tutor Time provides educational coaching and instructional support. TODO(legal)', status: 'PROPOSED-COPY' }
+    legalNotice: { text: 'Details coming soon.', status: 'PROPOSED-COPY' }
   },
 
   homepage: {
