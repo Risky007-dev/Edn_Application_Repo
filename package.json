@@ -6,9 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node tests/stage1.test.js && node tests/stage2.test.js && node tests/stage3.test.js && node tests/stage4.test.js",
+    "test": "node tests/stage1.test.js && node tests/stage2.test.js && node tests/stage3.test.js && node tests/stage4.test.js && node tests/stage5.test.js",
     "check:todos": "node scripts/check-todos.js",
     "check:copy": "node scripts/check-copy.js"
+  },
+  "engines": {
+    "node": ">=20.0.0 <25.0.0"
   },
   "repository": {
     "type": "git",

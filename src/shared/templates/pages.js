@@ -6,6 +6,7 @@
  */
 
 const content = require('../content');
+const config = require('../config');
 const { escapeHtml, renderLayout } = require('./layout');
 
 // Helper for consent checkbox
@@ -176,6 +177,43 @@ function renderConciergePage() {
         <ul class="feature-checklist mt-4">
           ${cng.expectations.map(e => `<li><span class="check-icon" aria-hidden="true">★</span> ${escapeHtml(e.text)}</li>`).join('')}
         </ul>
+
+        ${config.conciergeReadinessSurvey ? `
+          <div id="readiness-survey" class="mt-5">
+            <h3>Is Concierge Coaching Right for Your Family?</h3>
+            <p>Answer 4 quick questions to see how academic coaching can support your child&#39;s educational journey.</p>
+
+            <div class="form-group mt-3">
+              <p><strong>1. What is the primary area needing support?</strong></p>
+              <label class="checkbox-label"><input type="radio" name="survey-q1" value="subject"> Subject comprehension &amp; specific math/English topics</label><br>
+              <label class="checkbox-label"><input type="radio" name="survey-q1" value="executive"> Organization, study habits, deadline tracking &amp; executive functioning</label>
+            </div>
+
+            <div class="form-group mt-3">
+              <p><strong>2. How much time do you spend managing your child&#39;s schoolwork conflicts?</strong></p>
+              <label class="checkbox-label"><input type="radio" name="survey-q2" value="low"> Under 1 hour per week</label><br>
+              <label class="checkbox-label"><input type="radio" name="survey-q2" value="high"> Multiple hours weekly, causing family stress</label>
+            </div>
+
+            <div class="form-group mt-3">
+              <p><strong>3. Are major exams or transition assessments approaching?</strong></p>
+              <label class="checkbox-label"><input type="radio" name="survey-q3" value="no"> No immediate high-stakes exams</label><br>
+              <label class="checkbox-label"><input type="radio" name="survey-q3" value="yes"> Yes, preparing for key board or entrance exams</label>
+            </div>
+
+            <div class="form-group mt-3">
+              <p><strong>4. What level of parent communication do you prefer?</strong></p>
+              <label class="checkbox-label"><input type="radio" name="survey-q4" value="occasional"> Occasional updates upon request</label><br>
+              <label class="checkbox-label"><input type="radio" name="survey-q4" value="weekly"> Proactive weekly oversight and structured progress reports</label>
+            </div>
+
+            <div id="survey-result" class="mt-4" aria-live="polite" role="status">
+              <h4>Strong Match for Concierge Coaching</h4>
+              <p>Your family would benefit significantly from structured academic oversight, deadline management, and direct educator accountability.</p>
+              <a href="#apply" id="survey-apply-btn" class="btn btn-primary btn-sm mt-2">Proceed to Application Below</a>
+            </div>
+          </div>
+        ` : ''}
       </section>
 
       <section class="form-section mt-5" id="apply">
@@ -284,6 +322,30 @@ function renderPopcornMathsPage() {
           </div>
         </div>
       </section>
+
+      ${config.popcornLocationDirectory ? `
+        <section class="content-block mt-5" id="locations">
+          <h2>Find a Popcorn Math Session Near You</h2>
+          <p>Choose your community or select our online cohort to see current session schedules and availability.</p>
+
+          <div class="form-group mt-3" style="max-width: 480px; margin-left: auto; margin-right: auto;">
+            <label for="popcorn-location-select">Select Location / Community:</label>
+            <select id="popcorn-location-select" class="form-select" data-locations="${escapeHtml(JSON.stringify(content.popcornLocations || []))}">
+              <option value="">-- Choose a Community / Cohort --</option>
+              ${(content.popcornLocations || []).map(loc => `<option value="${escapeHtml(loc.id)}">${escapeHtml(loc.name)}</option>`).join('')}
+            </select>
+
+            <div id="location-details" class="mt-4" style="display:none;" aria-live="polite" role="region" aria-label="Selected location details">
+              <h3 id="loc-title"></h3>
+              <p><strong>Venue:</strong> <span id="loc-venue"></span></p>
+              <p><strong>Schedule:</strong> <span id="loc-schedule"></span></p>
+              <p><strong>Ages:</strong> <span id="loc-ages"></span></p>
+              <p><strong>Status:</strong> <span id="loc-status" class="badge"></span></p>
+              <a id="loc-cta" href="/book?service=popcorn-maths" class="btn btn-primary btn-sm mt-2">Enquire for This Location</a>
+            </div>
+          </div>
+        </section>
+      ` : ''}
     </div>
   `;
 
@@ -580,6 +642,20 @@ function renderBookPage() {
           </form>
         </div>
       </section>
+
+      ${config.tutoringPrintableChecklist ? `
+        <section class="content-block mt-5" id="consultation-checklist">
+          <h3>Preparing for Your Initial Consultation</h3>
+          <p>To help Teacher Cassie maximize your consultation discussion, consider gathering:</p>
+          <ul class="feature-checklist mt-3">
+            <li>Recent school reports or teacher feedback notes</li>
+            <li>Sample homework or assessment papers (mathematics &amp; English)</li>
+            <li>Key upcoming examination dates (e.g., CSEC, entrance exams)</li>
+            <li>Summary of any classroom accommodations or learning preferences</li>
+          </ul>
+          <button type="button" id="btn-print-checklist" class="btn btn-secondary btn-sm mt-3">Print This Preparation Checklist</button>
+        </section>
+      ` : ''}
     </div>
   `;
 
@@ -802,6 +878,17 @@ function renderPopcornGamePage() {
 
       <!-- Feedback Area (Announced via aria-live, never color alone) -->
       <div id="game-feedback" class="game-feedback" aria-live="polite" role="status"></div>
+
+      ${config.popcornGameMultiLevel ? `
+        <div class="game-level-selector text-center mb-3">
+          <label for="game-level-select">Select Difficulty Level:</label>
+          <select id="game-level-select" class="form-select" style="display:inline-block; width:auto; max-width:100%;">
+            <option value="kernels">Little Kernels (Ages 4–6: Addition)</option>
+            <option value="poppers" selected>Popping Poppers (Ages 7–9: Times Tables)</option>
+            <option value="crunch">Mega Crunch (Ages 10–12: Mental Arithmetic)</option>
+          </select>
+        </div>
+      ` : ''}
 
       <!-- Active Quiz Card -->
       <div id="game-arena" class="game-arena">

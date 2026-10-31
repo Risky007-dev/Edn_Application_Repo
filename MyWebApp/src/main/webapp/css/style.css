@@ -1182,3 +1182,62 @@ h1, h2, h3, h4, h5, h6,
     scroll-behavior: auto !important;
   }
 }
+
+/* ==========================================================================
+   PRINT STYLESHEET (Feature X2: Global Clean Semantic Printing)
+   ========================================================================== */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+
+  .site-header,
+  .site-footer,
+  .site-nav,
+  .skip-link,
+  .btn,
+  .hero-ctas,
+  .popcorn-badge,
+  .mascot-placeholder,
+  .game-arena,
+  .bucket-stage,
+  form button[type="submit"] {
+    display: none !important;
+  }
+
+  .container,
+  .content-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #444;
+  }
+
+  a[href^="#"]:after,
+  a[href^="javascript:"]:after {
+    content: "";
+  }
+
+  .print-only-sheet {
+    display: block !important;
+    page-break-inside: avoid;
+  }
+
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    color: #111 !important;
+  }
+
+  img {
+    max-width: 150px !important;
+  }
+}

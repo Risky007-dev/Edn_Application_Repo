@@ -164,4 +164,84 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // 4. Popcorn Math Location Directory (Feature P1)
+  const locSelect = document.getElementById('popcorn-location-select');
+  const locDetails = document.getElementById('location-details');
+
+  if (locSelect && locDetails) {
+    let locations = [];
+    try {
+      locations = JSON.parse(locSelect.getAttribute('data-locations') || '[]');
+    } catch (e) {}
+
+    locSelect.addEventListener('change', () => {
+      const selectedId = locSelect.value;
+      const found = locations.find(l => l.id === selectedId);
+      if (found) {
+        const titleEl = document.getElementById('loc-title');
+        const venueEl = document.getElementById('loc-venue');
+        const schedEl = document.getElementById('loc-schedule');
+        const agesEl = document.getElementById('loc-ages');
+        const statusEl = document.getElementById('loc-status');
+        const ctaEl = document.getElementById('loc-cta');
+
+        if (titleEl) titleEl.textContent = found.name;
+        if (venueEl) venueEl.textContent = found.venue;
+        if (schedEl) schedEl.textContent = found.schedule;
+        if (agesEl) agesEl.textContent = found.ages;
+        if (statusEl) {
+          statusEl.textContent = found.status;
+          statusEl.className = 'badge ' + (found.status === 'Active Cohort' ? 'bg-success text-white' : 'bg-primary text-white');
+        }
+        if (ctaEl) {
+          ctaEl.href = '/book?service=popcorn-maths&location=' + encodeURIComponent(found.name);
+        }
+        locDetails.style.display = 'block';
+      }
+    });
+  }
+
+  // 5. Concierge Readiness Survey (Feature C1)
+  const surveySection = document.getElementById('readiness-survey');
+  const surveyResult = document.getElementById('survey-result');
+  const surveyApplyBtn = document.getElementById('survey-apply-btn');
+  const conciergeGoals = document.getElementById('academicGoals');
+
+  if (surveySection && surveyResult) {
+    const radios = surveySection.querySelectorAll('input[type="radio"]');
+    radios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        const q1Val = (surveySection.querySelector('input[name="survey-q1"]:checked') || {}).value;
+        const q2Val = (surveySection.querySelector('input[name="survey-q2"]:checked') || {}).value;
+        const h4 = surveyResult.querySelector('h4');
+        const p = surveyResult.querySelector('p');
+
+        if (q1Val === 'executive' || q2Val === 'high') {
+          if (h4) h4.textContent = 'Strong Match for Concierge Coaching';
+          if (p) p.textContent = 'Your family would benefit significantly from structured academic oversight, deadline management, and direct educator accountability.';
+        } else {
+          if (h4) h4.textContent = 'Personalised Tutoring May Also Be Suitable';
+          if (p) p.textContent = 'If support is primarily needed for specific subject topics, 1-to-1 Personalised Tutoring is also an excellent pathway.';
+        }
+      });
+    });
+
+    if (surveyApplyBtn && conciergeGoals) {
+      surveyApplyBtn.addEventListener('click', () => {
+        if (!conciergeGoals.value.includes('[Self-Assessment:')) {
+          conciergeGoals.value = (conciergeGoals.value ? conciergeGoals.value + '\n\n' : '') +
+            '[Self-Assessment: Seeking structured academic oversight and executive coaching]';
+        }
+      });
+    }
+  }
+
+  // 6. Printable Consultation Preparation Checklist (Feature T3)
+  const printChecklistBtn = document.getElementById('btn-print-checklist');
+  if (printChecklistBtn) {
+    printChecklistBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
 });

@@ -85,6 +85,8 @@ Resources:
           KeyType: RANGE
       SSESpecification:
         SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       Tags:
         - Key: Application
           Value: TutorTime

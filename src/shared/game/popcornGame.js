@@ -87,15 +87,38 @@ const GAME_QUESTIONS = [
   }
 ];
 
+const QUESTION_BANKS = {
+  kernels: [
+    { id: 'k1', prompt: 'What is 3 + 4?', correctAnswer: 7, options: [5, 6, 7, 8] },
+    { id: 'k2', prompt: 'What is 5 + 5?', correctAnswer: 10, options: [8, 9, 10, 11] },
+    { id: 'k3', prompt: 'What is 6 + 2?', correctAnswer: 8, options: [7, 8, 9, 10] },
+    { id: 'k4', prompt: 'What is 4 + 5?', correctAnswer: 9, options: [7, 8, 9, 10] },
+    { id: 'k5', prompt: 'What is 7 + 3?', correctAnswer: 10, options: [8, 9, 10, 12] }
+  ],
+  poppers: GAME_QUESTIONS,
+  crunch: [
+    { id: 'c1', prompt: 'What is 15 × 4?', correctAnswer: 60, options: [45, 50, 60, 65] },
+    { id: 'c2', prompt: 'What is 144 ÷ 12?', correctAnswer: 12, options: [11, 12, 13, 14] },
+    { id: 'c3', prompt: 'What is 25 × 4?', correctAnswer: 100, options: [75, 90, 100, 125] },
+    { id: 'c4', prompt: 'What is 84 ÷ 7?', correctAnswer: 12, options: [11, 12, 14, 16] },
+    { id: 'c5', prompt: 'What is 18 × 3?', correctAnswer: 54, options: [48, 52, 54, 56] }
+  ]
+};
+
 function getAllQuestions() {
   return GAME_QUESTIONS.map(q => ({ ...q, options: [...q.options] }));
+}
+
+function getQuestionsByLevel(level = 'poppers') {
+  const bank = QUESTION_BANKS[level] || QUESTION_BANKS.poppers;
+  return bank.map(q => ({ ...q, options: [...q.options] }));
 }
 
 /**
  * Returns a slice of questions for a round (3 distinct questions)
  */
-function getRoundQuestions(roundIndex = 0) {
-  const all = getAllQuestions();
+function getRoundQuestions(roundIndex = 0, level = 'poppers') {
+  const all = level === 'poppers' ? getAllQuestions() : getQuestionsByLevel(level);
   const start = (roundIndex * 3) % (all.length - 2);
   return all.slice(start, start + 3);
 }
@@ -104,7 +127,12 @@ function getRoundQuestions(roundIndex = 0) {
  * Pure answer validation function
  */
 function checkAnswer(questionId, selectedAnswer) {
-  const q = GAME_QUESTIONS.find(item => item.id === questionId);
+  const allPool = [
+    ...GAME_QUESTIONS,
+    ...QUESTION_BANKS.kernels,
+    ...QUESTION_BANKS.crunch
+  ];
+  const q = allPool.find(item => item.id === questionId);
   if (!q) {
     return {
       isCorrect: false,
@@ -132,7 +160,9 @@ function isRoundComplete(correctCount) {
 
 module.exports = {
   GAME_QUESTIONS,
+  QUESTION_BANKS,
   getAllQuestions,
+  getQuestionsByLevel,
   getRoundQuestions,
   checkAnswer,
   isRoundComplete

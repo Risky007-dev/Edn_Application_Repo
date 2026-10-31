@@ -13,6 +13,7 @@ if (process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1') {
 }
 
 // Shared Infrastructure & Modular Middleware
+const config = require('./src/shared/config');
 const requestLogger = require('./src/shared/middleware/logger');
 const { helmetMiddleware, generalApiLimiter } = require('./src/shared/middleware/security');
 const brand = require('./src/shared/brand');
@@ -45,7 +46,7 @@ app.use((req, res, next) => {
   const urlPath = (req.path || '').toLowerCase();
   if (
     urlPath.endsWith('.py') ||
-    urlPath.endsWith('.xml') ||
+    (urlPath.endsWith('.xml') && urlPath !== '/sitemap.xml') ||
     urlPath.endsWith('.json') ||
     urlPath.endsWith('.md') ||
     urlPath.includes('/web-inf') ||
@@ -56,6 +57,75 @@ app.use((req, res, next) => {
     return res.status(404).send('Not Found');
   }
   next();
+});
+
+// Operational Health & Tracing Benchmark Probes (zero-IO, unthrottled)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
+app.get('/api/health/ping', (req, res) => {
+  res.status(200).type('text/plain').send('pong');
+});
+
+// Config-Gated Synthetic Fault Injection (disabled in production by default)
+app.post('/api/debug/fault', (req, res) => {
+  const faultEnabled = config.faultInjectionEnabled || process.env.FAULT_INJECTION_ENABLED === 'true';
+  const expectedKey = process.env.FAULT_INJECTION_KEY || '';
+  const providedKey = req.headers['x-debug-fault-key'] || '';
+
+  if (!faultEnabled || !expectedKey || providedKey !== expectedKey) {
+    return res.status(404).send('Not Found');
+  }
+
+  const { mode = '503', delayMs = 0 } = req.body || {};
+  const boundedDelay = Math.min(Math.max(Number(delayMs) || 0, 0), 2000);
+
+  setTimeout(() => {
+    if (mode === 'delay') {
+      return res.status(200).json({ fault: 'delay', delayMs: boundedDelay });
+    }
+    return res.status(503).json({ error: 'Simulated service fault', traceId: req.traceId || null });
+  }, boundedDelay);
+});
+
+// SEO Discovery Routes (robots.txt & canonical sitemap.xml)
+const CANONICAL_PUBLIC_ROUTES = [
+  '/',
+  '/about',
+  '/services/traditional-tutoring',
+  '/services/concierge',
+  '/services/popcorn-maths',
+  '/services/specialist-support',
+  '/popcorn-maths/presenter',
+  '/popcorn-maths/game',
+  '/find-your-programme',
+  '/popcorn-maths/school-partnership',
+  '/resources',
+  '/book',
+  '/contact',
+  '/faq'
+];
+
+app.get('/robots.txt', (req, res) => {
+  const siteOrigin = (process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
+  res.type('text/plain').send(
+    `User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${siteOrigin}/sitemap.xml\n`
+  );
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  const siteOrigin = (process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
+  const urlsXml = CANONICAL_PUBLIC_ROUTES.map(
+    (routePath) => `  <url><loc>${siteOrigin}${routePath}</loc></url>`
+  ).join('\n');
+  res.type('application/xml').send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlsXml}\n</urlset>\n`
+  );
 });
 
 app.use('/api', generalApiLimiter);
@@ -274,7 +344,7 @@ app.get('/subscribers', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════╗
 ║    🍿 Popcorn Maths Server 🍿    ║
@@ -288,10 +358,48 @@ Press Ctrl+C to stop the server
 `);
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n\n🛑 Server shutting down...');
-  process.exit(0);
+// Graceful container-native socket draining & crash JSON loggers
+let isShuttingDown = false;
+function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: 'info',
+    event: 'graceful_shutdown',
+    signal
+  }));
+
+  const forceTimer = setTimeout(() => {
+    process.exit(1);
+  }, 5000);
+  if (typeof forceTimer.unref === 'function') {
+    forceTimer.unref();
+  }
+
+  server.close(() => {
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  console.error(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: 'error',
+    event: 'unhandledRejection',
+    message: reason instanceof Error ? reason.message : String(reason)
+  }));
 });
 
- 
+process.on('uncaughtException', (err) => {
+  console.error(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: 'fatal',
+    event: 'uncaughtException',
+    message: err instanceof Error ? err.message : String(err)
+  }));
+  gracefulShutdown('uncaughtException');
+});

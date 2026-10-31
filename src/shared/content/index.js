@@ -258,7 +258,50 @@ const CONTENT = {
     title: { text: 'Educational Resources', status: 'PROPOSED-COPY' },
     headline: { text: 'Educational Resources', status: 'PROPOSED-COPY' },
     details: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
-  }
+  },
+
+  popcornLocations: [
+    {
+      id: 'the-valley',
+      name: 'The Valley (Central)',
+      venue: 'The Valley Community Center',
+      schedule: 'Saturdays, 9:30 AM – 11:00 AM',
+      ages: 'Ages 5–11',
+      status: 'Active Cohort'
+    },
+    {
+      id: 'sandy-ground',
+      name: 'Sandy Ground',
+      venue: 'Sandy Ground Learning Hub',
+      schedule: 'Wednesdays, 3:45 PM – 5:00 PM',
+      ages: 'Ages 5–11',
+      status: 'Registering Interest'
+    },
+    {
+      id: 'island-harbour',
+      name: 'Island Harbour',
+      venue: 'East End Community Hall',
+      schedule: 'Thursdays, 3:45 PM – 5:00 PM',
+      ages: 'Ages 6–12',
+      status: 'Registering Interest'
+    },
+    {
+      id: 'west-end',
+      name: 'West End',
+      venue: 'West End Parish Classroom',
+      schedule: 'Saturdays, 1:00 PM – 2:30 PM',
+      ages: 'Ages 5–11',
+      status: 'Active Cohort'
+    },
+    {
+      id: 'virtual',
+      name: 'Online / Virtual Cohort',
+      venue: 'Interactive Live Video Classroom',
+      schedule: 'Tuesdays & Thursdays, 4:30 PM – 5:30 PM',
+      ages: 'Ages 7–13',
+      status: 'Active Cohort'
+    }
+  ]
 };
 
 module.exports = CONTENT;
