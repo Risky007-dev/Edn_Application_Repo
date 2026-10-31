@@ -4,6 +4,9 @@ package-lock.json
 .env.local
 .env.*.local
 subscribers.json
+tutortime-submissions.json
+data/
 *.db
 *.log
 .DS_Store
+SECURITY_FINDINGS_PRIVATE.md
