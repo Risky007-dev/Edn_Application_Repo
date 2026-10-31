@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tutor Time with Teacher Cassie & Popcorn Math — Educational Platform</title>
+  <meta name="description" content="Tutor Time with Teacher Cassie & Popcorn Math: Four tailored educational services launching in 2026. Personalised Tutoring, Concierge Academic Coaching, Popcorn Math, and Individualised Learning Support." />
+  
+  <!-- Shared Design Tokens & Component Stylesheets -->
+  <link rel="stylesheet" href="/css/tokens.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+</head>
+<body>
+  <!-- Site Header & Brand Navigation (Hydrated dynamically by services-data.js) -->
+  <header class="site-header" id="site-header" role="banner">
+    <div class="container header-inner">
+      <a href="/" class="brand-wrapper" aria-label="Tutor Time with Teacher Cassie">
+        <img src="/assets/logos/TT_logo.jpg" alt="Tutor Time Logo" class="brand-logo-img" />
+        <div class="brand-text">
+          <span class="brand-title">Tutor Time</span>
+          <span class="brand-subtitle">with Tr. Cassie</span>
+        </div>
+      </a>
+      <span class="status-pill status-coming-soon">Launching Late 2026</span>
+    </div>
+  </header>
+
+  <main id="main-content" role="main">
+    <!-- Promotional Banner Section -->
+    <section class="banner" aria-label="Platform Introduction">
+      <div class="container">
+        <div class="banner-badge">Four Core Educational Initiatives &middot; Launching 2026</div>
+        <h1 class="banner-title">Where Learning Pops, Confidence Grows &amp; Students Succeed!</h1>
+        <p class="banner-subtitle">
+          Personalised Academic Support. Innovative Learning. Real Results. Explore our four upcoming educational programmes designed for learners across Anguilla and beyond.
+        </p>
+      </div>
+    </section>
+
+    <!-- Services Overview Grid Section -->
+    <section class="services-section" id="services" aria-labelledby="services-heading">
+      <div class="container">
+        <div class="section-header">
+          <h2 id="services-heading" class="section-title">Our Learning Initiatives</h2>
+          <p class="section-desc">
+            Explore our four upcoming service modules. Select any card to view detailed programme information.
+          </p>
+        </div>
+
+        <!-- Dynamic Reusable Services Grid -->
+        <div id="services-grid" class="services-grid">
+          <!-- Fallback semantic cards rendered if JavaScript is disabled -->
+          <article class="service-card" style="--card-accent-color: var(--color-brand-traditional-primary);">
+            <div class="card-header">
+              <div class="card-brand-mark"><img src="/assets/logos/TT_logo.jpg" alt="Tutoring Logo" class="card-logo-img" /></div>
+              <span class="status-pill status-coming-soon">Coming Soon</span>
+            </div>
+            <h3 class="card-title">Personalised Tutoring &amp; Academic Support</h3>
+            <div class="card-tagline" style="color: var(--color-brand-traditional-secondary);">Tailored 1-on-1 Academic Tutoring</div>
+            <p class="card-desc">TODO(content): Personalized one-to-one tutoring sessions across core academic curricula, tailored to individual student needs and pacing.</p>
+            <div class="card-footer">
+              <a href="/services/traditional-tutoring" class="btn btn-outline btn-sm">Explore Service &rarr;</a>
+            </div>
+          </article>
+
+          <article class="service-card" style="--card-accent-color: var(--color-brand-concierge-primary);">
+            <div class="card-header">
+              <div class="card-brand-mark"><img src="/assets/logos/TT_logo.jpg" alt="Concierge Logo" class="card-logo-img" /></div>
+              <span class="status-pill status-coming-soon">Coming Soon</span>
+            </div>
+            <h3 class="card-title">Concierge Academic Coaching</h3>
+            <div class="card-tagline" style="color: var(--color-brand-concierge-secondary);">Premium Academic Oversight &amp; Mentorship</div>
+            <p class="card-desc">TODO(content): Premium learning tier integrating executive academic coaching, organization, and tailored student progress roadmaps.</p>
+            <div class="card-footer">
+              <a href="/services/concierge" class="btn btn-outline btn-sm">Explore Service &rarr;</a>
+            </div>
+          </article>
+
+          <article class="service-card" style="--card-accent-color: var(--color-brand-popcorn-primary);">
+            <div class="card-header">
+              <div class="card-brand-mark"><img src="/assets/logos/popcorn-math-logo.png" alt="Popcorn Math Logo" class="card-logo-img card-logo-popcorn" /></div>
+              <span class="status-pill status-coming-soon">Coming Soon</span>
+            </div>
+            <h3 class="card-title">Popcorn Math</h3>
+            <div class="card-tagline" style="color: var(--color-brand-popcorn-secondary);">Where Math Skills POP! (Ages 8–13)</div>
+            <p class="card-desc">TODO(content): Engaging community-based mathematics program where young mentors guide children aged 8–13 in designated school hubs.</p>
+            <div class="card-footer">
+              <a href="/services/popcorn-maths" class="btn btn-outline btn-sm">Explore Service &rarr;</a>
+            </div>
+          </article>
+
+          <article class="service-card" style="--card-accent-color: var(--color-brand-specialist-primary);">
+            <div class="card-header">
+              <div class="card-brand-mark"><img src="/assets/logos/TT_logo.jpg" alt="Specialist Support Logo" class="card-logo-img" /></div>
+              <span class="status-pill status-coming-soon">Coming Soon</span>
+            </div>
+            <h3 class="card-title">Individualised Learning Support</h3>
+            <div class="card-tagline" style="color: var(--color-brand-specialist-secondary);">Structured Routines &amp; Differentiated Learning</div>
+            <p class="card-desc">TODO(content): Targeted pedagogical frameworks focusing on strengths, structured routines, and executive functioning assistance.</p>
+            <div class="card-footer">
+              <a href="/services/specialist-support" class="btn btn-outline btn-sm">Explore Service &rarr;</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Launch Status & Email Subscription Section (Preserved Functionality) -->
+    <section class="container" aria-label="Launch Status and Registration">
+      <div class="countdown-container">
+        <span class="banner-badge" style="margin-bottom: var(--space-2);">TODO(content): Official Launch Date Pending Owner Confirmation</span>
+        <h2 style="margin: var(--space-2) 0; font-size: var(--font-size-2xl);">Launching in Late 2026</h2>
+        <p style="color: var(--color-text-secondary); margin: 0 auto var(--space-6); max-width: 540px; font-size: var(--font-size-sm);">
+          A fresh batch of educational opportunities is currently being prepared. Leave your email address below to receive an alert when registration opens.
+        </p>
+
+        <!-- Preserved Email Subscription Form (/subscribe) -->
+        <div class="interest-form-wrapper">
+          <form id="notify" class="interest-form" novalidate>
+            <input 
+              type="email" 
+              id="email" 
+              class="input-email" 
+              placeholder="you@example.com" 
+              aria-label="Email address for launch notification" 
+              required 
+            />
+            <button type="submit" class="btn btn-primary" aria-label="Submit email to notify me">
+              Notify Me
+            </button>
+          </form>
+          <div class="form-note" id="note" role="status" aria-live="polite">
+            We only email once when we launch. No spam.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!--
+      AI CHATBOT (FUTURE): Reserved for conversational assistant.
+      Architecture placeholder for future integration with AWS Bedrock / LLM provider.
+      Chatbot trigger button and conversational modal overlay will attach here.
+    -->
+  </main>
+
+  <!-- Site Footer (Hydrated dynamically by services-data.js) -->
+  <footer class="site-footer" id="site-footer" role="contentinfo">
+    <div class="container">
+      <p>&copy; <span id="year">2026</span> Tutor Time &amp; Popcorn Math. All rights reserved. &middot; <a href="/privacy">Privacy Notice (TODO: Legal)</a></p>
+    </div>
+  </footer>
+
+  <!-- Reusable Service Data Definition & Dynamic Header/Footer Renderer -->
+  <script src="/js/services-data.js"></script>
+  <script>
+    // 1. Hydrate dynamic navigation header
+    if (typeof renderHeader === 'function') {
+      renderHeader('site-header');
+    }
+
+    // 2. Render reusable service cards into the grid
+    if (typeof renderServicesGrid === 'function') {
+      renderServicesGrid('services-grid');
+    }
+
+    // 3. Hydrate dynamic footer with Join Our Team & WhatsApp contact
+    if (typeof renderFooter === 'function') {
+      renderFooter('site-footer');
+    }
+
+    // 4. Preserved Email Subscription Form Submission (/subscribe endpoint)
+    const form = document.getElementById('notify');
+    const emailInput = document.getElementById('email');
+    const note = document.getElementById('note');
+
+    if (form && emailInput && note) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const val = emailInput.value.trim();
+        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
+        if (!isValid) {
+          note.textContent = "Please enter a valid email address.";
+          note.style.color = "#ffb3b3";
+          emailInput.focus();
+          return;
+        }
+
+        note.textContent = "Subscribing...";
+        note.style.color = "#a5b4fc";
+        emailInput.disabled = true;
+        const submitBtn = form.querySelector('button');
+        if (submitBtn) submitBtn.disabled = true;
+
+        fetch("/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: val })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            note.textContent = "✓ Thanks! Check your email for confirmation.";
+            note.style.color = "#6ee7b7";
+            emailInput.value = "";
+          } else {
+            note.textContent = data.message || "Error subscribing. Try again.";
+            note.style.color = "#ffb3b3";
+            emailInput.disabled = false;
+            if (submitBtn) submitBtn.disabled = false;
+            emailInput.focus();
+          }
+        })
+        .catch(err => {
+          note.textContent = "Error saving email. Try again later.";
+          note.style.color = "#ffb3b3";
+          emailInput.disabled = false;
+          if (submitBtn) submitBtn.disabled = false;
+          console.error('Subscription error:', err);
+        });
+      });
+    }
+
+    // 5. Fallback Year
+    const yearEl = document.getElementById('year');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
