@@ -1,20 +1,27 @@
 @echo off
-REM Popcorn Maths Express Server Startup Script
+REM ==============================================================================
+REM Popcorn Maths Express Server Startup Script (Windows)
+REM ==============================================================================
 
-echo.
-echo ╔════════════════════════════════════╗
-echo ║    🍿 Popcorn Maths Server 🍿    ║
-echo ╚════════════════════════════════════╝
-echo.
+where node >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    if exist "C:\Program Files\nodejs\node.exe" (
+        set "PATH=%PATH%;C:\Program Files\nodejs"
+    ) else (
+        echo [ERROR] Node.js is not found in PATH.
+        echo Please install Node.js from https://nodejs.org/
+        pause
+        exit /b 1
+    )
+)
 
-REM Check if node_modules exist
 if not exist node_modules (
     echo Installing dependencies...
-    call "C:\Program Files\nodejs\npm.cmd" install
+    call npm install
     echo.
 )
 
-REM Start the server
-echo Starting server...
+echo Starting server on http://localhost:5001 ...
 echo.
-call "C:\Program Files\nodejs\node.exe" server.js
+node server.js
+pause

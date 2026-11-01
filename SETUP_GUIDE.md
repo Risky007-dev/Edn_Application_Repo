@@ -1,194 +1,206 @@
-# PopCorn Maths Coming Soon Page
+# Complete Setup & Installation Guide
 
-A modern coming soon landing page for PopCorn Maths with email subscription, countdown timer, and full backend integration.
+Comprehensive setup, configuration, and operations guide for **Tutor Time with Teacher Cassie & Popcorn Math** on both **Windows** and **Ubuntu / Linux**.
 
-## Features
+---
 
-- ✨ Beautiful glassmorphism design with dark theme
-- ⏱️ Animated countdown timer to launch date
-- 📧 Email subscription with backend storage
-- 💌 Automatic confirmation emails
-- 🗄️ SQLite database for subscriber management
-- 🔒 Email validation (frontend + backend)
-- 📱 Fully responsive design
+## 🏗️ System Architecture
 
-## Project Structure
+* **Runtime:** Node.js (v20.x or higher)
+* **Web Framework:** Express 5.x
+* **Security:** Helmet, Rate-Limiting, Path Traversal Defenses, Honeypots
+* **Storage Drivers:**
+  * **Local Driver (Default):** Flat-file JSON persistence in `./data/tutortime-submissions.json` and `./subscribers.json`. Requires zero cloud setup.
+  * **AWS Driver (Production Cloud):** DynamoDB for submissions, private S3 bucket for candidate CV uploads, and Amazon SESv2 for email notifications.
+* **Process Manager:** PM2
+* **Reverse Proxy:** Nginx with Let's Encrypt TLS
 
+---
+
+## 🪟 Windows Setup Guide
+
+### 1. Prerequisites
+* **Node.js 20+**: Download and install the LTS version from [nodejs.org](https://nodejs.org/). Make sure "Add to PATH" is checked during setup.
+* **Git for Windows** (Optional but recommended): From [git-scm.com](https://git-scm.com/).
+
+### 2. Quick Setup with `run.bat`
+1. Navigate to the project directory in File Explorer.
+2. Double-click `run.bat`.
+3. The script will automatically copy `.env.example` to `.env`, install dependencies via `npm install`, and launch the web server.
+
+### 3. Manual Installation (PowerShell / CMD)
+```powershell
+# Verify Node and npm
+node -v
+npm -v
+
+# Clone the repository
+git clone https://github.com/Risky007-dev/Edn_Application_Repo.git
+cd Edn_Application_Repo
+
+# Create your local environment file
+copy .env.example .env
+
+# Install Node dependencies
+npm install
+
+# Start the application in development mode
+npm start
 ```
-MyWebApp/
-├── src/main/webapp/
-│   ├── index.html          # Landing page
-│   ├── flasktest.py        # Flask backend server
-│   └── WEB-INF/
-│       └── web.xml         # Tomcat config
-├── requirements.txt        # Python dependencies
-├── .env.example           # Environment variables template
-└── .env                   # (Create this from .env.example)
-```
+Open **`http://localhost:5001`** in any web browser.
 
-## Setup Instructions
+---
 
-### 1. Install Dependencies
+## 🐧 Ubuntu / Linux Setup Guide
+
+### 1. Prerequisites
+Ensure `curl`, `git`, and Node.js v20+ are installed:
 
 ```bash
-pip install -r requirements.txt
+# Update system packages
+sudo apt-get update && sudo apt-get install -y curl git build-essential
+
+# Install Node.js 20.x LTS via NodeSource
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify versions
+node -v
+npm -v
 ```
 
-### 2. Configure Environment Variables
+### 2. Quick Launch
+```bash
+chmod +x run.sh
+./run.sh
+```
 
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
+### 3. Manual Launch
+```bash
+# Clone and enter repo
+git clone https://github.com/Risky007-dev/Edn_Application_Repo.git
+cd Edn_Application_Repo
 
-2. Edit `.env` with your settings:
-   ```env
-   SMTP_SERVER=smtp.gmail.com
-   SMTP_PORT=587
-   SENDER_EMAIL=your-email@gmail.com
-   SENDER_PASSWORD=your-app-password  # Use Gmail App Password
-   DATABASE_URL=sqlite:///subscribers.db
-   ```
+# Initialize .env
+cp .env.example .env
 
-#### Gmail Setup (Recommended)
+# Install dependencies
+npm install
 
-If using Gmail for email sending:
-1. Enable 2-Factor Authentication on your Google Account
-2. Generate an [App Password](https://myaccount.google.com/apppasswords)
-3. Use the generated 16-character password in `.env`
+# Launch server
+npm start
+```
 
-### 3. Run the Server
+---
+
+## ⚙️ Production Operations on Ubuntu (PM2 & Nginx)
+
+### 1. Process Management with PM2
+PM2 ensures the server automatically restarts if it crashes or the system reboots.
 
 ```bash
-python MyWebApp/src/main/webapp/flasktest.py
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Start the Express server
+pm2 start server.js --name "tutortime"
+
+# Save the current PM2 list
+pm2 save
+
+# Setup systemd startup service
+pm2 startup
+# (Run the sudo command that PM2 displays to configure the systemd unit)
 ```
 
-The server will start on `http://localhost:5001`
+**Common PM2 Commands:**
+* `pm2 status` — List running processes
+* `pm2 logs tutortime` — View streaming application output
+* `pm2 restart tutortime` — Restart the application
+* `pm2 stop tutortime` — Stop the application
 
-### 4. Access the Application
+---
 
-Open your browser and navigate to:
-```
-http://localhost:5001
-```
+### 2. Nginx Reverse Proxy Setup
+Create an Nginx configuration file at `/etc/nginx/sites-available/tutortime.nathaniel.name.ng`:
 
-## API Endpoints
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name tutortime.nathaniel.name.ng;
 
-### POST `/subscribe`
-Subscribe a new email to notifications.
-
-**Request:**
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-**Response (Success):**
-```json
-{
-  "success": true,
-  "message": "Successfully subscribed! Check your email for confirmation.",
-  "email_sent": true
-}
-```
-
-**Response (Error):**
-```json
-{
-  "success": false,
-  "message": "Email already subscribed"
-}
-```
-
-### GET `/subscribers` (Admin)
-Get all subscribers (consider adding authentication for production).
-
-**Response:**
-```json
-{
-  "total": 5,
-  "subscribers": [
-    {
-      "email": "user@example.com",
-      "subscribed_at": "2026-05-30T10:30:00",
-      "confirmed": false
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
     }
-  ]
+
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 120s;
+    }
 }
 ```
 
-## Database Schema
-
-The application uses SQLite with a `subscribers` table:
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | Integer | Primary key |
-| email | String | Email address (unique) |
-| subscribed_at | DateTime | Subscription timestamp |
-| confirmed | Boolean | Email confirmation status |
-
-## Customization
-
-### Change Launch Date
-Edit `index.html` line 227:
-```javascript
-const launchDate = new Date('2026-12-01T15:00:00Z'); // Change this date
+Enable and reload Nginx:
+```bash
+sudo ln -sf /etc/nginx/sites-available/tutortime.nathaniel.name.ng /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-### Change Sender Email
-Update in `.env`:
-```env
-SENDER_EMAIL=your-new-email@domain.com
+---
+
+### 3. HTTPS / TLS Certificate with Let's Encrypt Certbot
+Ensure your DNS `A` record points to your server's IP, then run:
+
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d tutortime.nathaniel.name.ng
 ```
+Certbot will automatically install the certificate and configure HTTP-to-HTTPS redirection.
 
-### Change Email Template
-Edit the `send_confirmation_email()` function in `flasktest.py` (lines 75-100)
+---
 
-## Frontend Features
+## 🔧 Environment Variables Reference
 
-- **Email Validation**: Real-time regex validation on client and server
-- **User Feedback**: Clear status messages for all actions
-- **Disabled State**: Form disables while request is in progress
-- **Responsive Design**: Works on all screen sizes
+Edit `.env` to configure your environment:
 
-## Backend Features
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT` | `5001` | HTTP port the server listens on |
+| `NODE_ENV` | `production` | Environment mode (`development` or `production`) |
+| `TRUST_PROXY` | `true` | Enables trust for `X-Forwarded-*` headers behind Nginx / ALB |
+| `STORAGE_DRIVER` | `local` | `local` for JSON files on disk; `aws` for DynamoDB/S3/SES |
+| `DATA_DIR` | `./data` | Local directory where form submissions are written |
+| `SUBSCRIBERS_DB_FILE`| `./subscribers.json` | Path to JSON file storing newsletter subscribers |
+| `FORM_RATE_LIMIT_MAX`| `100` | Max submissions allowed per IP per 15-minute window |
+| `ADMIN_API_KEY` | *(empty)* | Secret key required in `X-Admin-Key` header for `/api/metrics` |
+| `AWS_REGION` | `us-east-2` | AWS region when `STORAGE_DRIVER=aws` |
+| `DYNAMODB_TABLE_NAME`| `tutortime-submissions` | AWS DynamoDB table name |
+| `UPLOADS_BUCKET_NAME`| *(empty)* | S3 bucket name for CV uploads |
+| `ADMIN_NOTIFICATION_EMAIL`| *(empty)* | Verified SES recipient for new submissions |
+| `SENDER_EMAIL` | *(empty)* | Verified SES sender address |
 
-- **Email Deduplication**: Prevents duplicate subscriptions
-- **HTML & Plain Text Emails**: Both formats for maximum compatibility
-- **Error Handling**: Comprehensive error messages and logging
-- **Database Persistence**: All subscriptions stored in SQLite
+---
 
-## Troubleshooting
+## 🧪 Testing & Verification
 
-### "Error saving email" message
-1. Check if Flask server is running on port 5001
-2. Verify `.env` file exists and is configured correctly
-3. Check server logs for detailed error messages
-
-### Email not sending
-1. Verify SMTP credentials in `.env`
-2. Check Gmail App Password (if using Gmail)
-3. Ensure less secure app access is enabled (for non-Gmail SMTP)
-4. Check firewall/antivirus blocking port 587
-
-### Database issues
-1. Delete `subscribers.db` to reset database
-2. Restart the server
-
-## Security Considerations (Production)
-
-Before deploying to production:
-- [ ] Add authentication to `/subscribers` endpoint
-- [ ] Implement rate limiting on `/subscribe` endpoint
-- [ ] Use environment variables for all sensitive data
-- [ ] Add CORS configuration if needed
-- [ ] Implement email verification links
-- [ ] Use a production SMTP service (SendGrid, Mailgun, etc.)
-- [ ] Add HTTPS/SSL encryption
-- [ ] Implement CAPTCHA to prevent bot subscriptions
-
-## License
-
-Popcorn Maths © 2026
+Run the automated test suites:
+```bash
+npm test
+```
+All stages verify:
+* Core page routes and canonical branding
+* Security headers (Helmet CSP, X-Frame-Options, no-sniff)
+* Form processing pipeline and rate limiters
+* Traversal security and static file lockdown
+* Presigned S3 upload protocols and health endpoints

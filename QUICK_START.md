@@ -1,189 +1,145 @@
-# Quick Reference Card
+# Quick Start Guide
 
-## 📋 What Was Implemented
-
-Your application now has a **complete email subscription system** with:
-
-✅ **Backend Storage** - SQLite database to store all subscriber emails  
-✅ **Email Sending** - Automatic confirmation emails via SMTP  
-✅ **API Endpoint** - `/subscribe` POST endpoint for form submissions  
-✅ **Frontend Integration** - Form now connects to local backend  
-✅ **Validation** - Both client-side and server-side email validation  
-✅ **Admin View** - `/subscribers` endpoint to view all subscribers  
-
-## 🚀 Quick Start (Windows)
-
-**Option 1: Using the Batch Script (Easiest)**
-```bash
-# Double-click run.bat in the project root
-# Or from PowerShell:
-cd c:\Users\oyene\Documents\AI\Edn_Application_Repo
-.\run.bat
-```
-
-**Option 2: Manual Setup**
-```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file from template
-copy .env.example .env
-
-# Edit .env with your email credentials
-# Then run:
-python MyWebApp/src/main/webapp/flasktest.py
-```
-
-## ⚙️ Email Configuration
-
-Edit `.env` file:
-
-```env
-# Gmail Example (Recommended)
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SENDER_EMAIL=your-email@gmail.com
-SENDER_PASSWORD=xxxx-xxxx-xxxx-xxxx  # Use Gmail App Password
-
-# Other SMTP Examples
-# Outlook: smtp.outlook.com, port 587
-# Custom: your-smtp-server.com, your-port
-```
-
-### Getting Gmail App Password
-1. Go to [myaccount.google.com](https://myaccount.google.com)
-2. Enable 2-Step Verification
-3. Go to [App Passwords](https://myaccount.google.com/apppasswords)
-4. Generate 16-character password
-5. Copy to `.env` SENDER_PASSWORD
-
-## 🔗 API Endpoints
-
-### Subscribe Endpoint
-```bash
-POST http://localhost:5001/subscribe
-Content-Type: application/json
-
-{
-  "email": "user@example.com"
-}
-```
-
-**Success (201):**
-```json
-{
-  "success": true,
-  "message": "Successfully subscribed! Check your email for confirmation.",
-  "email_sent": true
-}
-```
-
-**Error (400/409):**
-```json
-{
-  "success": false,
-  "message": "Email already subscribed"
-}
-```
-
-### View All Subscribers
-```bash
-GET http://localhost:5001/subscribers
-```
-
-Returns list of all subscribers with timestamps and confirmation status.
-
-## 📁 Project Files
-
-| File | Purpose |
-|------|---------|
-| `flasktest.py` | Backend server with email logic |
-| `index.html` | Frontend form (updated) |
-| `requirements.txt` | Python dependencies |
-| `.env` | Your configuration (create from .env.example) |
-| `SETUP_GUIDE.md` | Detailed setup documentation |
-| `IMPLEMENTATION_SUMMARY.md` | Technical implementation details |
-| `run.bat` | One-click startup (Windows) |
-
-## 🗄️ Database
-
-SQLite database automatically created at: `subscribers.db`
-
-**Schema:**
-```sql
-CREATE TABLE subscribers (
-  id INTEGER PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  subscribed_at DATETIME DEFAULT NOW(),
-  confirmed BOOLEAN DEFAULT FALSE
-);
-```
-
-## 🧪 Testing
-
-1. Go to `http://localhost:5001`
-2. Enter test email: `test@example.com`
-3. Click "Notify Me"
-4. You should see: "✓ Thanks! Check your email for confirmation."
-5. Check your email for confirmation message
-6. View all subscribers: `http://localhost:5001/subscribers`
-
-## ⚠️ Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| "Error saving email" | Check Flask server is running (port 5001) |
-| Email not sending | Verify SMTP credentials in `.env` |
-| "Email already subscribed" | Email already exists in database |
-| Import errors | Run `pip install -r requirements.txt` |
-| Port already in use | Change port in `flasktest.py` line 162 |
-
-## 📝 Customization
-
-### Change Launch Date
-Edit `index.html` line 227:
-```javascript
-const launchDate = new Date('2026-12-01T15:00:00Z');
-```
-
-### Change Email Sender Name
-Edit `flasktest.py` line 82:
-```python
-msg['From'] = SENDER_EMAIL
-# Or customize as:
-msg['From'] = f"Popcorn Maths <{SENDER_EMAIL}>"
-```
-
-### Change Email Template
-Edit `send_confirmation_email()` function in `flasktest.py` (lines 75-100)
-
-## 🔒 Production Checklist
-
-Before going live:
-- [ ] Add authentication to `/subscribers` endpoint
-- [ ] Implement rate limiting
-- [ ] Add CAPTCHA verification
-- [ ] Switch to production SMTP service
-- [ ] Enable HTTPS/SSL
-- [ ] Add email verification links
-- [ ] Set database backups
-- [ ] Review security documentation in SETUP_GUIDE.md
-
-## 📚 Documentation
-
-Full documentation available in:
-- **SETUP_GUIDE.md** - Complete setup and configuration
-- **IMPLEMENTATION_SUMMARY.md** - Technical details
-- Code comments in `flasktest.py`
-
-## 💡 Tips
-
-- Server runs on `http://localhost:5001`
-- Emails appear instantly in the database
-- Check console for SMTP connection logs
-- Use `/subscribers` to verify emails are stored
-- Keep `.env` file secure (never commit to git)
+This application is a **Node.js & Express** web application for **Tutor Time with Teacher Cassie & Popcorn Math**.
 
 ---
 
-**Happy coding! 🍿**
+## 🚀 Fast Start: Choose Your Platform
+
+### 🪟 Windows Setup
+
+#### Option 1: One-Click Runner (Easiest)
+1. Double-click **`run.bat`** (or `start-server.bat`) in the root folder.
+2. The script will automatically:
+   - Verify Node.js is installed
+   - Create `.env` from `.env.example` if missing
+   - Run `npm install` on first launch
+   - Start the server on `http://localhost:5001`
+
+#### Option 2: PowerShell or Command Prompt
+```powershell
+# 1. Ensure Node.js 20+ is installed (https://nodejs.org/)
+node -v
+
+# 2. Clone and navigate to repository
+cd Edn_Application_Repo
+
+# 3. Copy environment configuration
+copy .env.example .env
+
+# 4. Install dependencies
+npm install
+
+# 5. Start the server
+npm start
+```
+Open **`http://localhost:5001`** in your browser.
+
+---
+
+### 🐧 Ubuntu / Linux Setup
+
+#### Option 1: Automated Script
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+#### Option 2: Manual Terminal Commands
+```bash
+# 1. Install Node.js 20 (if not already installed)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# 2. Copy environment file
+cp .env.example .env
+
+# 3. Install dependencies
+npm install
+
+# 4. Start local development server
+npm start
+```
+The application will listen on **`http://localhost:5001`**.
+
+---
+
+## 🌐 Production Deployment (Ubuntu with PM2 & Nginx)
+
+To run the application 24/7 in background with automatic restarts, reverse proxying, and SSL:
+
+### 1. Install and Start with PM2
+```bash
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Start the application
+pm2 start server.js --name "tutortime"
+
+# Save process list and enable boot startup
+pm2 save
+pm2 startup
+```
+
+Useful PM2 commands:
+```bash
+pm2 status tutortime          # Check status
+pm2 logs tutortime            # View real-time logs
+pm2 restart tutortime         # Restart after code changes
+```
+
+### 2. Connect with Nginx Reverse Proxy
+Create `/etc/nginx/sites-available/tutortime.nathaniel.name.ng`:
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name tutortime.nathaniel.name.ng;
+
+    client_max_body_size 25m;
+
+    location / {
+        proxy_pass http://127.0.0.1:5001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 120s;
+    }
+}
+```
+
+Enable site and test:
+```bash
+sudo ln -sf /etc/nginx/sites-available/tutortime.nathaniel.name.ng /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### 3. Add Free SSL with Certbot
+```bash
+sudo certbot --nginx -d tutortime.nathaniel.name.ng
+```
+
+---
+
+## 🧪 Testing the Application
+
+1. **Verify Health Endpoint:**
+   ```bash
+   curl http://localhost:5001/health
+   # Response: {"status":"ok","uptime":...}
+   ```
+
+2. **Run Automated Test Suites:**
+   ```bash
+   npm test
+   ```
+
+3. **View Subscribers List:**
+   ```
+   http://localhost:5001/subscribers
+   ```
