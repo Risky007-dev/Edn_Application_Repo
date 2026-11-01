@@ -10,30 +10,49 @@ Production web application for **Tutor Time with Teacher Cassie** and the **Popc
 - Node.js (v20.x or higher)
 - npm (v10.x or higher)
 
-### Setup & Execution
+### 🪟 Windows Setup
+1. **Clone the repository:**
+   ```cmd
+   git clone https://github.com/Risky007-dev/Edn_Application_Repo.git
+   cd Edn_Application_Repo
+   ```
+2. **One-Click Startup:**
+   Double-click `run.bat` (or `start-server.bat`).
+3. **Or run via Command Prompt / PowerShell:**
+   ```powershell
+   copy .env.example .env
+   npm install
+   npm start
+   ```
+   Open `http://localhost:5001`.
+
+---
+
+### 🐧 Ubuntu / Linux Setup
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/Risky007-dev/Edn_Application_Repo.git
    cd Edn_Application_Repo
    ```
-
-2. **Install dependencies:**
+2. **One-Command Startup:**
    ```bash
-   npm install
+   chmod +x run.sh
+   ./run.sh
    ```
-
-3. **Configure local environment:**
-   Copy the example environment configuration:
+3. **Or run manually:**
    ```bash
    cp .env.example .env
-   ```
-   *(By default, `STORAGE_DRIVER=local` is active, requiring zero cloud credentials or AWS access).*
-
-4. **Start the local server:**
-   ```bash
+   npm install
    npm start
    ```
    The application will start on `http://localhost:5001`.
+
+4. **Production Run (PM2 & Nginx):**
+   ```bash
+   pm2 start server.js --name tutortime
+   pm2 save
+   ```
+   See [SETUP_GUIDE.md](SETUP_GUIDE.md) for full Nginx and SSL setup.
 
 ---
 
