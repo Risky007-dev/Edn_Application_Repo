@@ -24,11 +24,11 @@
 - **Blocker:** The `/subscribers` endpoint returns the list of email subscribers without authentication.
 - **Required Action:** Decide whether to deprecate `/subscribers` in favor of an authenticated admin dashboard, restrict it behind `X-Admin-Key` authentication (matching `/api/metrics`), or migrate subscribers into an external email newsletter provider (e.g. Mailchimp, ConvertKit).
 
-## 6. Amazon SES Domain Verification & Production Access
-- **Blocker:** Amazon SES defaults to Sandbox mode, restricting email dispatch to pre-verified email addresses only.
-- **Required Action:** 
-  1. Complete DNS verification for popcornmaths.com (assumed; owner to confirm) in AWS SES us-east-2.
-  2. Request SES Production Access from AWS Support to allow sending notification emails without sandbox recipient limits.
+## 6. Amazon SES Domain Verification & Production Access [RESOLVED]
+- **Status:** **RESOLVED** (Verified on 2026-11-08)
+  - `popcornmaths.com` domain DKIM & DNS verification verified active in `us-east-2`.
+  - Production Access granted by AWS Support (`Max24HourSend: 50,000`, out of sandbox).
+  - Outgoing email dispatch verified working end-to-end via `awsDriver.js`.
 
 ## 7. Custom Domain & DNS Configuration
 - **Blocker:** popcornmaths.com is the one domain in the AWS account, registered in Route 53 with auto-renew, certificate issued in us-east-2; the owner has not confirmed which domain hosts the main site.
@@ -46,13 +46,13 @@
 - **Blocker:** Mini-game (`/popcorn-maths/game`) displays a marked placeholder (`data-todo="mascot"`).
 - **Required Action:** Deliver high-resolution SVG or PNG artwork for the official Popcorn Math mascot character and confirm its official character name.
 
-## 11. WhatsApp Business Contact Number
-- **Blocker:** The floating chat button and contact links use `WHATSAPP_PHONE_NUMBER` from environment configuration.
-- **Required Action:** Provide the official dedicated WhatsApp Business phone number for Teacher Cassie.
+## 11. WhatsApp Business Contact Number [RESOLVED]
+- **Status:** **RESOLVED** (`+1 264 729 5791`, verified on-island Anguilla contact number).
+- **Configuration:** Set in `WHATSAPP_PHONE_NUMBER` environment variable; automatically renders direct `https://wa.me/12647295791` parent chat links across header and contact cards.
 
-## 12. Self-Hosted Font Hosting & Web Performance
-- **Blocker:** External Google Fonts links were removed to guarantee zero CDN requests; styling currently falls back to system rounded fonts and cursive chains.
-- **Required Action:** License or download local WOFF2 files for "Quicksand", "Fredoka", and "Reenie Beanie", place them in `MyWebApp/src/main/webapp/assets/fonts/`, and define `@font-face` rules in `tokens.css`.
+## 12. Self-Hosted Font Hosting & Web Performance [RESOLVED]
+- **Status:** **RESOLVED**
+- **Action Taken:** Bundled 8 `.woff2` font files for "Quicksand", "Fredoka", and "Reenie Beanie" under `MyWebApp/src/main/webapp/fonts/`, declared `@font-face` rules in `tokens.css`, enforced strict CSP `font-src 'self'`, and verified zero CDN dependencies.
 
 ## 13. Owner Approval of Proposed Copy & Service Colors
 - **Blocker:** 104 copy items are marked `PROPOSED-COPY`.

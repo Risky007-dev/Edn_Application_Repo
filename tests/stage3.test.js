@@ -409,8 +409,9 @@ async function runTestSuite() {
       assert(`${route} has zero inline on* event attributes`, !hasInlineHandlers);
 
       // Check no external host URLs in assets or link tags: src="https?://" or href="https?://"
-      const externalAssetMatches = res.body.match(/(?:src|href)=["']https?:\/\/[^"'>]+/gi) || [];
-      // wa.me is permitted only when WHATSAPP_PHONE_NUMBER is configured; in test env it must be empty
+      // wa.me outbound link is permitted when WHATSAPP_PHONE_NUMBER is configured
+      const externalAssetMatches = (res.body.match(/(?:src|href)=["']https?:\/\/[^"'>]+/gi) || [])
+        .filter(url => !url.includes('wa.me'));
       assert(`${route} has zero asset URLs pointing to external hosts`, externalAssetMatches.length === 0);
     }
 

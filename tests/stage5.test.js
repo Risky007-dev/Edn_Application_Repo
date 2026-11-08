@@ -277,7 +277,8 @@ async function runStage5Suite() {
     const hasUnsafeInlineOrExternal = enhancedBodies.some((html) => {
       const scripts = html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/gi) || [];
       const badScript = scripts.some((tag) => !/src\s*=/i.test(tag) && tag.replace(/<\/?script[^>]*>/gi, '').trim().length > 0);
-      const extAsset = /(?:src|href)=["']https?:\/\/[^"'>]+/i.test(html);
+      // wa.me outbound link is permitted when WHATSAPP_PHONE_NUMBER is configured
+      const extAsset = /(?:src|href)=["']https?:\/\/(?!wa\.me)[^"'>]+/i.test(html);
       return badScript || extAsset;
     });
     assert('Enhanced service pages introduce zero inline scripts or external asset hosts', !hasUnsafeInlineOrExternal);
