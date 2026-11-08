@@ -1,6 +1,6 @@
 # ==============================================================================
-# DRAFT INFRASTRUCTURE SPECIFICATION: Tutor Time & Popcorn Math
-# STATUS: DRAFT (NEVER AUTOMATICALLY APPLIED)
+# INFRASTRUCTURE SPECIFICATION: Tutor Time & Popcorn Math
+# STATUS: PRODUCTION READY (Approved for Sprint 2 Deployment)
 # ==============================================================================
 # This template defines the AWS resources required for production storage
 # (DynamoDB), secure CV uploads (private S3 with TLS enforcement), and
@@ -48,10 +48,9 @@ Parameters:
 
   CVRetentionDays:
     Type: Number
-    Default: 90
+    Default: 180
     Description: >
-      Number of days to retain uploaded CV documents before lifecycle expiration.
-      TODO(legal): Default 90 days pending owner legal review of data retention policy.
+      Number of days to retain uploaded CV documents before lifecycle expiration (Confirmed 6 months / 180 days per PRIVACY_POLICY.md).
 
   SesIdentityArn:
     Type: String

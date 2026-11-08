@@ -211,6 +211,15 @@ async function runTestSuite() {
     });
     assert(resDotDotTraversal.statusCode === 404, 'GET /services/%2e%2e%2findex.html (encoded %2e%2e) returns HTTP 404');
 
+    const resFontQuicksand = await request({
+      hostname: 'localhost',
+      port: TEST_PORT,
+      path: '/fonts/quicksand-400.woff2',
+      method: 'GET'
+    });
+    assert(resFontQuicksand.statusCode === 200, 'GET /fonts/quicksand-400.woff2 returns HTTP 200');
+    assert(resHome.headers['content-security-policy'].includes("font-src 'self'"), "CSP restricts font-src to 'self'");
+
     // 4. Brand Info Endpoint
     console.log('\n--- 4. Brand Info Endpoint (/api/brand-info) ---');
     const resBrand = await request({

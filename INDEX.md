@@ -11,8 +11,9 @@ Welcome to the documentation for **Tutor Time with Teacher Cassie & Popcorn Math
 | [**`README.md`**](README.md) | High-level project overview, quick start, testing, and AWS deployment order | All developers & operators |
 | [**`QUICK_START.md`**](QUICK_START.md) | 5-minute setup cheatsheet for **Windows** and **Ubuntu / Linux** | Anyone who wants to run the app quickly |
 | [**`SETUP_GUIDE.md`**](SETUP_GUIDE.md) | Complete step-by-step installation, PM2 process management, Nginx setup, and SSL guide | Sysadmins & DevOps engineers |
-| [**`NODEJS_SETUP.md`**](NODEJS_SETUP.md) | Deep dive into the Node.js/Express architecture and email subscription endpoints | Backend developers |
 | [**`ARCHITECTURE.md`**](ARCHITECTURE.md) | Comprehensive system architecture, module diagrams, and security design | Systems architects |
+| [**`infra/OWNER_RUNBOOK.md`**](infra/OWNER_RUNBOOK.md) | AWS CloudFormation deployment, least-privilege IAM, and DynamoDB provisioning | AWS DevOps & Account Owner |
+| [**`docs/LAUNCH_BLOCKERS.md`**](docs/LAUNCH_BLOCKERS.md) | 10 operational decisions & content items requiring owner sign-off before launch | Project Owner & Stakeholders |
 | [**`AWS_ECS_DEPLOYMENT.md`**](AWS_ECS_DEPLOYMENT.md) | Containerization, Dockerfile, CloudFormation, and ECS deployment guides | AWS DevOps engineers |
 
 ---

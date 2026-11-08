@@ -131,10 +131,11 @@ app.get('/sitemap.xml', (req, res) => {
 app.use('/api', generalApiLimiter);
 app.use('/api', formPipeline);
 
-// Explicit Static Asset Serving (pages, css, js, assets only)
+// Explicit Static Asset Serving (pages, css, js, assets, fonts only)
 app.use('/css', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/css')));
 app.use('/js', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/js')));
 app.use('/assets', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/assets')));
+app.use('/fonts', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/fonts')));
 app.use('/finalnewmathapo-01.png', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/finalnewmathapo-01.png')));
 
 // Database file path (supports test isolation via SUBSCRIBERS_DB_FILE)
