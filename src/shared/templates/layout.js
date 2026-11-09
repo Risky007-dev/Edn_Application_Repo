@@ -5,6 +5,7 @@
  */
 
 const config = require('../config');
+const { renderChatWidget } = require('../chatbot/widget');
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -25,6 +26,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
   const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
   const canonicalUrl = `${escapeHtml(siteOrigin)}${escapeHtml(currentPath)}`;
   const showPreviewBanner = config.features?.localPreviewBanner && process.env.NODE_ENV !== 'production';
+  const showChatbot = (config.features?.chatbot?.enabled ?? true) && Boolean(process.env.ANTHROPIC_API_KEY || process.env.ENABLE_MOCK_CHATBOT_FRONTEND === 'true');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -118,7 +120,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
     ${bodyHtml}
   </main>
 
-  <!-- TODO: AI Chatbot placeholder - Phase 3 evaluation per Cassie advisory -->
+  ${showChatbot ? `${renderChatWidget()}\n  <script src="/js/chatbot.js"></script>` : '<!-- TODO: AI Chatbot placeholder - Phase 3 evaluation per Cassie advisory -->'}
 
   <footer class="site-footer">
     <div class="footer-container">

@@ -131,6 +131,10 @@ app.get('/sitemap.xml', (req, res) => {
 app.use('/api', generalApiLimiter);
 app.use('/api', formPipeline);
 
+// AI Chatbot Route (Task 3)
+const { handleChat, chatRateLimiter } = require('./src/shared/chatbot/chatController');
+app.post('/api/chat', chatRateLimiter, handleChat);
+
 // Explicit Static Asset Serving (pages, css, js, assets, fonts only)
 app.use('/css', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/css')));
 app.use('/js', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/js')));

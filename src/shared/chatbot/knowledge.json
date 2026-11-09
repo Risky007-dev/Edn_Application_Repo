@@ -1,0 +1,52 @@
+{
+  "brand": "Tutor Time with Teacher Cassie & Popcorn Math",
+  "founder": "Kashamar Lewis (Teacher Cassie)",
+  "location": "Anguilla, British West Indies",
+  "contact": {
+    "whatsapp": "+12647295791",
+    "email": "hello@popcornmaths.com",
+    "consultationBookingUrl": "/book"
+  },
+  "programmes": {
+    "popcornMath": {
+      "type": "In-person, hands-on after-school mathematics enrichment",
+      "notOnline": true,
+      "notExamPrep": true,
+      "targetAges": "Primary school students (Grades 1 to 5, approx ages 6 to 11)",
+      "format": "Mixed grades in one classroom for 1 hour per week",
+      "activities": "Tactile manipulatives, 3D geometric constructions (such as tetrahedrons and cubes), and hands-on mathematical problem solving",
+      "takeHome": "Every session ends with each child taking home an item they personally built",
+      "seriesDuration": "8 to 10 weeks within a school term",
+      "pricing": "Paid per series (exact pricing confirmed upon registration enquiry)",
+      "pilotStatus": "Planned pilot in January at the founder's school, with future rollout planned across all six primary schools on Anguilla",
+      "presenters": {
+        "role": "Independent session presenters (trained mini-me of founder)",
+        "minimumAge": 18,
+        "whoCanApply": "School teachers, qualified educators, and young adults (ages 18-19) completing secondary education",
+        "safeguarding": "Background checks required; presenters must adhere to a strict Code of Conduct",
+        "compensation": "Paid per session with an attendance bonus for attending all sessions in a series"
+      }
+    },
+    "traditionalTutoring": {
+      "name": "Personalised Tutoring & Academic Support",
+      "description": "Tailored one-to-one and small group learning aligned with individual curriculum goals across core primary subjects",
+      "url": "/services/traditional-tutoring"
+    },
+    "conciergeCoaching": {
+      "name": "Concierge Academic Coaching",
+      "description": "Comprehensive academic oversight, assignment tracking, study routines, and executive functioning support",
+      "url": "/services/concierge"
+    },
+    "specialistSupport": {
+      "name": "Individualised Learning Support",
+      "description": "Supporting students who benefit from differentiated instruction, structured routines, and personalised academic approaches",
+      "url": "/services/specialist-support"
+    },
+    "readinessCheck": {
+      "name": "CPEA Readiness Check",
+      "description": "Gamified mock-exam sample questions for students preparing for the Caribbean Primary Exit Assessment (Language Arts, Mathematics, Science, Social Studies)",
+      "isOfficialExam": false,
+      "url": "/readiness-check"
+    }
+  }
+}
