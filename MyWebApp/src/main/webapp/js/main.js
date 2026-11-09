@@ -244,4 +244,12 @@ document.addEventListener('DOMContentLoaded', () => {
       window.print();
     });
   }
+
+  // 7. Printable Presenter Handout
+  const printPresenterBtn = document.getElementById('btn-print-presenter');
+  if (printPresenterBtn) {
+    printPresenterBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
 });

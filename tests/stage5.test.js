@@ -211,11 +211,12 @@ async function runStage5Suite() {
 
     const expectedRoutes = [
       '/', '/about', '/services/traditional-tutoring', '/services/concierge',
-      '/services/popcorn-maths', '/services/specialist-support', '/popcorn-maths/presenter',
-      '/popcorn-maths/game', '/find-your-programme', '/popcorn-maths/school-partnership',
-      '/resources', '/book', '/contact', '/faq'
+      '/services/popcorn-math', '/services/specialist-support', '/popcorn-math/presenters',
+      '/popcorn-math/play', '/popcorn-math/schools', '/popcorn-math/parents',
+      '/popcorn-math/locations', '/popcorn-math/faq',
+      '/find-your-programme', '/resources', '/book', '/contact', '/faq', '/readiness-check'
     ];
-    assert('sitemap.xml lists all 14 canonical public routes', expectedRoutes.every((r) => resSitemap.body.includes(`<loc>https://popcornmaths.com${r}</loc>`)));
+    assert('sitemap.xml lists all canonical public routes', expectedRoutes.every((r) => resSitemap.body.includes(`<loc>https://popcornmaths.com${r}</loc>`)));
 
     const resPom = await request(TEST_PORT, { path: '/pom.xml' });
     assert('GET /pom.xml remains blocked with HTTP 404', resPom.statusCode === 404);
@@ -231,14 +232,20 @@ async function runStage5Suite() {
     console.log('\n--- GROUP 4: Service Functions (P1, P2, C1, T3, X2) ---');
     assert('content.popcornLocations defines 5 community/virtual cohorts', Array.isArray(content.popcornLocations) && content.popcornLocations.length === 5);
 
-    const resPopcorn = await request(TEST_PORT, { path: '/services/popcorn-maths' });
-    assert('/services/popcorn-maths renders #popcorn-location-select', resPopcorn.body.includes('id="popcorn-location-select"'));
-    assert('/services/popcorn-maths embeds data-locations and #location-details live region', resPopcorn.body.includes('data-locations=') && resPopcorn.body.includes('id="location-details"'));
+    const resPopcorn = await request(TEST_PORT, { path: '/services/popcorn-math' });
+    assert('/services/popcorn-math renders #popcorn-location-select', resPopcorn.body.includes('id="popcorn-location-select"'));
+    assert('/services/popcorn-math embeds data-locations and #location-details live region', resPopcorn.body.includes('data-locations=') && resPopcorn.body.includes('id="location-details"'));
 
-    const resGame = await request(TEST_PORT, { path: '/popcorn-maths/game' });
-    assert('/popcorn-maths/game renders #game-level-select difficulty dropdown', resGame.body.includes('id="game-level-select"'));
-    assert('/popcorn-maths/game includes Little Kernels, Popping Poppers, and Mega Crunch bands',
+    const resLegacyPopcorn = await request(TEST_PORT, { path: '/services/popcorn-maths' });
+    assert('/services/popcorn-maths returns HTTP 301 redirect', resLegacyPopcorn.statusCode === 301);
+
+    const resGame = await request(TEST_PORT, { path: '/popcorn-math/play' });
+    assert('/popcorn-math/play renders #game-level-select difficulty dropdown', resGame.body.includes('id="game-level-select"'));
+    assert('/popcorn-math/play includes Little Kernels, Popping Poppers, and Mega Crunch bands',
       resGame.body.includes('Little Kernels') && resGame.body.includes('Popping Poppers') && resGame.body.includes('Mega Crunch'));
+
+    const resLegacyGame = await request(TEST_PORT, { path: '/popcorn-maths/game' });
+    assert('/popcorn-maths/game returns HTTP 301 redirect', resLegacyGame.statusCode === 301);
 
     assert('QUESTION_BANKS.kernels provides addition problems for ages 4-6', Array.isArray(QUESTION_BANKS.kernels) && QUESTION_BANKS.kernels.length >= 5);
     assert('QUESTION_BANKS.crunch provides mental arithmetic problems for ages 10-12', Array.isArray(QUESTION_BANKS.crunch) && QUESTION_BANKS.crunch.length >= 5);
@@ -265,7 +272,7 @@ async function runStage5Suite() {
     assert('main.js wires location directory, readiness survey, and print checklist',
       mainJs.includes('popcorn-location-select') && mainJs.includes('readiness-survey') && mainJs.includes('btn-print-checklist'));
 
-    const formPages = ['/book', '/services/concierge', '/services/specialist-support', '/popcorn-maths/presenter', '/contact'];
+    const formPages = ['/book', '/services/concierge', '/services/specialist-support', '/popcorn-math/presenters', '/contact'];
     let allFormAriaLive = true;
     for (const fp of formPages) {
       const r = await request(TEST_PORT, { path: fp });

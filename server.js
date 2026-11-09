@@ -35,6 +35,15 @@ const {
   renderResourcesPage,
   renderReadinessCheckPage
 } = require('./src/shared/templates/pages');
+const {
+  renderPopcornHubPage,
+  renderPopcornParentsPage,
+  renderPopcornSchoolsPage,
+  renderPopcornPresentersPage,
+  renderPopcornLocationsPage,
+  renderPopcornPlayPage,
+  renderPopcornFaqPage
+} = require('./src/popcorn/popcornRebuild');
 const { sanitizeInterestHint } = require('./src/shared/finder/serviceFinder');
 
 // Middleware
@@ -100,12 +109,15 @@ const CANONICAL_PUBLIC_ROUTES = [
   '/about',
   '/services/traditional-tutoring',
   '/services/concierge',
-  '/services/popcorn-maths',
+  '/services/popcorn-math',
   '/services/specialist-support',
-  '/popcorn-maths/presenter',
-  '/popcorn-maths/game',
+  '/popcorn-math/parents',
+  '/popcorn-math/schools',
+  '/popcorn-math/presenters',
+  '/popcorn-math/locations',
+  '/popcorn-math/play',
+  '/popcorn-math/faq',
   '/find-your-programme',
-  '/popcorn-maths/school-partnership',
   '/resources',
   '/book',
   '/contact',
@@ -197,7 +209,7 @@ app.get('/index.html', (req, res) => {
   res.send(renderHomePage());
 });
 
-// GET /services/:slug - Explicit route to serve the four service pages
+// GET /services/:slug - Explicit route to serve the service pages
 app.get('/services/:slug', (req, res) => {
   const { slug } = req.params;
   
@@ -211,7 +223,9 @@ app.get('/services/:slug', (req, res) => {
     case 'concierge':
       return res.send(renderConciergePage());
     case 'popcorn-maths':
-      return res.send(renderPopcornMathsPage());
+      return res.redirect(301, '/services/popcorn-math');
+    case 'popcorn-math':
+      return res.send(renderPopcornHubPage());
     case 'specialist-support':
       return res.send(renderSpecialistSupportPage());
     default:
@@ -219,45 +233,77 @@ app.get('/services/:slug', (req, res) => {
   }
 });
 
-// GET /popcorn-maths/presenter - We're hiring recruitment page
-app.get('/popcorn-maths/presenter', (req, res) => {
-  res.send(renderPresenterPage());
+// Rebuilt Popcorn Math Canonical Routes (Task 5 Rebuild)
+app.get('/services/popcorn-math', (req, res) => {
+  res.send(renderPopcornHubPage());
 });
 
-// GET /book - Book Now consultation request page
+app.get('/popcorn-math/parents', (req, res) => {
+  res.send(renderPopcornParentsPage());
+});
+
+app.get('/popcorn-math/schools', (req, res) => {
+  res.send(renderPopcornSchoolsPage());
+});
+
+app.get('/popcorn-math/presenters', (req, res) => {
+  res.send(renderPopcornPresentersPage());
+});
+
+app.get('/popcorn-math/locations', (req, res) => {
+  res.send(renderPopcornLocationsPage());
+});
+
+app.get('/popcorn-math/play', (req, res) => {
+  res.send(renderPopcornPlayPage());
+});
+
+app.get('/popcorn-math/faq', (req, res) => {
+  res.send(renderPopcornFaqPage());
+});
+
+// Alias: /join -> 301 to /popcorn-math/presenters
+app.get('/join', (req, res) => {
+  res.redirect(301, '/popcorn-math/presenters');
+});
+
+// 301 Permanent Redirects from legacy Popcorn Maths URLs
+app.get('/services/popcorn-maths', (req, res) => {
+  res.redirect(301, '/services/popcorn-math');
+});
+
+app.get('/popcorn-maths/presenter', (req, res) => {
+  res.redirect(301, '/popcorn-math/presenters');
+});
+
+app.get('/popcorn-maths/game', (req, res) => {
+  res.redirect(301, '/popcorn-math/play');
+});
+
+app.get('/popcorn-maths/school-partnership', (req, res) => {
+  res.redirect(301, '/popcorn-math/schools');
+});
+
+// Core Site Pages
 app.get('/book', (req, res) => {
   res.send(renderBookPage());
 });
 
-// GET /contact - Contact form and WhatsApp integration
 app.get('/contact', (req, res) => {
   res.send(renderContactPage());
 });
 
-// GET /faq - FAQ accordion page
 app.get('/faq', (req, res) => {
   res.send(renderFaqPage());
 });
 
-// GET /about - About page stub
 app.get('/about', (req, res) => {
   res.send(renderAboutPage());
 });
 
-// GET /popcorn-maths/game - TT-13 Popcorn Math Mini-Game
-app.get('/popcorn-maths/game', (req, res) => {
-  res.send(renderPopcornGamePage());
-});
-
-// GET /find-your-programme - TT-14 Smart Service Finder
 app.get('/find-your-programme', (req, res) => {
   const hint = sanitizeInterestHint(req.query.interest);
   res.send(renderServiceFinderPage(hint));
-});
-
-// GET /popcorn-maths/school-partnership - TT-15 School Partnership Enquiry
-app.get('/popcorn-maths/school-partnership', (req, res) => {
-  res.send(renderSchoolPartnershipPage());
 });
 
 // GET /resources - TT-16 Resources Page Stub

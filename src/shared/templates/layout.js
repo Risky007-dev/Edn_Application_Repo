@@ -87,10 +87,13 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
               Popcorn Math <span class="arrow" aria-hidden="true">▾</span>
             </button>
             <ul class="dropdown-menu">
-              <li><a href="/services/popcorn-maths" class="dropdown-link">About Popcorn Math</a></li>
-              <li><a href="/popcorn-maths/game" class="dropdown-link">Play &amp; Learn</a></li>
-              <li><a href="/popcorn-maths/school-partnership" class="dropdown-link">School Partnerships</a></li>
-              <li><a href="/popcorn-maths/presenter" class="dropdown-link">Become a Presenter</a></li>
+              <li><a href="/services/popcorn-math" class="dropdown-link">About Popcorn Math</a></li>
+              <li><a href="/popcorn-math/parents" class="dropdown-link">For Parents</a></li>
+              <li><a href="/popcorn-math/schools" class="dropdown-link">For Schools</a></li>
+              <li><a href="/popcorn-math/presenters" class="dropdown-link">Become a Presenter</a></li>
+              <li><a href="/popcorn-math/locations" class="dropdown-link">School Locations</a></li>
+              <li><a href="/popcorn-math/play" class="dropdown-link">Play &amp; Learn</a></li>
+              <li><a href="/popcorn-math/faq" class="dropdown-link">Popcorn Math FAQ</a></li>
             </ul>
           </li>
 
@@ -139,7 +142,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
         <ul class="footer-links">
           <li><a href="/services/traditional-tutoring">Personalised Tutoring</a></li>
           <li><a href="/services/concierge">Concierge Academic Coaching</a></li>
-          <li><a href="/services/popcorn-maths">Popcorn Math</a></li>
+          <li><a href="/services/popcorn-math">Popcorn Math</a></li>
           <li><a href="/services/specialist-support">Individualised Learning Support</a></li>
           <li><a href="/find-your-programme">Find Your Programme</a></li>
           <li><a href="/readiness-check">CPEA Readiness Check</a></li>
@@ -150,9 +153,9 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
       <div class="footer-column">
         <h4>Join Our Team</h4>
         <ul class="footer-links">
-          <li><a href="/popcorn-maths/presenter">Become a Popcorn Math Presenter</a></li>
-          <li><a href="/popcorn-maths/school-partnership">School Partnerships</a></li>
-          <li><a href="/popcorn-maths/game">Play &amp; Learn</a></li>
+          <li><a href="/popcorn-math/presenters">Become a Popcorn Math Presenter</a></li>
+          <li><a href="/popcorn-math/schools">School Partnerships</a></li>
+          <li><a href="/popcorn-math/play">Play &amp; Learn</a></li>
           <li><a href="/contact?subject=tutor-application">Become a Tutor</a></li>
         </ul>
       </div>

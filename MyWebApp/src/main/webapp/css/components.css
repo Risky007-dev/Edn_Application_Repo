@@ -1818,3 +1818,318 @@ body {
   margin-top: var(--space-6);
 }
 
+/* ==========================================================================
+   Popcorn Math Rebuild Styles (Phase 2 Task 5)
+   ========================================================================== */
+.badge-popcorn {
+  display: inline-block;
+  background: #FFF3CD;
+  color: #856404;
+  border: 1px solid #FFEEBA;
+  border-radius: var(--radius-full);
+  padding: 4px 14px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+}
+
+[data-theme="dark"] .badge-popcorn {
+  background: #4A3B12;
+  color: #FFD966;
+  border-color: #6C5418;
+}
+
+.popcorn-hero {
+  background: linear-gradient(135deg, #FFF9E6 0%, #FFF3D6 50%, #FFE9B3 100%);
+  padding: var(--space-12) 0;
+  border-bottom: 2px solid #F5A623;
+}
+
+[data-theme="dark"] .popcorn-hero {
+  background: linear-gradient(135deg, #1A2634 0%, #202D3C 100%);
+  border-bottom-color: #F5A623;
+}
+
+.popcorn-hero-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.popcorn-hero-copy {
+  flex: 1 1 500px;
+  min-width: 0;
+}
+
+.popcorn-hero-mascot {
+  flex: 0 0 auto;
+  text-align: center;
+  margin: 0 auto;
+}
+
+.popcorn-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-extrabold);
+  color: #1A365D;
+  line-height: var(--line-height-tight);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+[data-theme="dark"] .popcorn-title {
+  color: #FFFFFF;
+}
+
+.popcorn-promise {
+  font-size: var(--font-size-lg);
+  color: #B45309;
+  background: #FEF3C7;
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid #F5A623;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+[data-theme="dark"] .popcorn-promise {
+  background: #451A03;
+  color: #FCD34D;
+}
+
+.popcorn-lead {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--space-6);
+}
+
+.popcorn-hero-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Steps Grid */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-6);
+}
+
+.step-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: #F5A623;
+  color: #1A365D;
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-3);
+}
+
+.step-card h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-lg);
+}
+
+.step-card p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
+/* Crafts Grid */
+.crafts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-6);
+}
+
+.craft-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.craft-card h3 {
+  margin: var(--space-2) 0;
+  font-size: var(--font-size-lg);
+}
+
+.craft-badge {
+  display: inline-block;
+  background: #EBF8FF;
+  color: #2E75B6;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+}
+
+.craft-tags {
+  margin-top: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+/* Pathways Grid */
+.pathways-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-6);
+}
+
+.pathway-card {
+  background: var(--color-bg-primary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-normal), border-color var(--transition-normal);
+}
+
+.pathway-card:hover {
+  transform: translateY(-4px);
+  border-color: #F5A623;
+}
+
+/* Trust Grid */
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-6);
+}
+
+.trust-box {
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.trust-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-2);
+}
+
+/* Locations Grid */
+.locations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-6);
+}
+
+.location-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.cohort-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-2);
+}
+
+.cohort-pilot {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.cohort-planned {
+  background: #E0E7FF;
+  color: #3730A3;
+}
+
+/* QR and Print Summary Card */
+.summary-print-card {
+  background: #FFFBEB;
+  border: 2px dashed #F5A623;
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-top: var(--space-8);
+  text-align: center;
+}
+
+[data-theme="dark"] .summary-print-card {
+  background: #2D2310;
+  border-color: #D97706;
+}
+
+/* Print Stylesheet for Presenters Handout */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  .site-header,
+  .site-footer,
+  .chatbot-widget-container,
+  .local-preview-banner,
+  .btn,
+  .skip-link {
+    display: none !important;
+  }
+
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .popcorn-hero {
+    background: none !important;
+    border-bottom: 2px solid #000000 !important;
+    padding: 10px 0 !important;
+  }
+
+  .popcorn-title {
+    color: #000000 !important;
+    font-size: 20pt !important;
+  }
+
+  .summary-print-card {
+    border: 2px solid #000000 !important;
+    background: none !important;
+    page-break-inside: avoid;
+  }
+
+  .step-card,
+  .craft-card,
+  .location-card,
+  .trust-box {
+    border: 1px solid #CCCCCC !important;
+    page-break-inside: avoid;
+  }
+}
+
+

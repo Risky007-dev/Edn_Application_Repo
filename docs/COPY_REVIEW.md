@@ -249,3 +249,30 @@ To accelerate initial launch review, please inspect and approve these core headl
 | Resources | `title` | Educational Resources | PROPOSED-COPY |
 | Resources | `headline` | Educational Resources | PROPOSED-COPY |
 
+---
+
+### 16. Popcorn Math Rebuilt Pages (Task 5 Rebuild)
+
+| Page / Context | Element | Current Text | Status |
+|---|---|---|---|
+| `/services/popcorn-math` | Hero Headline | Where Math Skills POP Through Hands-On Making! | PROPOSED-COPY |
+| `/services/popcorn-math` | Promise Badge | Our Promise: Every child takes home a tangible mathematical creation each week. | PROPOSED-COPY |
+| `/services/popcorn-math` | Programme Lead | Popcorn Math is an in-person, hands-on after-school programme on Anguilla for primary students (Grades 1 to 5). Children meet weekly in a classroom to make geometric shapes and crafts with manipulatives. | PROPOSED-COPY |
+| `/popcorn-math/parents` | Headline | Popcorn Math for Parents: Hands-On Math Joy Every Week | PROPOSED-COPY |
+| `/popcorn-math/parents` | Lead | Popcorn Math transforms math from an abstract chore into a tangible creative adventure for primary students (Grades 1 to 5). | PROPOSED-COPY |
+| `/popcorn-math/parents` | Form Title | Register Your Interest | PROPOSED-COPY |
+| `/popcorn-math/parents` | Child Privacy Notice | We respect child privacy: we do not collect child names on this form. We only ask for their grade level. | PROPOSED-COPY |
+| `/popcorn-math/schools` | Headline | Partner with Popcorn Math for Your Primary School | PROPOSED-COPY |
+| `/popcorn-math/schools` | Lead | An enriching, turn-key after-school mathematics programme for primary schools across Anguilla. | PROPOSED-COPY |
+| `/popcorn-math/presenters` | Headline | Become a Popcorn Math Presenter: Inspire Young Minds | PROPOSED-COPY |
+| `/popcorn-math/presenters` | Lead | We are looking for energetic, enthusiastic adults (ages 18+) to lead weekly hands-on Popcorn Math sessions in primary classrooms across Anguilla. | PROPOSED-COPY |
+| `/popcorn-math/presenters` | Compensation Summary | Presenters are paid per completed session and earn an attendance bonus for attending all sessions in a series. All materials packets are supplied. | PROPOSED-COPY |
+| `/popcorn-math/locations` | Headline | Popcorn Math School Locations & Cohorts | PROPOSED-COPY |
+| `/popcorn-math/locations` | Lead | Exploring hands-on math across Anguilla's six primary school communities. | PROPOSED-COPY |
+| `/popcorn-math/locations` | Status Notice | January 2026 pilot launches at founder's school. Five additional primary cohorts planned for subsequent terms. Exact school assignments subject to final administrative confirmation. | PROPOSED-COPY |
+| `/popcorn-math/play` | Headline | Hands-On Math Play & Maker Activities | PROPOSED-COPY |
+| `/popcorn-math/play` | Lead | Try hands-on math crafts at home! Simple, delightful maker activities for primary school children. | PROPOSED-COPY |
+| `/popcorn-math/faq` | Headline | Frequently Asked Questions About Popcorn Math | PROPOSED-COPY |
+| `/popcorn-math/faq` | Lead | Everything parents, schools, and presenter candidates need to know about our in-person hands-on programme. | PROPOSED-COPY |
+
+

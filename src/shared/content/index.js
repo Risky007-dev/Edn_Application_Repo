@@ -35,12 +35,15 @@ const CONTENT = {
     },
     {
       label: 'POPCORN MATH',
-      href: '/services/popcorn-maths',
+      href: '/services/popcorn-math',
       dropdown: [
-        { label: 'About Popcorn Math', href: '/services/popcorn-maths' },
-        { label: 'Play & Learn', href: '/popcorn-maths/game' },
-        { label: 'School Partnerships', href: '/popcorn-maths/school-partnership' },
-        { label: 'Become a Presenter', href: '/popcorn-maths/presenter' }
+        { label: 'About Popcorn Math', href: '/services/popcorn-math' },
+        { label: 'For Parents', href: '/popcorn-math/parents' },
+        { label: 'For Schools', href: '/popcorn-math/schools' },
+        { label: 'Become a Presenter', href: '/popcorn-math/presenters' },
+        { label: 'School Locations', href: '/popcorn-math/locations' },
+        { label: 'Play & Learn', href: '/popcorn-math/play' },
+        { label: 'Popcorn Math FAQ', href: '/popcorn-math/faq' }
       ]
     },
     { label: 'RESOURCES', href: '/resources' },
@@ -87,7 +90,7 @@ const CONTENT = {
           name: { text: 'Popcorn Math', status: 'APPROVED' },
           desc: { text: 'Fun, energetic, hands-on mathematics sessions that build fluency and confidence.', status: 'APPROVED' },
           cta: { text: 'Discover Popcorn Math', status: 'APPROVED' },
-          href: '/services/popcorn-maths',
+          href: '/services/popcorn-math',
           icon: '🍿'
         }
       ]

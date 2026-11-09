@@ -146,7 +146,7 @@ async function runTestSuite() {
     const slugs = [
       { slug: 'traditional-tutoring', name: 'Personalised Tutoring & Academic Support' },
       { slug: 'concierge', name: 'Concierge Academic Coaching' },
-      { slug: 'popcorn-maths', name: 'Popcorn Math' },
+      { slug: 'popcorn-math', name: 'Popcorn Math' },
       { slug: 'specialist-support', name: 'Individualised Learning Support' }
     ];
 
@@ -160,6 +160,16 @@ async function runTestSuite() {
       assert(resSlug.statusCode === 200, `GET /services/${item.slug} returns HTTP 200`);
       assert(resSlug.body.includes(item.name), `GET /services/${item.slug} displays canonical name "${item.name}"`);
     }
+
+    // Verify 301 permanent redirect from legacy popcorn-maths slug
+    const resLegacySlug = await request({
+      hostname: 'localhost',
+      port: TEST_PORT,
+      path: '/services/popcorn-maths',
+      method: 'GET'
+    });
+    assert(resLegacySlug.statusCode === 301, 'GET /services/popcorn-maths returns HTTP 301 redirect');
+    assert(resLegacySlug.headers.location === '/services/popcorn-math', 'GET /services/popcorn-maths redirects to /services/popcorn-math');
 
     const resInvalidSlug = await request({
       hostname: 'localhost',

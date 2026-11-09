@@ -5,26 +5,38 @@
   "contact": {
     "whatsapp": "+12647295791",
     "email": "hello@popcornmaths.com",
-    "consultationBookingUrl": "/book"
+    "consultationBookingUrl": "/book",
+    "contactUrl": "/contact"
   },
   "programmes": {
     "popcornMath": {
-      "type": "In-person, hands-on after-school mathematics enrichment",
+      "type": "In-person, hands-on after-school mathematics enrichment programme",
       "notOnline": true,
       "notExamPrep": true,
       "targetAges": "Primary school students (Grades 1 to 5, approx ages 6 to 11)",
       "format": "Mixed grades in one classroom for 1 hour per week",
-      "activities": "Tactile manipulatives, 3D geometric constructions (such as tetrahedrons and cubes), and hands-on mathematical problem solving",
-      "takeHome": "Every session ends with each child taking home an item they personally built",
+      "activities": "Tactile manipulatives, 3D geometric constructions (such as tetrahedrons, cubes, and polyhedra), and hands-on mathematical problem solving",
+      "takeHome": "Every single session ends with each child taking home an item they personally built",
       "seriesDuration": "8 to 10 weeks within a school term",
-      "pricing": "Paid per series (exact pricing confirmed upon registration enquiry)",
-      "pilotStatus": "Planned pilot in January at the founder's school, with future rollout planned across all six primary schools on Anguilla",
+      "pricing": "Paid per series (exact pricing confirmed upon registration enquiry; no invented prices)",
+      "pilotStatus": "Planned pilot in January at the founder's school, with planned expansion across all six primary schools on Anguilla",
+      "urls": {
+        "hub": "/services/popcorn-math",
+        "parents": "/popcorn-math/parents",
+        "schools": "/popcorn-math/schools",
+        "presenters": "/popcorn-math/presenters",
+        "locations": "/popcorn-math/locations",
+        "play": "/popcorn-math/play",
+        "faq": "/popcorn-math/faq",
+        "joinAlias": "/join"
+      },
       "presenters": {
-        "role": "Independent session presenters (trained mini-me of founder)",
+        "role": "Independent session presenters (trained to deliver Teacher Cassie's hands-on math crafts)",
         "minimumAge": 18,
         "whoCanApply": "School teachers, qualified educators, and young adults (ages 18-19) completing secondary education",
+        "materials": "All materials packets provided; Teacher Cassie crafts the demonstration model in advance",
         "safeguarding": "Background checks required; presenters must adhere to a strict Code of Conduct",
-        "compensation": "Paid per session with an attendance bonus for attending all sessions in a series"
+        "compensation": "Paid per completed session with an attendance bonus for attending all sessions in a series"
       }
     },
     "traditionalTutoring": {
@@ -46,6 +58,7 @@
       "name": "CPEA Readiness Check",
       "description": "Gamified mock-exam sample questions for students preparing for the Caribbean Primary Exit Assessment (Language Arts, Mathematics, Science, Social Studies)",
       "isOfficialExam": false,
+      "disclaimer": "Sample questions: not an official CPEA paper.",
       "url": "/readiness-check"
     }
   }

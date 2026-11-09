@@ -20,7 +20,8 @@ const {
   validatePresenterForm,
   validateLearningNeedsForm,
   validateContactForm,
-  validateSchoolEnquiryForm
+  validateSchoolEnquiryForm,
+  validatePopcornParentForm
 } = require('./validators');
 
 // In-memory telemetry counter (no personal data stored or exposed)
@@ -49,6 +50,8 @@ function getValidator(formType) {
       return validateContactForm;
     case 'school-enquiry':
       return validateSchoolEnquiryForm;
+    case 'popcorn-parent-interest':
+      return validatePopcornParentForm;
     default:
       return null;
   }

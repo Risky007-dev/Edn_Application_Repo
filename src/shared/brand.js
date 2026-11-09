@@ -44,6 +44,15 @@ const BRAND_CONFIG = {
       accentColor: '#e62b25',
       logo: '/assets/logos/popcorn-math-logo.png'
     },
+    'popcorn-math': {
+      slug: 'popcorn-math',
+      name: 'Popcorn Math',
+      shortName: 'Popcorn Math',
+      tagline: 'Where Math Skills POP! Hands-on after-school maths fun in Anguilla',
+      module: 'popcorn',
+      accentColor: '#F5A623',
+      logo: '/assets/logos/popcorn-math-logo.png'
+    },
     'specialist-support': {
       slug: 'specialist-support',
       name: 'Individualised Learning Support',
@@ -59,6 +68,7 @@ const BRAND_CONFIG = {
     'traditional-tutoring',
     'concierge',
     'popcorn-maths',
+    'popcorn-math',
     'specialist-support'
   ],
 
