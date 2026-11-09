@@ -8,6 +8,8 @@
 const content = require('../content');
 const config = require('../config');
 const { escapeHtml, renderLayout } = require('./layout');
+const { renderGuideMascot, renderSpeechBubble } = require('../components/mascotGuide');
+const { renderBucketMascot } = require('../components/mascotBucket');
 
 // Helper for consent checkbox
 function renderConsentCheckbox() {
@@ -45,6 +47,12 @@ function renderHomePage() {
         <h1 class="hero-headline">${escapeHtml(hp.headline.text)}</h1>
         <p class="hero-tagline">${escapeHtml(hp.tagline.text)}</p>
         <p class="hero-subhead">${escapeHtml(hp.subhead.text)}</p>
+
+        <div class="hero-mascot-wrapper">
+          <!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
+          ${renderGuideMascot({ expression: 'happy', size: 104, className: 'animated' })}
+          ${renderSpeechBubble({ text: escapeHtml(hp.mascotGreeting ? hp.mascotGreeting.text : "Hi! I'm your Tutor Time guide. Ready to explore learning that pops?") })}
+        </div>
 
         <div class="hero-ctas">
           <a href="/book" class="btn btn-primary btn-large">${escapeHtml(hp.ctaBook.text)}</a>

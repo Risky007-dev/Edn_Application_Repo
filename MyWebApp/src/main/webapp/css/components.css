@@ -897,3 +897,118 @@ body {
   font-size: var(--font-size-sm);
 }
 
+/* ==========================================================================
+   Shared Mascot & Speech Bubble Styles
+   ========================================================================== */
+.mascot-guide,
+.mascot-bucket {
+  display: inline-block;
+  vertical-align: middle;
+  filter: drop-shadow(0 4px 12px rgba(26, 54, 93, 0.15));
+  transition: transform var(--transition-normal);
+}
+
+.hero-mascot-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin: var(--space-6) auto;
+  max-width: 520px;
+  flex-wrap: wrap;
+}
+
+.mascot-speech-bubble {
+  background: #FFFFFF;
+  border: 2px solid #2E75B6;
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  max-width: 320px;
+  text-align: left;
+}
+
+[data-theme="dark"] .mascot-speech-bubble {
+  background: #1A2634;
+  border-color: #F5A623;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.speech-bubble-tail {
+  position: absolute;
+  top: 50%;
+  left: -10px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 10px solid #2E75B6;
+}
+
+[data-theme="dark"] .speech-bubble-tail {
+  border-right-color: #F5A623;
+}
+
+@media (max-width: 600px) {
+  .hero-mascot-wrapper {
+    flex-direction: column;
+    text-align: center;
+  }
+  .speech-bubble-tail {
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: none;
+    border-bottom: 10px solid #2E75B6;
+  }
+  [data-theme="dark"] .speech-bubble-tail {
+    border-bottom-color: #F5A623;
+  }
+}
+
+.speech-bubble-text {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: #1A365D;
+  line-height: var(--line-height-normal);
+}
+
+[data-theme="dark"] .speech-bubble-text {
+  color: #FFFFFF;
+}
+
+/* Mascot Gentle Animations (Respects prefers-reduced-motion) */
+@media (prefers-reduced-motion: no-preference) {
+  .mascot-guide:hover,
+  .mascot-bucket:hover {
+    transform: translateY(-4px) scale(1.03);
+  }
+
+  .mascot-guide.animated,
+  .mascot-bucket.animated {
+    animation: mascotBob 3.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes mascotBob {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-6px); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-guide,
+  .mascot-bucket,
+  .mascot-guide.animated,
+  .mascot-bucket.animated {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+

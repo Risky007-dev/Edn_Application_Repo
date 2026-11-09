@@ -50,6 +50,7 @@ To accelerate initial launch review, please inspect and approve these core headl
 | Homepage | `hero.subhead` | Personalised Academic Support. Innovative Learning. Real Results. | PROPOSED-COPY |
 | Homepage | `hero.ctaBook` | Book a Consultation | PROPOSED-COPY |
 | Homepage | `hero.ctaExplore` | Explore Our Programmes | PROPOSED-COPY |
+| Homepage | `hero.mascotGreeting` | Hi! I'm your Tutor Time guide. Ready to explore learning that pops? | PROPOSED-COPY |
 | Homepage | `hero.card1.title` | Tutoring | PROPOSED-COPY |
 | Homepage | `hero.card1.name` | Personalised Tutoring & Academic Support | PROPOSED-COPY |
 | Homepage | `hero.card1.desc` | Personalised learning support tailored to individual student curriculum and pace. | PROPOSED-COPY |

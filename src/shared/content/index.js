@@ -61,6 +61,7 @@ const CONTENT = {
       subhead: { text: 'Personalised Academic Support. Innovative Learning. Real Results.', status: 'APPROVED' },
       ctaBook: { text: 'Book a Consultation', status: 'APPROVED' },
       ctaExplore: { text: 'Explore Our Programmes', status: 'APPROVED' },
+      mascotGreeting: { text: "Hi! I'm your Tutor Time guide. Ready to explore learning that pops?", status: 'PROPOSED-COPY' },
       options: [
         {
           key: 'tutoring',
