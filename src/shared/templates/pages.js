@@ -10,6 +10,7 @@ const config = require('../config');
 const { escapeHtml, renderLayout } = require('./layout');
 const { renderGuideMascot, renderSpeechBubble } = require('../components/mascotGuide');
 const { renderBucketMascot } = require('../components/mascotBucket');
+const { READINESS_QUESTIONS } = require('../content/readiness-questions');
 
 // Helper for consent checkbox
 function renderConsentCheckbox() {
@@ -93,6 +94,27 @@ function renderHomePage() {
           </div>
           <div class="finder-cta-action">
             <a href="/find-your-programme" class="btn btn-primary btn-large">Try Programme Finder &rarr;</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gamified CPEA Readiness Check Card (Task 4) -->
+    <section class="readiness-cta-section">
+      <div class="container">
+        <div class="readiness-cta-card">
+          <div class="readiness-cta-content">
+            <span class="badge-accent">${escapeHtml(content.homepage.readinessCta.tag.text)}</span>
+            <h2>${escapeHtml(content.homepage.readinessCta.title.text)}</h2>
+            <p>${escapeHtml(content.homepage.readinessCta.desc.text)}</p>
+            <div class="readiness-cta-features">
+              <span class="readiness-feature-tag">🌟 12 Interactive Questions</span>
+              <span class="readiness-feature-tag">🖨️ Printable Summary</span>
+              <span class="readiness-feature-tag">🔒 100% Client-Side</span>
+            </div>
+          </div>
+          <div class="readiness-cta-action">
+            <a href="/readiness-check" class="btn btn-primary btn-large">${escapeHtml(content.homepage.readinessCta.buttonText.text)} &rarr;</a>
           </div>
         </div>
       </div>
@@ -1210,6 +1232,71 @@ function renderResourcesPage() {
   });
 }
 
+// 15. CPEA Readiness Check (/readiness-check)
+function renderReadinessCheckPage() {
+  const isEnabled = config.features?.readinessCheck?.enabled ?? true;
+  if (!isEnabled) {
+    return renderLayout({
+      title: 'Readiness Check Unavailable',
+      description: 'The CPEA Readiness Check is currently unavailable.',
+      bodyHtml: `
+        <div class="container py-12 text-center">
+          <h1>Readiness Check Unavailable</h1>
+          <p>This module is currently taking a break. Please check back soon or <a href="/book">book a consultation</a> with Teacher Cassie.</p>
+        </div>
+      `,
+      currentPath: '/readiness-check'
+    });
+  }
+
+  const bodyHtml = `
+    <div class="readiness-page-wrapper">
+      <header class="readiness-hero-section">
+        <div class="container text-center">
+          <div class="readiness-official-disclaimer-pill" role="note">
+            <span>⚠️ Sample questions: not an official CPEA paper.</span>
+          </div>
+          <h1 class="readiness-page-title">CPEA Exam Readiness Check</h1>
+          <p class="readiness-page-subhead">A fun, interactive practice check for Caribbean primary students (approx. age 12) across Language Arts, Mathematics, Science, and Social Studies.</p>
+
+          <div class="readiness-mascot-row">
+            <!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
+            ${renderGuideMascot({ expression: 'happy', size: 88, id: 'readiness-mascot' })}
+            ${renderSpeechBubble({ text: "Welcome! Let's try 12 sample questions together. Take your time!", id: 'readiness-speech-text' })}
+          </div>
+
+          <div class="readiness-stars-container" aria-label="Progress star trail">
+            <div id="readiness-stars-trail" class="stars-trail"></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="container readiness-main-container">
+        <div id="readiness-live-announcer" class="sr-only" aria-live="polite"></div>
+        <div id="readiness-card" class="readiness-card">
+          <noscript>
+            <div class="service-notice">
+              <p>Please enable JavaScript to enjoy the interactive CPEA Readiness Check.</p>
+            </div>
+          </noscript>
+        </div>
+      </div>
+
+      <script type="application/json" id="readiness-questions-data">
+        ${JSON.stringify(READINESS_QUESTIONS)}
+      </script>
+    </div>
+  `;
+
+  return renderLayout({
+    title: 'CPEA Readiness Check (Sample Practice)',
+    description: 'Sample practice questions for the Caribbean Primary Exit Assessment covering Language Arts, Mathematics, Science, and Social Studies.',
+    bodyHtml,
+    currentPath: '/readiness-check',
+    extraScripts: ['/js/readiness.js']
+  });
+}
+
 module.exports = {
   renderHomePage,
   renderTraditionalTutoringPage,
@@ -1224,5 +1311,6 @@ module.exports = {
   renderPopcornGamePage,
   renderServiceFinderPage,
   renderSchoolPartnershipPage,
-  renderResourcesPage
+  renderResourcesPage,
+  renderReadinessCheckPage
 };

@@ -96,6 +96,13 @@ const CONTENT = {
       title: { text: 'Stay Connected with Tutor Time', status: 'APPROVED' },
       description: { text: 'Register your email address to receive program updates and educational resources.', status: 'APPROVED' },
       buttonText: { text: 'Register Interest', status: 'APPROVED' }
+    },
+    readinessCta: {
+      tag: { text: 'Primary Exit Exam Practice', status: 'PROPOSED-COPY' },
+      title: { text: 'Prepare with Our Free CPEA Readiness Check', status: 'PROPOSED-COPY' },
+      desc: { text: '12 interactive sample questions in Language Arts, Mathematics, Science, and Social Studies designed for Caribbean primary students. Fun, pressure-free practice with instant feedback and badges!', status: 'PROPOSED-COPY' },
+      buttonText: { text: 'Take Readiness Check', status: 'PROPOSED-COPY' },
+      disclaimer: { text: 'Sample questions: not an official CPEA paper.', status: 'PROPOSED-COPY' }
     }
   },
 

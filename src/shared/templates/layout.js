@@ -78,6 +78,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
               <li><a href="/services/traditional-tutoring" class="dropdown-link">Personalised Tutoring</a></li>
               <li><a href="/services/concierge" class="dropdown-link">Concierge Academic Coaching</a></li>
               <li><a href="/services/specialist-support" class="dropdown-link">Individualised Learning Support</a></li>
+              <li><a href="/readiness-check" class="dropdown-link">CPEA Readiness Check</a></li>
             </ul>
           </li>
 
@@ -141,6 +142,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
           <li><a href="/services/popcorn-maths">Popcorn Math</a></li>
           <li><a href="/services/specialist-support">Individualised Learning Support</a></li>
           <li><a href="/find-your-programme">Find Your Programme</a></li>
+          <li><a href="/readiness-check">CPEA Readiness Check</a></li>
           <li><a href="/resources">Resources</a></li>
         </ul>
       </div>

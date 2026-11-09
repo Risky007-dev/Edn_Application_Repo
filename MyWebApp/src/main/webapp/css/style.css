@@ -1211,6 +1211,10 @@ h1, h2, h3, h4, h5, h6,
   .mascot-placeholder,
   .game-arena,
   .bucket-stage,
+  .print-hidden,
+  .chatbot-root,
+  .readiness-hero-section,
+  .readiness-stars-container,
   form button[type="submit"] {
     display: none !important;
   }

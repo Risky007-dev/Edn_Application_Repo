@@ -66,6 +66,11 @@ To accelerate initial launch review, please inspect and approve these core headl
 | Homepage | `subscribe.title` | Stay Connected with Tutor Time | PROPOSED-COPY |
 | Homepage | `subscribe.desc` | Register your email address to receive program updates and educational resources. | PROPOSED-COPY |
 | Homepage | `subscribe.btn` | Register Interest | PROPOSED-COPY |
+| Homepage | `readinessCta.tag` | Primary Exit Exam Practice | PROPOSED-COPY |
+| Homepage | `readinessCta.title` | Prepare with Our Free CPEA Readiness Check | PROPOSED-COPY |
+| Homepage | `readinessCta.desc` | 12 interactive sample questions in Language Arts, Mathematics, Science, and Social Studies designed for Caribbean primary students. Fun, pressure-free practice with instant feedback and badges! | PROPOSED-COPY |
+| Homepage | `readinessCta.buttonText` | Take Readiness Check | PROPOSED-COPY |
+| Homepage | `readinessCta.disclaimer` | Sample questions: not an official CPEA paper. | PROPOSED-COPY |
 
 ---
 

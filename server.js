@@ -32,7 +32,8 @@ const {
   renderPopcornGamePage,
   renderServiceFinderPage,
   renderSchoolPartnershipPage,
-  renderResourcesPage
+  renderResourcesPage,
+  renderReadinessCheckPage
 } = require('./src/shared/templates/pages');
 const { sanitizeInterestHint } = require('./src/shared/finder/serviceFinder');
 
@@ -108,7 +109,8 @@ const CANONICAL_PUBLIC_ROUTES = [
   '/resources',
   '/book',
   '/contact',
-  '/faq'
+  '/faq',
+  '/readiness-check'
 ];
 
 app.get('/robots.txt', (req, res) => {
@@ -261,6 +263,11 @@ app.get('/popcorn-maths/school-partnership', (req, res) => {
 // GET /resources - TT-16 Resources Page Stub
 app.get('/resources', (req, res) => {
   res.send(renderResourcesPage());
+});
+
+// GET /readiness-check - Gamified CPEA Readiness Check (Task 4)
+app.get('/readiness-check', (req, res) => {
+  res.send(renderReadinessCheckPage());
 });
 
 // Favicon routes
