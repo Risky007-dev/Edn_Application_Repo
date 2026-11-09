@@ -4,6 +4,20 @@ Comprehensive setup, configuration, and operations guide for **Tutor Time with T
 
 ---
 
+## 📖 Local Preview (Non-Developer Guide)
+
+Follow these simple steps to run the complete website on your laptop or workstation for review:
+
+1. **Clone**: `git clone https://github.com/Risky007-dev/Edn_Application_Repo.git && cd Edn_Application_Repo`
+2. **Install**: Run `npm install`
+3. **Run**: Run `npm run dev` (or double-click `run.bat` on Windows, `./run.sh` on Linux)
+4. **Open**: Navigate to `http://localhost:5001` in your browser. All forms store safely to `./data/tutortime-submissions.json`.
+5. **Test**: Run `npm test` to verify all automated test suites pass.
+6. **Release Lifecycle**:
+   - `feature/branch` -> Local Preview & Automated Tests -> Owner Review of Diffs & `docs/COPY_REVIEW.md` -> Merge to `sprint` -> Cloud Release to `tutortime.ai`.
+
+---
+
 ## 🏗️ System Architecture
 
 * **Runtime:** Node.js (v20.x or higher)

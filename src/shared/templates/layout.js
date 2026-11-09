@@ -4,6 +4,8 @@
  * strict CSP compliance (no inline scripts/events), and Chatbot placeholder.
  */
 
+const config = require('../config');
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -20,8 +22,9 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
 
   const fullTitle = `${escapeHtml(title)} | Tutor Time with Teacher Cassie`;
   const metaDesc = escapeHtml(description || 'Tutor Time with Teacher Cassie - Personalised Tutoring, Concierge Academic Coaching, and Popcorn Math.');
-  const siteOrigin = (process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
+  const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
   const canonicalUrl = `${escapeHtml(siteOrigin)}${escapeHtml(currentPath)}`;
+  const showPreviewBanner = config.features?.localPreviewBanner && process.env.NODE_ENV !== 'production';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -44,6 +47,13 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  ${showPreviewBanner ? `
+  <aside class="local-preview-banner" role="status" aria-label="Local Preview Environment">
+    <div class="local-preview-content">
+      <span class="preview-badge">LOCAL PREVIEW</span>
+      <span class="preview-text">Local preview environment &mdash; flat-file storage active; live cloud services and emails disabled.</span>
+    </div>
+  </aside>` : ''}
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
   <header class="site-header">

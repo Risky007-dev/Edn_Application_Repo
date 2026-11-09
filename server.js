@@ -112,14 +112,14 @@ const CANONICAL_PUBLIC_ROUTES = [
 ];
 
 app.get('/robots.txt', (req, res) => {
-  const siteOrigin = (process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
+  const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
   res.type('text/plain').send(
     `User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${siteOrigin}/sitemap.xml\n`
   );
 });
 
 app.get('/sitemap.xml', (req, res) => {
-  const siteOrigin = (process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
+  const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
   const urlsXml = CANONICAL_PUBLIC_ROUTES.map(
     (routePath) => `  <url><loc>${siteOrigin}${routePath}</loc></url>`
   ).join('\n');

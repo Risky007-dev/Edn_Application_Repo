@@ -4,6 +4,55 @@ Production web application for **Tutor Time with Teacher Cassie** and the **Popc
 
 ---
 
+## 📖 Local Preview (Non-Developer Guide)
+
+This walkthrough enables reviewers, educators, and team members to preview and test the complete application locally on any computer with zero cloud setup or AWS credentials.
+
+### Step 1: Clone the Code
+Download a local copy of the repository to your computer:
+```bash
+git clone https://github.com/Risky007-dev/Edn_Application_Repo.git
+cd Edn_Application_Repo
+```
+
+### Step 2: Install Dependencies
+Open your terminal (macOS/Linux) or Command Prompt / PowerShell (Windows) inside the folder and run:
+```bash
+npm install
+```
+*(This downloads all project libraries onto your computer safely.)*
+
+### Step 3: Run the Local Site
+Start the website in local offline mode:
+```bash
+npm run dev
+```
+*(Alternatively, on Windows double-click `run.bat`; on Linux/macOS run `./run.sh`.)*
+
+### Step 4: Open and Explore
+Open your web browser (Chrome, Edge, Safari, Firefox) and navigate to:
+```
+http://localhost:5001
+```
+- All web pages, forms, and games run in safe offline mode.
+- Submissions are stored locally in the `./data/` folder as JSON files; no AWS credentials or live email dispatches are used.
+- To display a prominent yellow warning banner across pages during internal reviews, set `SHOW_LOCAL_PREVIEW_BANNER=true` in your `.env` file.
+
+### Step 5: Test the Application
+Verify that all system tests pass:
+```bash
+npm test
+```
+
+### How a Change Goes from Branch to Production
+1. **Branch**: An engineer creates a dedicated task branch off `sprint` (e.g. `feature/nov9-rebuild`).
+2. **Local Preview & Test**: Changes are checked locally against all viewports (360px mobile, 768px tablet, 1200px desktop) and the automated test suite.
+3. **Owner Review & Diff Check**: The branch is submitted for review. The business owner reviews code diffs, proposed copy (`docs/COPY_REVIEW.md`), and visual screenshots.
+4. **Merge to Sprint**: Once approved, the branch is merged into `sprint`.
+5. **Production Release**: Sprint releases undergo final staging checks and are deployed to the live production server (`tutortime.ai`).
+
+---
+
 ## 1. Quick Start: Local Development
 
 ### Prerequisites

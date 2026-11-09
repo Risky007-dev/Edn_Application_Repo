@@ -859,3 +859,41 @@ body {
   }
 }
 
+/* ==========================================================================
+   Local Preview Environment Banner
+   ========================================================================== */
+.local-preview-banner {
+  background: linear-gradient(90deg, #F5A623 0%, #F8E71C 100%);
+  color: #1A365D;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+  border-bottom: 2px solid #1A365D;
+  position: relative;
+  z-index: 1000;
+}
+
+.local-preview-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.preview-badge {
+  background: #1A365D;
+  color: #FFFFFF;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.preview-text {
+  font-size: var(--font-size-sm);
+}
+
