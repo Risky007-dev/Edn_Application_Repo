@@ -31,5 +31,16 @@ module.exports = {
   popcornGameMultiLevel: true,
   conciergeReadinessSurvey: true,
   tutoringPrintableChecklist: true,
-  faultInjectionEnabled: process.env.FAULT_INJECTION_ENABLED === 'true'
+  faultInjectionEnabled: process.env.FAULT_INJECTION_ENABLED === 'true',
+
+  // Swappable Mascot Asset Configuration
+  mascots: {
+    guide: {
+      // Set imagePath (e.g. '/assets/mascots/kashamar.png') or GUIDE_MASCOT_IMAGE_PATH env var
+      // to replace the inline SVG placeholder with Cassie's final artwork.
+      imagePath: process.env.GUIDE_MASCOT_IMAGE_PATH || null,
+      expressions: null,
+      alt: 'Tutor Time Guide avatar'
+    }
+  }
 };

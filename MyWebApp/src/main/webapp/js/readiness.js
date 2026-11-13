@@ -33,16 +33,33 @@
     var speechEl = document.getElementById('readiness-speech-text');
 
     if (mascotEl) {
-      // Update mouth path inside SVG
-      var mouth = mascotEl.querySelector('path[d*="Q50"], path[d*="66 Q50"]');
-      if (mouth && mascotSvgs[expression]) {
-        var temp = document.createElement('div');
-        temp.innerHTML = '<svg>' + mascotSvgs[expression] + '</svg>';
-        var newPath = temp.querySelector('path');
-        if (newPath) {
-          mouth.setAttribute('d', newPath.getAttribute('d'));
-          mouth.setAttribute('fill', newPath.getAttribute('fill'));
-          mouth.setAttribute('stroke', newPath.getAttribute('stroke'));
+      mascotEl.setAttribute('data-expression', expression);
+
+      if (mascotEl.tagName && mascotEl.tagName.toLowerCase() === 'img') {
+        var exprAttr = mascotEl.getAttribute('data-expressions');
+        if (exprAttr) {
+          try {
+            var exprMap = JSON.parse(exprAttr);
+            if (exprMap && exprMap[expression]) {
+              mascotEl.setAttribute('src', exprMap[expression]);
+            }
+          } catch (e) {
+            // Fall back to CSS state change via data-expression
+          }
+        }
+        mascotEl.setAttribute('alt', 'Tutor Time Guide avatar (' + expression + ')');
+      } else {
+        // Update mouth path inside inline SVG placeholder
+        var mouth = mascotEl.querySelector('path[d*="Q50"], path[d*="66 Q50"]');
+        if (mouth && mascotSvgs[expression]) {
+          var temp = document.createElement('div');
+          temp.innerHTML = '<svg>' + mascotSvgs[expression] + '</svg>';
+          var newPath = temp.querySelector('path');
+          if (newPath) {
+            mouth.setAttribute('d', newPath.getAttribute('d'));
+            mouth.setAttribute('fill', newPath.getAttribute('fill'));
+            mouth.setAttribute('stroke', newPath.getAttribute('stroke'));
+          }
         }
       }
     }

@@ -6,9 +6,23 @@
  * TODO(mascot): Final cartoon illustration of Kashamar will be swapped in here.
  */
 
-function renderGuideMascot({ expression = 'neutral', size = 96, className = '', id = '' } = {}) {
+const config = require('../config');
+
+function renderGuideMascot({ expression = 'neutral', size = 96, className = '', id = '', assetConfig = config.mascots?.guide } = {}) {
   const safeId = id ? ` id="${id}"` : '';
   const safeClass = ['mascot-guide', className].filter(Boolean).join(' ');
+  const altBase = (assetConfig && assetConfig.alt) || 'Tutor Time Guide avatar';
+
+  // Swappable static image mode: driven by config.mascots.guide
+  const exprMap = assetConfig && assetConfig.expressions && typeof assetConfig.expressions === 'object'
+    ? assetConfig.expressions
+    : null;
+  const imgSrc = (exprMap && exprMap[expression]) || (assetConfig && assetConfig.imagePath) || null;
+
+  if (imgSrc) {
+    const exprAttr = exprMap ? ` data-expressions='${JSON.stringify(exprMap)}'` : '';
+    return `<img${safeId} src="${imgSrc}" alt="${altBase} (${expression})" class="${safeClass} mascot-guide-img" width="${size}" height="${size}" data-expression="${expression}"${exprAttr}>`;
+  }
 
   // Expression-specific facial SVG elements
   let mouthPath;
@@ -53,7 +67,7 @@ function renderGuideMascot({ expression = 'neutral', size = 96, className = '', 
   }
 
   return `<!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
-<svg${safeId} class="${safeClass}" width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tutor Time Guide avatar (${expression})">
+<svg${safeId} class="${safeClass}" width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tutor Time Guide avatar (${expression})" data-expression="${expression}">
   <defs>
     <linearGradient id="guideGlow" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#2E75B6" stop-opacity="0.2"/>

@@ -2132,4 +2132,24 @@ body {
   }
 }
 
+/* Swappable Guide Mascot Image & Expression States */
+.mascot-guide-img {
+  object-fit: contain;
+  border-radius: 50%;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.mascot-guide[data-expression="happy"] {
+  transform: scale(1.03);
+}
+
+.mascot-guide[data-expression="thinking"] {
+  transform: rotate(-3deg);
+}
+
+.mascot-guide[data-expression="celebrating"] {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 8px rgba(245, 166, 35, 0.55));
+}
+
 

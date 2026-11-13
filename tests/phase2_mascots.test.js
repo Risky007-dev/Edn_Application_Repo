@@ -64,6 +64,28 @@ const componentsCss = fs.readFileSync(path.join(__dirname, '../MyWebApp/src/main
 assert('CSS includes prefers-reduced-motion: no-preference for bobbing animation', componentsCss.includes('@media (prefers-reduced-motion: no-preference)'));
 assert('CSS includes prefers-reduced-motion: reduce disabling animations', componentsCss.includes('@media (prefers-reduced-motion: reduce)') && componentsCss.includes('animation: none !important;'));
 
+console.log('\n--- 5. Swappable Static Asset Config Mode ---');
+const swappedSingle = renderGuideMascot({
+  expression: 'celebrating',
+  size: 96,
+  assetConfig: { imagePath: '/assets/mascots/kashamar.png', alt: 'Teacher Cassie' }
+});
+assert('Swapped single image renders <img> with configured src', swappedSingle.includes('<img') && swappedSingle.includes('src="/assets/mascots/kashamar.png"'));
+assert('Swapped single image includes data-expression for CSS fallback', swappedSingle.includes('data-expression="celebrating"'));
+
+const swappedExpr = renderGuideMascot({
+  expression: 'thinking',
+  assetConfig: {
+    imagePath: '/assets/mascots/kashamar-neutral.png',
+    expressions: {
+      neutral: '/assets/mascots/kashamar-neutral.png',
+      thinking: '/assets/mascots/kashamar-thinking.png'
+    }
+  }
+});
+assert('Swapped expression map selects expression-specific image', swappedExpr.includes('src="/assets/mascots/kashamar-thinking.png"'));
+assert('Swapped expression map embeds data-expressions JSON for client reaction updates', swappedExpr.includes('data-expressions='));
+
 console.log('\n================================================================');
 console.log(`TASK 2 TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);
 console.log('================================================================\n');
