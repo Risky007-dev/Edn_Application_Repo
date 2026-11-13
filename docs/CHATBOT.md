@@ -15,8 +15,8 @@
 | Variable | Type | Default | Description |
 |---|---|---|---|
 | `FEATURES_CHATBOT_ENABLED` | Boolean | `true` | Master kill-switch. When `false`, the widget is hidden and `/api/chat` returns 503. |
-| `ANTHROPIC_API_KEY` | String | *(None)* | Secret Anthropic API key. When omitted, the widget is dormant and startup logs a warning. Never exposed to front-end. |
-| `CLAUDE_MODEL` | String | `claude-3-5-haiku-20241022` | Anthropic Claude model version. |
+| `ANTHROPIC_API_KEY` | String | *(None)* | Secret Anthropic API key. When omitted, the widget renders an explicit "Chat is currently unavailable" state (disabled input, contact/booking links) and startup logs a warning. Never exposed to front-end. |
+| `CHATBOT_MODEL` | String | `claude-haiku-5-5` | Anthropic Claude model version (`CLAUDE_MODEL` also supported as fallback). |
 | `CHATBOT_DAILY_REQUEST_CAP` | Number | `200` | Process-level hard cap on queries per calendar day across all users. |
 | `CHATBOT_RATE_LIMIT_MAX` | Number | `10` | Maximum requests per IP address within the rate-limit window. |
 | `CHATBOT_RATE_LIMIT_WINDOW_MINUTES` | Number | `10` | IP rate-limit time window in minutes. |
@@ -38,10 +38,10 @@
         │
         ▼
 [ Anthropic Messages API ]
-        │  Model: CLAUDE_MODEL (default claude-3-5-haiku-20241022)
+        │  Model: CHATBOT_MODEL || CLAUDE_MODEL (default claude-haiku-5-5)
         │  System Prompt: src/shared/chatbot/systemPrompt.js
         │  Grounded Facts: src/shared/chatbot/knowledge.json
-        │  Server Tool: web_search_20250305 (max_uses: 3)
+        │  Server Tool: web_search_20260318 (max_uses: 3)
         ▼
 [ Response Formatter ] ───► Extracts text & search source URLs
         │

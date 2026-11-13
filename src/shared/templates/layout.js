@@ -26,7 +26,8 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
   const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
   const canonicalUrl = `${escapeHtml(siteOrigin)}${escapeHtml(currentPath)}`;
   const showPreviewBanner = config.features?.localPreviewBanner && process.env.NODE_ENV !== 'production';
-  const showChatbot = (config.features?.chatbot?.enabled ?? true) && Boolean(process.env.ANTHROPIC_API_KEY || process.env.ENABLE_MOCK_CHATBOT_FRONTEND === 'true');
+  const showChatbot = config.features?.chatbot?.enabled ?? true;
+  const chatbotAvailable = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ENABLE_MOCK_CHATBOT_FRONTEND === 'true');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -124,7 +125,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
     ${bodyHtml}
   </main>
 
-  ${showChatbot ? `${renderChatWidget()}\n  <script src="/js/chatbot.js"></script>` : '<!-- TODO: AI Chatbot placeholder - Phase 3 evaluation per Cassie advisory -->'}
+  ${showChatbot ? `${renderChatWidget({ available: chatbotAvailable })}\n  <script src="/js/chatbot.js"></script>` : '<!-- TODO: AI Chatbot disabled via FEATURES_CHATBOT_ENABLED=false -->'}
 
   <footer class="site-footer">
     <div class="footer-container">

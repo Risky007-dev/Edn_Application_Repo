@@ -11,7 +11,8 @@ const { getSystemPrompt } = require('./systemPrompt');
 const siteKnowledge = require('./knowledge.json');
 
 // Configuration constants
-const DEFAULT_MODEL = 'claude-3-5-haiku-20241022';
+const DEFAULT_MODEL = 'claude-haiku-5-5';
+const WEB_SEARCH_TOOL_TYPE = 'web_search_20260318';
 const MAX_INPUT_LENGTH = Number(process.env.CHATBOT_MAX_INPUT_LENGTH || 500);
 const MAX_CONVERSATION_TURNS = 10;
 const TIMEOUT_MS = 15000;
@@ -151,7 +152,7 @@ async function handleChat(req, res) {
 
   try {
     const client = injectedClient || new Anthropic({ apiKey });
-    const model = process.env.CLAUDE_MODEL || DEFAULT_MODEL;
+    const model = process.env.CHATBOT_MODEL || process.env.CLAUDE_MODEL || DEFAULT_MODEL;
 
     // Build messages payload
     const messages = [];
@@ -173,7 +174,7 @@ async function handleChat(req, res) {
       messages,
       tools: [
         {
-          type: 'web_search_20250305',
+          type: WEB_SEARCH_TOOL_TYPE,
           name: 'web_search',
           max_uses: 3
         }
@@ -256,5 +257,6 @@ module.exports = {
   checkStartupKey,
   MAX_INPUT_LENGTH,
   MAX_CONVERSATION_TURNS,
-  DEFAULT_MODEL
+  DEFAULT_MODEL,
+  WEB_SEARCH_TOOL_TYPE
 };

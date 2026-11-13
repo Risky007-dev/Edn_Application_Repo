@@ -9,7 +9,8 @@ const {
   resetDailyCounterForTests,
   MAX_INPUT_LENGTH,
   checkAndIncrementDailyCap,
-  DEFAULT_MODEL
+  DEFAULT_MODEL,
+  WEB_SEARCH_TOOL_TYPE
 } = require('../src/shared/chatbot/chatController');
 const { SYSTEM_PROMPT, getSystemPrompt } = require('../src/shared/chatbot/systemPrompt');
 const { renderChatWidget } = require('../src/shared/chatbot/widget');
@@ -175,13 +176,35 @@ async function run() {
   const hasChatLogsOnDisk = testDataFiles.some(f => f.includes('chat') || f.includes('conversation'));
   assert('Zero conversation files stored on disk', !hasChatLogsOnDisk);
 
-  console.log('\n--- 8. Front-End Widget Markup & Notice ---');
+  console.log('\n--- 8. Front-End Widget Markup, Model & Unavailable State ---');
+  assert('Default model is claude-haiku-5-5', DEFAULT_MODEL === 'claude-haiku-5-5');
+  assert('Web search tool type is web_search_20260318', WEB_SEARCH_TOOL_TYPE === 'web_search_20260318');
   const widgetHtml = renderChatWidget();
   assert('Widget renders accessible toggle button', widgetHtml.includes('id="chatbot-toggle-btn"'));
   assert('Widget renders dialog panel with role="dialog"', widgetHtml.includes('role="dialog"') && widgetHtml.includes('id="chatbot-panel"'));
   assert('Widget displays privacy notice with link to /privacy', widgetHtml.includes('Please don&#39;t share personal details') || widgetHtml.includes("Please don't share personal details"));
   assert('Widget displays Tutor Time Helper title', widgetHtml.includes('Tutor Time Helper'));
   assert('Widget includes input with maxlength="500"', widgetHtml.includes('maxlength="500"'));
+
+  const unavailableWidgetHtml = renderChatWidget({ available: false });
+  assert('Unavailable widget explicitly shows "Chat is currently unavailable"', unavailableWidgetHtml.includes('Chat is currently unavailable'));
+  assert('Unavailable widget disables input and marks data-chatbot-unavailable', unavailableWidgetHtml.includes('data-chatbot-unavailable="true"') && unavailableWidgetHtml.includes('disabled'));
+
+  // Test CHATBOT_MODEL env var override
+  let capturedModel = null;
+  setInjectedClient({
+    messages: {
+      create: async (params) => {
+        capturedModel = params.model;
+        return { content: [{ type: 'text', text: 'Ok' }] };
+      }
+    }
+  });
+  process.env.CHATBOT_MODEL = 'claude-haiku-test-override';
+  const resModel = createMockRes();
+  await handleChat({ body: { message: 'Model override check' } }, resModel);
+  assert('CHATBOT_MODEL env var overrides default model', capturedModel === 'claude-haiku-test-override');
+  delete process.env.CHATBOT_MODEL;
 
   // Clean up env
   if (originalApiKey) {
