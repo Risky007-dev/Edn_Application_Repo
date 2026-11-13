@@ -727,8 +727,9 @@ function renderContactPage() {
           ` : ''}
 
           <div class="service-notice mt-4" data-todo="content">
-            <h4>Office Hours &amp; Locations</h4>
-            <p>${escapeHtml(content.global.detailsComingSoon.text)}</p>
+            <h4>Locations &amp; Office Hours</h4>
+            <p>Tutor Time and Popcorn Math operate on Anguilla. In-person Popcorn Math sessions are planned to run 1 hour weekly after school across primary school terms (8 to 10 weeks per series).</p>
+            <p class="text-muted"><em>Confirmed office hours and mailing address will be published following owner confirmation.</em></p>
           </div>
         </div>
 
@@ -838,15 +839,16 @@ function renderAboutPage() {
     <div class="container content-container">
       <section class="content-block">
         <h2>Our Mission</h2>
-        <p data-todo="content">${escapeHtml(ab.mission.text)}</p>
+        <p>${escapeHtml(ab.mission.text)}</p>
 
         <h2 class="mt-4">Teacher Cassie &amp; Our Team</h2>
-        <p data-todo="content">${escapeHtml(ab.biography.text)}</p>
+        <p>${escapeHtml(ab.biography.text)}</p>
+        <p class="text-muted" data-todo="content"><em>${escapeHtml(ab.biographyPendingNote.text)}</em></p>
 
         <div class="cta-box mt-5">
           <h3>Learn More About Our Programmes</h3>
           <p>Explore how our tailored learning pathways inspire academic confidence and curiosity.</p>
-          <a href="/services/popcorn-maths" class="btn btn-primary">Discover Popcorn Math</a>
+          <a href="/services/popcorn-math" class="btn btn-primary">Discover Popcorn Math</a>
           <a href="/book" class="btn btn-secondary">Book a Consultation</a>
         </div>
       </section>
@@ -1205,19 +1207,36 @@ function renderResourcesPage() {
       <div class="container" data-canonical="Educational Resources">
         <span class="page-eyebrow">Resources</span>
         <h1>${escapeHtml(rp.headline.text)}</h1>
-        <p class="lead" data-todo="content">${escapeHtml(rp.details.text)}</p>
+        <p class="lead">${escapeHtml(rp.details.text)}</p>
       </div>
     </div>
 
     <div class="container content-container">
       <section class="content-block">
-        <div class="helper-box">
-          <p data-todo="content">${escapeHtml(rp.details.text)}</p>
+        <div class="service-grid">
+          <div class="service-card">
+            <h3>CPEA Readiness Check</h3>
+            <p>12 interactive sample multiple-choice questions across Language Arts, Mathematics, Science, and Social Studies.</p>
+            <a href="/readiness-check" class="btn btn-primary">Try Readiness Check</a>
+          </div>
+          <div class="service-card">
+            <h3>Popcorn Math Play &amp; Learn</h3>
+            <p>A short, kid-friendly math teaser game to warm up number skills.</p>
+            <a href="/popcorn-math/play" class="btn btn-secondary">Play Mini-Game</a>
+          </div>
+          <div class="service-card">
+            <h3>Smart Service Finder</h3>
+            <p>Answer three quick questions to find the best Tutor Time or Popcorn Math pathway for your child.</p>
+            <a href="/find-your-programme" class="btn btn-secondary">Find Your Programme</a>
+          </div>
+        </div>
+        <div class="helper-box mt-4" data-todo="content">
+          <p>${escapeHtml(rp.downloadablesPendingNote.text)}</p>
         </div>
         <div class="cta-box mt-4">
           <h3>Explore Our Current Programmes</h3>
           <p>Discover our core academic tutoring, concierge coaching, and interactive Popcorn Math sessions.</p>
-          <a href="/services/popcorn-maths" class="btn btn-primary">Popcorn Math</a>
+          <a href="/services/popcorn-math" class="btn btn-primary">Popcorn Math</a>
           <a href="/book" class="btn btn-secondary">Book a Consultation</a>
         </div>
       </section>

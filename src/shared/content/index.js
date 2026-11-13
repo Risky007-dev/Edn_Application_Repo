@@ -212,7 +212,7 @@ const CONTENT = {
       },
       {
         question: { text: 'What is Popcorn Math?', status: 'APPROVED' },
-        answer: { text: 'Popcorn Math is an energetic, interactive mathematics programme designed to make math concepts fun, visual, and memorable through challenges, games, and hands-on activities.', status: 'APPROVED' }
+        answer: { text: 'Popcorn Math is an in-person, hands-on after-school maths-fun programme on Anguilla for primary school children (Grades 1 to 5). Each week for one hour, children make something—like a 3D tetrahedron or cube, or activities using manipulatives like popcorn—and take home what they made.', status: 'APPROVED' }
       },
       {
         question: { text: 'How do consultations work?', status: 'APPROVED' },
@@ -228,16 +228,17 @@ const CONTENT = {
       },
       {
         question: { text: 'What are session rates and schedules?', status: 'APPROVED' },
-        answer: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
+        answer: { text: 'A Popcorn Math series is planned to run 8 to 10 weeks within a primary school term, meeting for 1 hour each week, starting with a January pilot on Anguilla. Fees are paid per series and confirmed upon registration enquiry; tutoring schedules and rates are discussed during your initial consultation.', status: 'APPROVED' }
       }
     ]
   },
 
   aboutPage: {
     title: { text: 'About Tutor Time', status: 'APPROVED' },
-    lead: { text: 'Dedicated to inspiring academic confidence and joyful learning.', status: 'APPROVED' },
-    mission: { text: 'Details coming soon.', status: 'STUB', todo: 'content' },
-    biography: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
+    lead: { text: 'Dedicated to inspiring academic confidence and joyful learning on Anguilla.', status: 'APPROVED' },
+    mission: { text: 'Tutor Time with Teacher Cassie brings warm, personalised tutoring and coaching to learners, alongside Popcorn Math—our in-person, hands-on after-school maths-fun programme for primary children (Grades 1 to 5) on Anguilla. Every Popcorn Math session lets children enjoy maths by building something they can take home.', status: 'APPROVED' },
+    biography: { text: 'Tutor Time is founder-led by Teacher Cassie (Kashamar Lewis), who teaches tutoring students and designs the finished models for Popcorn Math. In-person Popcorn Math sessions are led by vetted independent adult presenters (aged 18+, such as primary teachers and young adults) following Teacher Cassie’s model.', status: 'APPROVED' },
+    biographyPendingNote: { text: 'Teacher Cassie’s full personal biography and teaching credentials will be added here following owner review.', status: 'STUB', todo: 'content' }
   },
 
   gamePage: {
@@ -268,7 +269,8 @@ const CONTENT = {
   resourcesPage: {
     title: { text: 'Educational Resources', status: 'APPROVED' },
     headline: { text: 'Educational Resources', status: 'APPROVED' },
-    details: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
+    details: { text: 'Explore our interactive learning tools—including the free CPEA Readiness Check, the Popcorn Math Play & Learn mini-game, and the Smart Service Finder.', status: 'APPROVED' },
+    downloadablesPendingNote: { text: 'Printable parent guides and downloadable worksheet packs are being prepared and will be added here.', status: 'STUB', todo: 'content' }
   },
 
   popcornLocations: [
