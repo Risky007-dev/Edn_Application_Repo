@@ -31,100 +31,118 @@ function renderGuideMascot({ expression = 'neutral', size = 96, className = '', 
 
   switch (expression) {
     case 'happy':
-      mouthPath = '<path d="M40 68 Q50 82 60 68" stroke="#1A365D" stroke-width="3" stroke-linecap="round" fill="#F5A623"/>';
-      eyeDecorations = '<path d="M36 50 Q40 45 44 50" stroke="#1A365D" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
-                       '<path d="M56 50 Q60 45 64 50" stroke="#1A365D" stroke-width="2.5" fill="none" stroke-linecap="round"/>';
+      mouthPath = '<path d="M41 66 Q50 76 59 66 Z" fill="#D94848" stroke="#1A365D" stroke-width="2" stroke-linejoin="round"/><path d="M44 71 Q50 75 56 71" fill="#FF8A80"/>';
+      eyeDecorations = '<path d="M35 50 Q40 45 45 50" stroke="#1A365D" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+                       '<path d="M55 50 Q60 45 65 50" stroke="#1A365D" stroke-width="2.6" fill="none" stroke-linecap="round"/>';
       break;
 
     case 'thinking':
-      mouthPath = '<path d="M43 72 Q50 68 57 72" stroke="#1A365D" stroke-width="3" stroke-linecap="round" fill="none"/>';
-      eyeDecorations = '<circle cx="40" cy="51" r="3.5" fill="#1A365D"/>' +
-                       '<circle cx="60" cy="49" r="3.5" fill="#1A365D"/>' +
-                       '<path d="M55 43 Q60 41 65 44" stroke="#1A365D" stroke-width="2" fill="none"/>';
-      expressionBadge = '<circle cx="78" cy="28" r="4" fill="#F5A623" opacity="0.8"/>' +
-                        '<circle cx="85" cy="18" r="7" fill="#F8E71C" opacity="0.9"/>' +
-                        '<text x="85" y="22" font-size="9" text-anchor="middle" fill="#1A365D" font-weight="bold">?</text>';
+      mouthPath = '<path d="M44 68 Q50 66 56 69" stroke="#1A365D" stroke-width="2.4" stroke-linecap="round" fill="none"/>';
+      eyeDecorations = '<circle cx="40" cy="49" r="3.4" fill="#1A365D"/>' +
+                       '<circle cx="60" cy="48" r="3.4" fill="#1A365D"/>' +
+                       '<circle cx="41.2" cy="47.8" r="1.1" fill="#FFFFFF"/>' +
+                       '<circle cx="61.2" cy="46.8" r="1.1" fill="#FFFFFF"/>' +
+                       '<path d="M35 43 Q40 41 44 43" stroke="#1A365D" stroke-width="1.8" stroke-linecap="round" fill="none"/>' +
+                       '<path d="M55 41 Q60 38 65 41" stroke="#1A365D" stroke-width="1.8" stroke-linecap="round" fill="none"/>';
+      expressionBadge = '<circle cx="78" cy="28" r="3.2" fill="#F5A623" opacity="0.9"/>' +
+                        '<circle cx="85" cy="18" r="7.5" fill="#FFF3CD" stroke="#F5A623" stroke-width="1.8"/>' +
+                        '<text x="85" y="22" font-size="10" text-anchor="middle" fill="#1A365D" font-weight="bold">?</text>';
       break;
 
     case 'celebrating':
-      mouthPath = '<path d="M38 66 Q50 84 62 66 Z" fill="#E65100" stroke="#1A365D" stroke-width="2.5"/>';
-      eyeDecorations = '<path d="M35 50 L40 46 L45 50" stroke="#1A365D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' +
-                       '<path d="M55 50 L60 46 L65 50" stroke="#1A365D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>';
-      expressionBadge = '<polygon points="82,22 85,28 92,28 86,32 89,38 82,34 76,38 78,32 73,28 80,28" fill="#F5A623"/>' +
-                        '<polygon points="20,24 22,29 27,29 23,32 25,37 20,33 15,37 17,32 13,29 18,29" fill="#F8E71C"/>' +
-                        '<circle cx="86" cy="44" r="2.5" fill="#2E75B6"/>' +
-                        '<circle cx="16" cy="46" r="2.5" fill="#F5A623"/>';
+      mouthPath = '<path d="M39 65 Q50 79 61 65 Z" fill="#D94848" stroke="#1A365D" stroke-width="2" stroke-linejoin="round"/><path d="M43 72 Q50 77 57 72" fill="#FF8A80"/>';
+      eyeDecorations = '<path d="M35 50 Q40 44 45 50" stroke="#1A365D" stroke-width="2.6" stroke-linecap="round" fill="none"/>' +
+                       '<path d="M55 50 Q60 44 65 50" stroke="#1A365D" stroke-width="2.6" stroke-linecap="round" fill="none"/>';
+      expressionBadge = '<polygon points="83,16 85.5,21.5 91.5,22 87,26 88.5,32 83,28.8 77.5,32 79,26 74.5,22 80.5,21.5" fill="#F5A623"/>' +
+                        '<polygon points="17,18 19,22.5 24,23 20.3,26.2 21.5,31 17,28.3 12.5,31 13.7,26.2 10,23 15,22.5" fill="#F8E71C"/>' +
+                        '<circle cx="86" cy="40" r="2.2" fill="#2E75B6"/>' +
+                        '<circle cx="14" cy="42" r="2.2" fill="#F5A623"/>';
       break;
 
     case 'neutral':
     default:
-      mouthPath = '<path d="M42 69 Q50 76 58 69" stroke="#1A365D" stroke-width="3" stroke-linecap="round" fill="none"/>';
-      eyeDecorations = '<circle cx="40" cy="51" r="3.5" fill="#1A365D"/>' +
-                       '<circle cx="60" cy="51" r="3.5" fill="#1A365D"/>' +
-                       '<circle cx="41" cy="50" r="1.2" fill="#FFFFFF"/>' +
-                       '<circle cx="61" cy="50" r="1.2" fill="#FFFFFF"/>';
+      mouthPath = '<path d="M42 66 Q50 73 58 66" stroke="#1A365D" stroke-width="2.4" stroke-linecap="round" fill="none"/>';
+      eyeDecorations = '<circle cx="40" cy="50" r="3.4" fill="#1A365D"/>' +
+                       '<circle cx="60" cy="50" r="3.4" fill="#1A365D"/>' +
+                       '<circle cx="41.2" cy="48.8" r="1.2" fill="#FFFFFF"/>' +
+                       '<circle cx="61.2" cy="48.8" r="1.2" fill="#FFFFFF"/>' +
+                       '<path d="M35 44 Q40 41.5 45 44" stroke="#1A365D" stroke-width="1.8" stroke-linecap="round" fill="none"/>' +
+                       '<path d="M55 44 Q60 41.5 65 44" stroke="#1A365D" stroke-width="1.8" stroke-linecap="round" fill="none"/>';
       break;
   }
 
   return `<!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
 <svg${safeId} class="${safeClass}" width="${size}" height="${size}" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tutor Time Guide avatar (${expression})" data-expression="${expression}">
   <defs>
-    <linearGradient id="guideGlow" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#2E75B6" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#F5A623" stop-opacity="0.1"/>
+    <clipPath id="guideAvatarClip">
+      <circle cx="50" cy="50" r="45"/>
+    </clipPath>
+    <linearGradient id="guideBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E8F4FD"/>
+      <stop offset="100%" stop-color="#FFF7E2"/>
     </linearGradient>
     <linearGradient id="guideHair" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2C1810"/>
-      <stop offset="100%" stop-color="#1A0D08"/>
+      <stop offset="0%" stop-color="#3B2314"/>
+      <stop offset="100%" stop-color="#1E1008"/>
     </linearGradient>
-    <linearGradient id="guideShirt" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="guideBlazer" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2E75B6"/>
       <stop offset="100%" stop-color="#1A365D"/>
     </linearGradient>
   </defs>
 
-  <!-- Aura / Soft backdrop circle -->
-  <circle cx="50" cy="50" r="46" fill="url(#guideGlow)"/>
+  <!-- Crisp Circular Badge Background -->
+  <circle cx="50" cy="50" r="45" fill="url(#guideBg)"/>
 
-  <!-- Back Hair Volume -->
-  <circle cx="50" cy="45" r="30" fill="url(#guideHair)"/>
-  <ellipse cx="28" cy="55" rx="8" ry="14" fill="url(#guideHair)"/>
-  <ellipse cx="72" cy="55" rx="8" ry="14" fill="url(#guideHair)"/>
+  <g clip-path="url(#guideAvatarClip)">
+    <!-- High Hair Puff & Back Hair -->
+    <circle cx="50" cy="20" r="14" fill="url(#guideHair)"/>
+    <path d="M24 54 C24 30 35 20 50 20 C65 20 76 30 76 54 L76 74 C76 78 70 80 66 78 L34 78 C30 80 24 78 24 74 Z" fill="url(#guideHair)"/>
 
-  <!-- Neck -->
-  <rect x="44" y="68" width="12" height="14" rx="3" fill="#E8B88B"/>
+    <!-- Shoulders & White Shirt -->
+    <path d="M18 100 C20 82 33 76 50 76 C67 76 80 82 82 100 Z" fill="url(#guideBlazer)"/>
+    <path d="M40 76 L50 92 L60 76 Z" fill="#FFFFFF"/>
+    <path d="M38 77 L47 91 L41 93 Z" fill="#F5A623" opacity="0.9"/>
+    <path d="M62 77 L53 91 L59 93 Z" fill="#F5A623" opacity="0.9"/>
 
-  <!-- Shoulders / Educator Blazer -->
-  <path d="M22 94 Q50 78 78 94 L82 100 L18 100 Z" fill="url(#guideShirt)"/>
-  <!-- Collar Accent -->
-  <path d="M44 80 L50 88 L40 98" stroke="#F5A623" stroke-width="2" fill="none"/>
-  <path d="M56 80 L50 88 L60 98" stroke="#F5A623" stroke-width="2" fill="none"/>
+    <!-- Neck -->
+    <rect x="44" y="66" width="12" height="14" rx="5" fill="#C6865C"/>
+    <path d="M44 70 Q50 74 56 70 L56 67 L44 67 Z" fill="#A96B43" opacity="0.45"/>
 
-  <!-- Head Base -->
-  <ellipse cx="50" cy="53" rx="22" ry="24" fill="#F5CBA7"/>
+    <!-- Ears -->
+    <circle cx="29" cy="53" r="4.2" fill="#D4956A"/>
+    <circle cx="71" cy="53" r="4.2" fill="#D4956A"/>
+    <circle cx="29" cy="56.5" r="1.5" fill="#F5A623"/>
+    <circle cx="71" cy="56.5" r="1.5" fill="#F5A623"/>
 
-  <!-- Front Hair Style -->
-  <path d="M28 44 Q50 24 72 44 Q60 32 50 34 Q38 32 28 44 Z" fill="url(#guideHair)"/>
-  <!-- Headband with Brand Gold -->
-  <path d="M30 40 Q50 28 70 40" stroke="#F5A623" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <!-- Face -->
+    <rect x="30" y="29" width="40" height="44" rx="20" fill="#DEA378"/>
 
-  <!-- Cheeks -->
-  <circle cx="34" cy="62" r="3.5" fill="#FF8A80" opacity="0.45"/>
-  <circle cx="66" cy="62" r="3.5" fill="#FF8A80" opacity="0.45"/>
+    <!-- Soft Parted Bangs & Gold Headband -->
+    <path d="M29 44 C30 31 39 25 50 25 C61 25 70 31 71 44 C64 36 56 34 50 37 C44 34 36 36 29 44 Z" fill="url(#guideHair)"/>
+    <path d="M31 35 Q50 25 69 35" stroke="#F5A623" stroke-width="3.2" stroke-linecap="round" fill="none"/>
 
-  <!-- Eyes / Eyebrows / Expressions -->
-  ${eyeDecorations}
+    <!-- Rosy Cheeks -->
+    <ellipse cx="36" cy="58" rx="4" ry="2.4" fill="#F28B82" opacity="0.45"/>
+    <ellipse cx="64" cy="58" rx="4" ry="2.4" fill="#F28B82" opacity="0.45"/>
 
-  <!-- Gentle Nose -->
-  <path d="M49 57 Q51 60 52 59" stroke="#D4A373" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <!-- Eyes / Eyebrows -->
+    ${eyeDecorations}
 
-  <!-- Mouth -->
-  ${mouthPath}
+    <!-- Subtle Nose -->
+    <path d="M49 55 Q50 58 52 57.5" stroke="#B0724A" stroke-width="1.8" stroke-linecap="round" fill="none"/>
 
-  <!-- Gold Star Pin on Blazer -->
-  <polygon points="30,88 32,92 36,92 33,95 34,99 30,97 26,99 27,95 24,92 28,92" fill="#F8E71C"/>
+    <!-- Mouth -->
+    ${mouthPath}
 
-  <!-- Contextual expression badges (thought bubble or celebration confetti) -->
+    <!-- Gold Star Pin -->
+    <polygon points="31,85 32.5,88.2 36,88.6 33.4,91 34.1,94.5 31,92.8 27.9,94.5 28.6,91 26,88.6 29.5,88.2" fill="#F8E71C"/>
+  </g>
+
+  <!-- Outer Ring -->
+  <circle cx="50" cy="50" r="45" stroke="#2E75B6" stroke-width="2.5" fill="none"/>
+
+  <!-- Expression Badge -->
   ${expressionBadge}
 </svg>`;
 }
