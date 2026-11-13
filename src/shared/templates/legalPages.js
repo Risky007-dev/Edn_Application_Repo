@@ -146,14 +146,19 @@ function renderDraftBanner() {
   `;
 }
 
+function extractVisitorPrivacySection(md) {
+  const match = md.match(/```markdown\s*\n([\s\S]*?)\n```/);
+  return match ? match[1] : '';
+}
+
 function renderPrivacyPage() {
   const chatbotPrivacyMd = readLegalDoc('CHATBOT_PRIVACY_WORDING.md');
-  const retentionMd = readLegalDoc('DATA_RETENTION_SCHEDULE.md');
+  const visitorChatbotMd = extractVisitorPrivacySection(chatbotPrivacyMd);
 
   const bodyHtml = `
     <section class="page-hero">
       <div class="container">
-        <h1>Privacy Policy &amp; Data Retention</h1>
+        <h1>Privacy Policy</h1>
         <p class="lead">How Tutor Time with Teacher Cassie &amp; Popcorn Math handles parent and visitor information.</p>
       </div>
     </section>
@@ -162,14 +167,12 @@ function renderPrivacyPage() {
       <div class="container legal-document-container">
         ${renderDraftBanner()}
 
-        <div class="legal-section" data-todo="legal" id="chatbot">
-          ${markdownToHtml(chatbotPrivacyMd)}
+        <div class="service-notice mb-4" data-todo="legal">
+          <p><strong>Full Privacy Policy coming soon.</strong> The complete Privacy Policy is awaiting owner and legal counsel review prior to public launch.</p>
         </div>
 
-        <hr class="my-6">
-
-        <div class="legal-section" data-todo="legal" id="retention">
-          ${markdownToHtml(retentionMd)}
+        <div class="legal-section" data-todo="legal" id="chatbot">
+          ${markdownToHtml(visitorChatbotMd)}
         </div>
       </div>
     </section>
@@ -177,15 +180,13 @@ function renderPrivacyPage() {
 
   return renderLayout({
     title: 'Privacy Policy (Draft)',
-    description: 'Draft Privacy Policy, Chatbot Disclosure, and Data Retention Schedule for Tutor Time and Popcorn Math.',
+    description: 'Draft Privacy Policy and AI Assistant Disclosure for Tutor Time and Popcorn Math.',
     bodyHtml,
     currentPath: '/privacy'
   });
 }
 
 function renderTermsPage() {
-  const inventoryMd = readLegalDoc('POLICY_DOCUMENT_INVENTORY.md');
-
   const bodyHtml = `
     <section class="page-hero">
       <div class="container">
@@ -199,11 +200,8 @@ function renderTermsPage() {
         ${renderDraftBanner()}
 
         <div class="service-notice mb-4" data-todo="legal">
-          <p><strong>Terms of Use (Website &amp; Platform):</strong> Status is currently <em>Draft</em>, awaiting formal sign-off by Legal Counsel and Abiodun Oyeneyin before public launch.</p>
-        </div>
-
-        <div class="legal-section" data-todo="legal">
-          ${markdownToHtml(inventoryMd)}
+          <h2>Terms of Use coming soon</h2>
+          <p>The Terms of Service for Tutor Time with Teacher Cassie and Popcorn Math are currently being finalised and are awaiting owner and legal counsel review.</p>
         </div>
       </div>
     </section>
@@ -211,7 +209,7 @@ function renderTermsPage() {
 
   return renderLayout({
     title: 'Terms of Service (Draft)',
-    description: 'Draft Terms of Service and Policy Governance Matrix for Tutor Time and Popcorn Math.',
+    description: 'Draft Terms of Service for Tutor Time and Popcorn Math.',
     bodyHtml,
     currentPath: '/terms'
   });

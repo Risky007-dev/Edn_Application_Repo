@@ -57,14 +57,15 @@ async function run() {
     assert('GET /privacy returns HTTP 200', privacy.status === 200, `got ${privacy.status}`);
     assert('/privacy displays "Draft, pending review" banner', privacy.body.includes('Draft, pending review'));
     assert('/privacy preserves data-todo="legal" markers', privacy.body.includes('data-todo="legal"'));
-    assert('/privacy renders Chatbot Privacy Policy draft content', privacy.body.includes('Tutor Time Helper') && privacy.body.includes('Zero Personal Data Collection'));
-    assert('/privacy renders Data Retention Schedule draft content', privacy.body.includes('Data Retention Schedule'));
+    assert('/privacy renders visitor-facing Chatbot Privacy wording', privacy.body.includes('Tutor Time Helper') && privacy.body.includes('Zero Personal Data Collection'));
+    assert('/privacy does NOT expose internal governance/audit docs', !privacy.body.includes('CONFIDENTIAL &amp; GOVERNANCE') && !privacy.body.includes('awsDriver.js') && !privacy.body.includes('TO CONFIRM WITH COUNSEL'));
 
     const terms = await httpGet('/terms');
     assert('GET /terms returns HTTP 200', terms.status === 200, `got ${terms.status}`);
     assert('/terms displays "Draft, pending review" banner', terms.body.includes('Draft, pending review'));
     assert('/terms preserves data-todo="legal" markers', terms.body.includes('data-todo="legal"'));
-    assert('/terms renders Policy Document Inventory draft content', terms.body.includes('Terms of Use (Website &amp; Platform)'));
+    assert('/terms displays neutral "Terms of Use coming soon" notice', terms.body.includes('Terms of Use coming soon'));
+    assert('/terms does NOT expose internal inventory or ClickUp IDs', !terms.body.includes('Policy Document Inventory') && !terms.body.includes('ClickUp') && !terms.body.includes('CONFIDENTIAL'));
   } finally {
     serverProc.kill();
   }
