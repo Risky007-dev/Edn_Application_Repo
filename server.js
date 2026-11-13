@@ -35,6 +35,7 @@ const {
   renderResourcesPage,
   renderReadinessCheckPage
 } = require('./src/shared/templates/pages');
+const { renderPrivacyPage, renderTermsPage } = require('./src/shared/templates/legalPages');
 const {
   renderPopcornHubPage,
   renderPopcornParentsPage,
@@ -314,6 +315,16 @@ app.get('/resources', (req, res) => {
 // GET /readiness-check - Gamified CPEA Readiness Check (Task 4)
 app.get('/readiness-check', (req, res) => {
   res.send(renderReadinessCheckPage());
+});
+
+// GET /privacy - Draft Privacy Policy & Data Retention Schedule
+app.get('/privacy', (req, res) => {
+  res.send(renderPrivacyPage());
+});
+
+// GET /terms - Draft Terms of Service & Policy Inventory
+app.get('/terms', (req, res) => {
+  res.send(renderTermsPage());
 });
 
 // Favicon routes
