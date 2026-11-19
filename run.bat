@@ -1,63 +1,69 @@
 @echo off
-REM Quick Start Script for Popcorn Maths
+REM ==============================================================================
+REM Popcorn Maths & Tutor Time - Windows Startup Script (Node.js / Express)
+REM ==============================================================================
 
-echo ===================================
-echo  Popcorn Maths Setup & Run Script
-echo ===================================
+setlocal enabledelayedexpansion
+
+echo.
+echo ========================================================
+echo   Popcorn Maths & Tutor Time - Windows Setup & Startup
+echo ========================================================
 echo.
 
-REM Check if Python is installed
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8+ from https://www.python.org/
-    pause
-    exit /b 1
-)
-
-echo [1/4] Python found
-echo.
-
-REM Check if requirements.txt exists
-if not exist requirements.txt (
-    echo ERROR: requirements.txt not found
-    echo Please run this script from the project root directory
-    pause
-    exit /b 1
-)
-
-echo [2/4] Installing Python dependencies...
-pip install -r requirements.txt
-if errorlevel 1 (
-    echo ERROR: Failed to install dependencies
-    pause
-    exit /b 1
-)
-echo.
-
-REM Check if .env exists
-if not exist .env (
-    echo [3/4] Creating .env from template...
-    if exist .env.example (
-        copy .env.example .env
-        echo WARNING: .env created from .env.example
-        echo Please edit .env with your email credentials before running the server
+REM 1. Check for Node.js
+where node >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    if exist "C:\Program Files\nodejs\node.exe" (
+        set "PATH=%PATH%;C:\Program Files\nodejs"
+    ) else (
+        echo [ERROR] Node.js is not installed or not in your system PATH.
+        echo Please install Node.js (v20+ recommended) from: https://nodejs.org/
         echo.
         pause
+        exit /b 1
+    )
+)
+
+for /f "tokens=*" %%v in ('node -v') do set NODE_VERSION=%%v
+echo [1/4] Found Node.js %NODE_VERSION%
+
+REM 2. Check and initialize .env file
+if not exist ".env" (
+    echo [2/4] Creating .env from .env.example...
+    if exist ".env.example" (
+        copy .env.example .env >nul
+        echo       Created .env with default local settings.
     ) else (
-        echo ERROR: .env.example not found
+        echo [WARNING] .env.example not found; skipping .env copy.
+    )
+) else (
+    echo [2/4] .env configuration file already exists.
+)
+
+REM 3. Install npm dependencies if node_modules is missing
+if not exist "node_modules\" (
+    echo [3/4] Installing npm dependencies (first run)...
+    call npm install
+    if %ERRORLEVEL% NEQ 0 (
+        echo [ERROR] Failed to install npm dependencies.
         pause
         exit /b 1
     )
 ) else (
-    echo [3/4] .env file already exists
+    echo [3/4] Dependencies already installed.
 )
+
+REM 4. Start the application
+echo [4/4] Starting server...
+echo.
+echo ========================================================
+echo   Server is running at: http://localhost:5001
+echo   View subscribers at:  http://localhost:5001/subscribers
+echo   Press Ctrl+C to stop the server
+echo ========================================================
 echo.
 
-echo [4/4] Starting Flask server...
-echo.
-echo Server will run on http://localhost:5001
-echo Press Ctrl+C to stop the server
-echo.
-cd MyWebApp\src\main\webapp
-python flasktest.py
+node server.js
+
+pause

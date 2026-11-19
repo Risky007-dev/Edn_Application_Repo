@@ -1,0 +1,262 @@
+/**
+ * Chatbot Controller & Claude API Orchestrator
+ * Integrates official Anthropic Claude SDK with server-side web search,
+ * strict safety guardrails, daily usage caps, rate limiting, and zero-PII logging.
+ */
+
+const { Anthropic } = require('@anthropic-ai/sdk');
+const rateLimit = require('express-rate-limit');
+const config = require('../config');
+const { getSystemPrompt } = require('./systemPrompt');
+const siteKnowledge = require('./knowledge.json');
+
+// Configuration constants
+const DEFAULT_MODEL = 'claude-haiku-5-5';
+const WEB_SEARCH_TOOL_TYPE = 'web_search_20260318';
+const MAX_INPUT_LENGTH = Number(process.env.CHATBOT_MAX_INPUT_LENGTH || 500);
+const MAX_CONVERSATION_TURNS = 10;
+const TIMEOUT_MS = 15000;
+
+// Daily Request Cap Management (In-Memory, zero-persistence)
+let dailyCounter = {
+  dateStr: new Date().toISOString().slice(0, 10),
+  count: 0
+};
+
+function getDailyCap() {
+  return Number(process.env.CHATBOT_DAILY_REQUEST_CAP || 200);
+}
+
+function checkAndIncrementDailyCap() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (dailyCounter.dateStr !== today) {
+    dailyCounter = { dateStr: today, count: 0 };
+  }
+  if (dailyCounter.count >= getDailyCap()) {
+    return false;
+  }
+  dailyCounter.count++;
+  return true;
+}
+
+function getDailyCount() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (dailyCounter.dateStr !== today) {
+    dailyCounter = { dateStr: today, count: 0 };
+  }
+  return dailyCounter.count;
+}
+
+function resetDailyCounterForTests() {
+  dailyCounter = { dateStr: new Date().toISOString().slice(0, 10), count: 0 };
+}
+
+// Injected client for unit testing
+let injectedClient = null;
+function setInjectedClient(client) {
+  injectedClient = client;
+}
+
+// One-time startup warning for missing API key
+let hasWarnedMissingKey = false;
+function checkStartupKey() {
+  const isEnabled = config.features?.chatbot?.enabled ?? true;
+  if (isEnabled && !process.env.ANTHROPIC_API_KEY && !injectedClient && !hasWarnedMissingKey) {
+    console.warn(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'warn',
+      event: 'chatbot_startup_key_missing',
+      message: '[Chatbot] Notice: ANTHROPIC_API_KEY is not configured. Chatbot widget is dormant and /api/chat will return unavailable.'
+    }));
+    hasWarnedMissingKey = true;
+  }
+}
+checkStartupKey();
+
+// Rate limiter for chat endpoint
+const chatRateLimiter = rateLimit({
+  windowMs: Number(process.env.CHATBOT_RATE_LIMIT_WINDOW_MINUTES || 10) * 60 * 1000,
+  max: Number(process.env.CHATBOT_RATE_LIMIT_MAX || 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many questions in a short period. Please take a quick breath and try again in a few minutes!'
+  }
+});
+
+// Grounded Knowledge Text for System Prompt
+const knowledgeText = JSON.stringify(siteKnowledge, null, 2);
+const systemPromptFull = getSystemPrompt(knowledgeText);
+
+/**
+ * Express handler for POST /api/chat
+ */
+async function handleChat(req, res) {
+  const startTime = Date.now();
+  const isEnabled = config.features?.chatbot?.enabled ?? true;
+
+  // Kill switch check
+  if (!isEnabled) {
+    return res.status(503).json({
+      success: false,
+      error: 'The Tutor Time Helper is currently taking a short break. Please contact us via WhatsApp or book a consultation!'
+    });
+  }
+
+  // API Key check
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey && !injectedClient) {
+    return res.status(503).json({
+      success: false,
+      error: 'The Tutor Time Helper is currently unavailable. Please reach out to us via WhatsApp or book a consultation!'
+    });
+  }
+
+  const { message, history = [] } = req.body || {};
+
+  // Input validation: empty or invalid message
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter a question to ask the Tutor Time Helper.'
+    });
+  }
+
+  const cleanMessage = message.trim();
+
+  // Input validation: length cap
+  if (cleanMessage.length > MAX_INPUT_LENGTH) {
+    return res.status(400).json({
+      success: false,
+      error: `Question is too long (maximum ${MAX_INPUT_LENGTH} characters). Please ask a shorter question.`
+    });
+  }
+
+  // Conversation history cap
+  const safeHistory = Array.isArray(history) ? history.slice(-MAX_CONVERSATION_TURNS) : [];
+
+  // Daily request cap check
+  if (!checkAndIncrementDailyCap()) {
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      event: 'chatbot_daily_cap_reached',
+      dailyCount: getDailyCount(),
+      cap: getDailyCap()
+    }));
+    return res.status(429).json({
+      success: false,
+      error: 'The Tutor Time Helper has reached its daily limit of questions today. Please contact Teacher Cassie directly via WhatsApp!'
+    });
+  }
+
+  try {
+    const client = injectedClient || new Anthropic({ apiKey });
+    const model = process.env.CHATBOT_MODEL || process.env.CLAUDE_MODEL || DEFAULT_MODEL;
+
+    // Build messages payload
+    const messages = [];
+    for (const h of safeHistory) {
+      if (h.role === 'user' || h.role === 'assistant') {
+        const contentStr = typeof h.content === 'string' ? h.content.slice(0, MAX_INPUT_LENGTH) : '';
+        if (contentStr) {
+          messages.push({ role: h.role, content: contentStr });
+        }
+      }
+    }
+    messages.push({ role: 'user', content: cleanMessage });
+
+    // Call Anthropic Messages API with web search tool enabled
+    const response = await client.messages.create({
+      model,
+      max_tokens: 1024,
+      system: systemPromptFull,
+      messages,
+      tools: [
+        {
+          type: WEB_SEARCH_TOOL_TYPE,
+          name: 'web_search',
+          max_uses: 3
+        }
+      ]
+    }, {
+      timeout: TIMEOUT_MS
+    });
+
+    // Extract text reply and any web search citations / sources
+    let replyText = '';
+    const sources = [];
+
+    if (Array.isArray(response.content)) {
+      for (const block of response.content) {
+        if (block.type === 'text') {
+          replyText += block.text;
+          // Check for inline citations if present in SDK structure
+          if (Array.isArray(block.citations)) {
+            for (const cit of block.citations) {
+              if (cit.url) {
+                sources.push({ url: cit.url, title: cit.title || cit.url });
+              }
+            }
+          }
+        } else if (block.type === 'tool_use' && block.name === 'web_search') {
+          // Web search tool call observed
+        }
+      }
+    } else if (typeof response.content === 'string') {
+      replyText = response.content;
+    }
+
+    if (!replyText) {
+      replyText = 'Hello! I am here to help you learn about Tutor Time with Teacher Cassie and Popcorn Math. How can I assist you today?';
+    }
+
+    // Structured audit logging: count and latency ONLY, NEVER message content
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      event: 'chatbot_request_success',
+      latencyMs: Date.now() - startTime,
+      model,
+      dailyCount: getDailyCount(),
+      inputLength: cleanMessage.length,
+      replyLength: replyText.length,
+      hasSources: sources.length > 0
+    }));
+
+    return res.status(200).json({
+      success: true,
+      reply: replyText,
+      sources: sources.slice(0, 5)
+    });
+
+  } catch (err) {
+    const latencyMs = Date.now() - startTime;
+    // Log structured error without leaking key or message text
+    console.error(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      event: 'chatbot_request_error',
+      latencyMs,
+      errorCode: err.code || err.status || 'unknown',
+      errorMessage: err.message ? err.message.slice(0, 150) : 'Internal error'
+    }));
+
+    return res.status(500).json({
+      success: false,
+      error: 'Sorry, I encountered a brief issue while formulating an answer. Please try again or reach out on WhatsApp!'
+    });
+  }
+}
+
+module.exports = {
+  handleChat,
+  chatRateLimiter,
+  checkAndIncrementDailyCap,
+  getDailyCount,
+  resetDailyCounterForTests,
+  setInjectedClient,
+  checkStartupKey,
+  MAX_INPUT_LENGTH,
+  MAX_CONVERSATION_TURNS,
+  DEFAULT_MODEL,
+  WEB_SEARCH_TOOL_TYPE
+};

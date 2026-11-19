@@ -272,8 +272,8 @@ h1, h2, h3, h4, h5, h6,
   text-align: center;
 }
 
-/* --- Desktop Navigation (>= 768px) --- */
-@media (min-width: 768px) {
+/* --- Desktop Navigation (>= 1024px) --- */
+@media (min-width: 1024px) {
   .hamburger-btn {
     display: none;
   }
@@ -379,11 +379,18 @@ h1, h2, h3, h4, h5, h6,
 
 @media (min-width: 768px) {
   .programme-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .programme-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
 .programme-card {
+  min-width: 0;
   background: var(--color-card-bg);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-xl);
@@ -1184,6 +1191,309 @@ h1, h2, h3, h4, h5, h6,
 }
 
 /* ==========================================================================
+   EDITORIAL STUDIO RETOUCH (Typography, Elevation, Micro-Interactions)
+   ========================================================================== */
+.hero-section {
+  padding-top: clamp(2.5rem, 5vw, 4.25rem);
+  padding-bottom: clamp(2.5rem, 5vw, 4rem);
+}
+
+.hero-headline,
+.section-title {
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.hero-subtitle,
+.section-subtitle,
+.card-description {
+  max-width: 66ch;
+  line-height: 1.65;
+}
+
+.service-card,
+.feature-card,
+.info-card,
+.faq-item,
+.form-card {
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: 0 4px 18px rgba(180, 100, 20, 0.05);
+  transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.service-card:hover,
+.feature-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(2, 128, 144, 0.35);
+  box-shadow: 0 12px 28px rgba(2, 128, 144, 0.09);
+}
+
+.btn,
+.cta-button {
+  transition: transform 120ms ease, background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.btn:hover,
+.cta-button:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active,
+.cta-button:active {
+  transform: scale(0.98);
+}
+
+.nav-link {
+  border-radius: 8px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background-color: rgba(2, 128, 144, 0.08);
+  color: var(--color-brand-tt-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-card,
+  .feature-card,
+  .btn,
+  .cta-button,
+  .nav-link,
+  .holiday-card {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   HOMEPAGE FEATURE CAROUSEL & HOLIDAY SPECIALS
+   ========================================================================== */
+.carousel-section {
+  padding: 2.5rem 0 1.5rem;
+}
+
+.tt-carousel {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 22px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.tt-carousel-viewport {
+  overflow: hidden;
+  width: 100%;
+}
+
+.tt-carousel-slide {
+  display: none;
+  grid-template-columns: 1.35fr 0.85fr;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.tt-carousel-slide.is-active {
+  display: grid;
+}
+
+.tt-slide-tag {
+  display: inline-block;
+  padding: 0.28rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: rgba(2, 128, 144, 0.1);
+  color: var(--color-brand-tt-accent);
+  margin-bottom: 0.75rem;
+}
+
+.tt-slide-copy h3 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  line-height: 1.2;
+}
+
+.tt-slide-copy p {
+  margin: 0 0 0.9rem;
+  color: var(--color-text-secondary);
+  max-width: 60ch;
+}
+
+.tt-slide-highlights {
+  margin: 0 0 1.25rem;
+  padding-left: 1.15rem;
+  color: var(--color-text-primary);
+  display: grid;
+  gap: 0.4rem;
+}
+
+.tt-slide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tt-slide-panel {
+  background: linear-gradient(150deg, #028090 0%, #05668D 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+  align-content: center;
+}
+
+.tt-panel-popcorn {
+  background: linear-gradient(150deg, #D92620 0%, #B91C1C 100%);
+}
+
+.tt-panel-concierge {
+  background: linear-gradient(150deg, #D97706 0%, #B45309 100%);
+}
+
+.tt-panel-specialist {
+  background: linear-gradient(150deg, #059669 0%, #047857 100%);
+}
+
+.tt-feature-metric {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+}
+
+.tt-metric-num {
+  display: block;
+  font-family: var(--font-family-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-metric-label {
+  font-size: 0.88rem;
+  opacity: 0.92;
+}
+
+.tt-carousel-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.tt-carousel-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-border-subtle);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.tt-carousel-btn:hover {
+  background: rgba(2, 128, 144, 0.08);
+  border-color: var(--color-brand-tt-primary);
+}
+
+.tt-carousel-dots {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.tt-carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  background: var(--color-border-subtle);
+  cursor: pointer;
+  transition: width 180ms ease, background-color 180ms ease;
+}
+
+.tt-carousel-dot.is-active {
+  width: 28px;
+  background: var(--color-brand-tt-primary);
+}
+
+/* Holiday Specials */
+.holiday-section {
+  padding: 2.5rem 0 1.5rem;
+}
+
+.holiday-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.holiday-card {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 18px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.85rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.holiday-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(2, 128, 144, 0.35);
+}
+
+.holiday-card-featured {
+  border-color: rgba(255, 124, 36, 0.45);
+  background: linear-gradient(180deg, rgba(255, 124, 36, 0.05) 0%, var(--color-card-bg) 45%);
+}
+
+.holiday-badge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 0.25rem 0.68rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(255, 124, 36, 0.14);
+  color: #B45309;
+}
+
+[data-theme="dark"] .holiday-badge {
+  color: #FCD34D;
+}
+
+.holiday-card h3 {
+  margin: 0;
+  font-size: 1.22rem;
+}
+
+.holiday-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  flex: 1;
+}
+
+@media (max-width: 820px) {
+  .tt-carousel-slide.is-active {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
    PRINT STYLESHEET (Feature X2: Global Clean Semantic Printing)
    ========================================================================== */
 @media print {
@@ -1204,6 +1514,10 @@ h1, h2, h3, h4, h5, h6,
   .mascot-placeholder,
   .game-arena,
   .bucket-stage,
+  .print-hidden,
+  .chatbot-root,
+  .readiness-hero-section,
+  .readiness-stars-container,
   form button[type="submit"] {
     display: none !important;
   }

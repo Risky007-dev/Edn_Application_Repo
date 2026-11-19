@@ -146,9 +146,9 @@ async function runTestSuite() {
       { path: '/', canonical: 'Tutor Time with Teacher Cassie' },
       { path: '/services/traditional-tutoring', canonical: 'Personalised Tutoring' },
       { path: '/services/concierge', canonical: 'Concierge Academic Coaching' },
-      { path: '/services/popcorn-maths', canonical: 'Popcorn Math' },
+      { path: '/services/popcorn-math', canonical: 'Popcorn Math' },
       { path: '/services/specialist-support', canonical: 'Individualised Learning Support' },
-      { path: '/popcorn-maths/presenter', canonical: 'Become a Popcorn Math Presenter' },
+      { path: '/popcorn-math/presenters', canonical: 'Become a Popcorn Math Presenter' },
       { path: '/book', canonical: 'Book a Consultation' },
       { path: '/contact', canonical: 'Contact Us' },
       { path: '/faq', canonical: 'Frequently Asked Questions' },
@@ -160,6 +160,15 @@ async function runTestSuite() {
       assert(`${page.path} returns HTTP 200`, res.statusCode === 200);
       assert(`${page.path} contains canonical name "${page.canonical}"`, res.body.includes(page.canonical));
     }
+
+    // 301 Permanent Redirects for legacy routes
+    const resOldPopcorn = await request({ path: '/services/popcorn-maths' });
+    assert('/services/popcorn-maths returns HTTP 301', resOldPopcorn.statusCode === 301);
+    assert('/services/popcorn-maths redirects to /services/popcorn-math', resOldPopcorn.headers.location === '/services/popcorn-math');
+
+    const resOldPresenter = await request({ path: '/popcorn-maths/presenter' });
+    assert('/popcorn-maths/presenter returns HTTP 301', resOldPresenter.statusCode === 301);
+    assert('/popcorn-maths/presenter redirects to /popcorn-math/presenters', resOldPresenter.headers.location === '/popcorn-math/presenters');
 
     // -------------------------------------------------------------
     // PART 2: Blocked / Legacy / Path Traversal Routes (HTTP 404)

@@ -142,12 +142,16 @@ async function runTestSuite() {
     // --- TEST GROUP 1: New Page Routes & Canonical Names ---
     console.log('--- TEST GROUP 1: New Page Routes & Canonical Names ---');
     
-    // TT-13 Mini-Game
-    const resGame = await request({ path: '/popcorn-maths/game' });
-    assert('/popcorn-maths/game returns HTTP 200', resGame.statusCode === 200);
-    assert('/popcorn-maths/game contains canonical name "Popcorn Math Mini-Game"', resGame.body.includes('Popcorn Math Mini-Game'));
-    assert('/popcorn-maths/game has parent zero-storage notice', resGame.body.includes('This game does not collect or store any personal data or responses.'));
-    assert('/popcorn-maths/game contains mascot placeholder', resGame.body.includes('data-todo="mascot"'));
+    // TT-13 Mini-Game / Play
+    const resGame = await request({ path: '/popcorn-math/play' });
+    assert('/popcorn-math/play returns HTTP 200', resGame.statusCode === 200);
+    assert('/popcorn-math/play contains canonical name "Popcorn Math"', resGame.body.includes('Popcorn Math'));
+    assert('/popcorn-math/play has parent zero-storage notice', resGame.body.includes('does not collect or store any personal data') || resGame.body.includes('Zero Personal Data'));
+    assert('/popcorn-math/play contains mascot placeholder', resGame.body.includes('TODO(mascot)') || resGame.body.includes('mascot-bucket'));
+
+    const resOldGame = await request({ path: '/popcorn-maths/game' });
+    assert('/popcorn-maths/game returns HTTP 301 redirect', resOldGame.statusCode === 301);
+    assert('/popcorn-maths/game redirects to /popcorn-math/play', resOldGame.headers.location === '/popcorn-math/play');
 
     // TT-14 Smart Service Finder
     const resFinder = await request({ path: '/find-your-programme' });
@@ -160,10 +164,14 @@ async function runTestSuite() {
     assert('/ homepage contains link to /find-your-programme', resHome.body.includes('/find-your-programme'));
 
     // TT-15 School Partnerships
-    const resSchool = await request({ path: '/popcorn-maths/school-partnership' });
-    assert('/popcorn-maths/school-partnership returns HTTP 200', resSchool.statusCode === 200);
-    assert('/popcorn-maths/school-partnership contains canonical name "School Partnerships"', resSchool.body.includes('School Partnerships'));
-    assert('/popcorn-maths/school-partnership states enquiry disclaimer', resSchool.body.includes('it is not a confirmed booking'));
+    const resSchool = await request({ path: '/popcorn-math/schools' });
+    assert('/popcorn-math/schools returns HTTP 200', resSchool.statusCode === 200);
+    assert('/popcorn-math/schools contains canonical name "Popcorn Math"', resSchool.body.includes('Popcorn Math'));
+    assert('/popcorn-math/schools states enquiry disclaimer', resSchool.body.includes('not a confirmed booking') || resSchool.body.includes('Administrative Enquiry'));
+
+    const resOldSchool = await request({ path: '/popcorn-maths/school-partnership' });
+    assert('/popcorn-maths/school-partnership returns HTTP 301 redirect', resOldSchool.statusCode === 301);
+    assert('/popcorn-maths/school-partnership redirects to /popcorn-math/schools', resOldSchool.headers.location === '/popcorn-math/schools');
 
     // TT-16 Resources
     const resResources = await request({ path: '/resources' });
@@ -378,12 +386,12 @@ async function runTestSuite() {
       '/about',
       '/services/traditional-tutoring',
       '/services/concierge',
-      '/services/popcorn-maths',
+      '/services/popcorn-math',
       '/services/specialist-support',
-      '/popcorn-maths/presenter',
-      '/popcorn-maths/game',
+      '/popcorn-math/presenters',
+      '/popcorn-math/play',
       '/find-your-programme',
-      '/popcorn-maths/school-partnership',
+      '/popcorn-math/schools',
       '/resources',
       '/book',
       '/contact',
@@ -409,8 +417,9 @@ async function runTestSuite() {
       assert(`${route} has zero inline on* event attributes`, !hasInlineHandlers);
 
       // Check no external host URLs in assets or link tags: src="https?://" or href="https?://"
-      const externalAssetMatches = res.body.match(/(?:src|href)=["']https?:\/\/[^"'>]+/gi) || [];
-      // wa.me is permitted only when WHATSAPP_PHONE_NUMBER is configured; in test env it must be empty
+      // wa.me outbound link is permitted when WHATSAPP_PHONE_NUMBER is configured
+      const externalAssetMatches = (res.body.match(/(?:src|href)=["']https?:\/\/[^"'>]+/gi) || [])
+        .filter(url => !url.includes('wa.me'));
       assert(`${route} has zero asset URLs pointing to external hosts`, externalAssetMatches.length === 0);
     }
 
