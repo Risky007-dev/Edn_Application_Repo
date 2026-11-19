@@ -633,3 +633,279 @@
     transition: none !important;
   }
 }
+
+/* ==========================================================================
+   QUICKSCHOOLS-INSPIRED SIS SHELL, ROLL-CALL GRID & STUDENT PROFILE TABS
+   ========================================================================== */
+.qs-shell {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: 100vh;
+}
+
+.qs-sidebar {
+  background: #FFFFFF;
+  border-right: 1px solid #E8E0D2;
+  padding: 1.15rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 40;
+}
+
+.qs-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 1.25rem;
+}
+
+.qs-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.62rem 0.85rem;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #4A5568;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.qs-nav-item:hover {
+  background: #F6F3EB;
+  color: #1C2434;
+}
+
+.qs-nav-item.active {
+  background: #E6F7F5;
+  color: #028090;
+}
+
+.qs-nav-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.qs-sidebar-footer {
+  border-top: 1px solid #EFE7DA;
+  padding-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qs-user-chip {
+  font-size: 0.82rem;
+  color: #64748B;
+  padding: 0 0.4rem;
+}
+
+.qs-user-chip strong {
+  display: block;
+  color: #1C2434;
+  font-size: 0.9rem;
+}
+
+.qs-content-wrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.qs-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  background: rgba(255, 253, 249, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #E8E0D2;
+  padding: 0.7rem 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.qs-menu-btn {
+  display: none;
+  padding: 0.42rem 0.7rem;
+  border-radius: 8px;
+  border: 1.5px solid #D8CFC0;
+  background: #FFFFFF;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.qs-topbar-title {
+  font-family: var(--font-family-heading, "Fredoka", sans-serif);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #1C2434;
+}
+
+.qs-main {
+  max-width: 1100px;
+  width: 100%;
+  margin: 1.35rem auto 3rem;
+  padding: 0 1.4rem;
+}
+
+.qs-backdrop {
+  display: none;
+}
+
+/* QuickSchools-style Color-Coded Roll-Call Grid */
+.qs-rollcall-table tbody tr:nth-child(even) {
+  background: #FFFDF9;
+}
+
+.qs-pill-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.qs-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.qs-pill input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.qs-pill span {
+  padding: 0.32rem 0.68rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1.5px solid #E2D9CA;
+  background: #FFFFFF;
+  color: #4A5568;
+  transition: all 120ms ease;
+}
+
+.qs-pill input[value="present"]:checked + span {
+  background: #E6F7F2;
+  border-color: #0D7A5F;
+  color: #0D7A5F;
+}
+
+.qs-pill input[value="late"]:checked + span {
+  background: #FEF3C7;
+  border-color: #B45309;
+  color: #B45309;
+}
+
+.qs-pill input[value="absent"]:checked + span {
+  background: #FEE2E2;
+  border-color: #B91C1C;
+  color: #B91C1C;
+}
+
+.qs-pill input[value="cancelled"]:checked + span {
+  background: #F1F5F9;
+  border-color: #475569;
+  color: #475569;
+}
+
+.qs-pill input:focus-visible + span {
+  outline: 2px solid #028090;
+  outline-offset: 2px;
+}
+
+/* Student Profile Tabs */
+.qs-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  border-bottom: 1px solid #E8E0D2;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+}
+
+.qs-tab {
+  padding: 0.48rem 0.9rem;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+  color: #4A5568;
+}
+
+.qs-tab:hover {
+  background: #F6F3EB;
+}
+
+.qs-tab.active {
+  background: #028090;
+  color: #FFFFFF;
+}
+
+.qs-search {
+  padding: 0.5rem 0.8rem;
+  border: 1.5px solid #D8CFC0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-width: 220px;
+}
+
+@media (max-width: 860px) {
+  .qs-shell {
+    grid-template-columns: 1fr;
+  }
+  .qs-sidebar {
+    position: fixed;
+    left: -270px;
+    top: 0;
+    width: 256px;
+    transition: left 180ms ease;
+  }
+  .qs-shell.sidebar-open .qs-sidebar {
+    left: 0;
+  }
+  .qs-shell.sidebar-open .qs-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 36, 52, 0.35);
+    z-index: 35;
+  }
+  .qs-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .qs-main {
+    padding: 0 0.9rem;
+  }
+}
+
+@media print {
+  .qs-sidebar,
+  .qs-topbar,
+  .qs-backdrop {
+    display: none !important;
+  }
+  .qs-shell {
+    display: block;
+  }
+  .qs-main {
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+  }
+}

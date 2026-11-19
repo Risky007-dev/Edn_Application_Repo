@@ -349,6 +349,71 @@ async function run() {
       assert.strictEqual(newTokenRes.status, 200);
     });
 
+    await test('QuickSchools Roll-Call batch save, Student Profile tabs, and isolated Homework/Mastery notes', async () => {
+      const students = await store.listStudents();
+      const maya = students.find(s => s.name === 'Maya Lin');
+      const leo = students.find(s => s.name === 'Leo King');
+
+      // Roll call page renders
+      const rcPage = await request(server, 'GET', '/office/attendance?date=2026-11-20&month=2026-11', {
+        headers: { Cookie: cookie }
+      });
+      assert.strictEqual(rcPage.status, 200);
+      assert.ok(rcPage.body.includes('Daily Roll-Call Grid'));
+
+      // Batch roll call save
+      const batchParams = new URLSearchParams({
+        _csrf: csrf,
+        date: '2026-11-20',
+        month: '2026-11',
+        skipEmail: '1',
+        [`status_${maya.studentId}`]: 'late',
+        [`note_${maya.studentId}`]: 'Arrived 10m late',
+        [`status_${leo.studentId}`]: 'absent',
+        [`note_${leo.studentId}`]: 'Sick day'
+      });
+      const batchRes = await request(server, 'POST', '/office/attendance/batch', {
+        headers: { Cookie: cookie },
+        body: batchParams.toString()
+      });
+      assert.strictEqual(batchRes.status, 302);
+      assert.ok(batchRes.headers.location.includes('/office/attendance'));
+
+      const novRecords = await store.listAttendanceByMonth('2026-11');
+      const mayaNov20 = novRecords.find(r => r.date === '2026-11-20' && r.studentId === maya.studentId);
+      const leoNov20 = novRecords.find(r => r.date === '2026-11-20' && r.studentId === leo.studentId);
+      assert.strictEqual(mayaNov20.billable, true);
+      assert.strictEqual(leoNov20.billable, false);
+
+      // Student profile & Homework/Mastery note
+      const profPage = await request(server, 'GET', `/office/students/${maya.studentId}?tab=progress`, {
+        headers: { Cookie: cookie }
+      });
+      assert.strictEqual(profPage.status, 200);
+      assert.ok(profPage.body.includes('Homework &amp; Mastery'));
+
+      const progRes = await request(server, 'POST', `/office/students/${maya.studentId}/progress`, {
+        headers: { Cookie: cookie },
+        body: new URLSearchParams({
+          _csrf: csrf,
+          date: '2026-11-20',
+          topic: 'Long Division',
+          mastery: '9/10',
+          homework: 'Practice sheet B'
+        }).toString()
+      });
+      assert.strictEqual(progRes.status, 302);
+
+      // Verify progress note appears ONLY on Maya's parent link, NEVER on Leo's
+      const mayaParent = await request(server, 'GET', `/p/${maya.parentToken}?month=2026-11`);
+      assert.ok(mayaParent.body.includes('Long Division'));
+      assert.ok(mayaParent.body.includes('Practice sheet B'));
+
+      const leoParent = await request(server, 'GET', `/p/${leo.parentToken}?month=2026-11`);
+      assert.ok(!leoParent.body.includes('Long Division'));
+      assert.ok(!leoParent.body.includes('Practice sheet B'));
+    });
+
     await test('Login rate limiter returns HTTP 429 after repeated failed attempts', async () => {
       const badLogin = new URLSearchParams({ username: 'kashamar', password: 'wrong-password' }).toString();
       for (let i = 0; i < 3; i++) {

@@ -254,6 +254,142 @@ class PortalEmailService {
       return { status, warning: errMsg, log: entry };
     }
   }
+
+  async sendCustomParentNotice({ store, student, subject, message, settings, parentLink }) {
+    const logId = crypto.randomBytes(6).toString('hex');
+    const createdAt = new Date().toISOString();
+    const recipient = (student.parentEmail || '').trim();
+    const month = createdAt.slice(0, 7);
+
+    if (!recipient) {
+      const entry = {
+        logId,
+        createdAt,
+        month,
+        date: createdAt.slice(0, 10),
+        studentId: student.studentId,
+        studentName: student.name,
+        recipientEmail: '(none)',
+        status: 'SKIPPED',
+        messageId: null,
+        errorMessage: 'No parent email on file'
+      };
+      await store.logEmail(entry);
+      return { status: 'SKIPPED', warning: entry.errorMessage, log: entry };
+    }
+
+    const tutorName = settings.tutorDisplayName || 'Teacher Cassie';
+    const replyTo = settings.replyToEmail || 'Cassie@tutortime.ai';
+    const senderEmail = settings.senderEmail || 'noreply@mail.tutortime.ai';
+    const cleanSubject = String(subject || `Message from ${tutorName}: ${student.name}`).trim();
+    const cleanMsg = String(message || '').trim();
+
+    const bodyHtml = `
+      <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;color:#1e293b;line-height:1.55;">
+        <p>Hello ${escapeHtml(student.parentName || 'Parent/Guardian')},</p>
+        <p style="white-space:pre-line;">${escapeHtml(cleanMsg)}</p>
+        ${parentLink ? `<p style="margin:16px 0;"><a href="${escapeHtml(parentLink)}" style="display:inline-block;padding:10px 18px;background:#028090;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">View ${escapeHtml(student.name)}'s Portal</a></p>` : ''}
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+        <p style="font-size:12px;color:#64748b;">
+          Sent by ${escapeHtml(tutorName)} (Tutor Time). To reply or stop receiving notices, reply to this email or contact <a href="mailto:${escapeHtml(replyTo)}">${escapeHtml(replyTo)}</a>.
+        </p>
+      </div>
+    `.trim();
+
+    const bodyText = [
+      `Hello ${student.parentName || 'Parent/Guardian'},`,
+      '',
+      cleanMsg,
+      parentLink ? `\nView ${student.name}'s portal: ${parentLink}\n` : '',
+      '---',
+      `Sent by ${tutorName}. Reply or contact ${replyTo} to stop notices.`
+    ].join('\n');
+
+    if (!this.isLiveSesEnabled()) {
+      const mockId = `mock-ses-${logId}`;
+      const entry = {
+        logId,
+        createdAt,
+        month,
+        date: createdAt.slice(0, 10),
+        studentId: student.studentId,
+        studentName: student.name,
+        recipientEmail: recipient,
+        status: 'SENT',
+        messageId: mockId,
+        errorMessage: null
+      };
+      await store.logEmail(entry);
+      return { status: 'SENT', messageId: mockId, log: entry };
+    }
+
+    const sesClient = this.getSesClient();
+    const sandboxCheck = await this.checkSandboxAndRecipient(sesClient, recipient);
+    if (!sandboxCheck.allowed) {
+      const entry = {
+        logId,
+        createdAt,
+        month,
+        date: createdAt.slice(0, 10),
+        studentId: student.studentId,
+        studentName: student.name,
+        recipientEmail: recipient,
+        status: 'BLOCKED_SANDBOX',
+        messageId: null,
+        errorMessage: sandboxCheck.reason
+      };
+      await store.logEmail(entry);
+      return { status: 'BLOCKED_SANDBOX', warning: sandboxCheck.reason, log: entry };
+    }
+
+    try {
+      const response = await sesClient.send(new SendEmailCommand({
+        FromEmailAddress: `${tutorName} <${senderEmail}>`,
+        ReplyToAddresses: [replyTo],
+        Destination: { ToAddresses: [recipient] },
+        Content: {
+          Simple: {
+            Subject: { Data: cleanSubject, Charset: 'UTF-8' },
+            Body: {
+              Html: { Data: bodyHtml, Charset: 'UTF-8' },
+              Text: { Data: bodyText, Charset: 'UTF-8' }
+            }
+          }
+        }
+      }));
+      const entry = {
+        logId,
+        createdAt,
+        month,
+        date: createdAt.slice(0, 10),
+        studentId: student.studentId,
+        studentName: student.name,
+        recipientEmail: recipient,
+        status: 'SENT',
+        messageId: response.MessageId || null,
+        errorMessage: null
+      };
+      await store.logEmail(entry);
+      return { status: 'SENT', messageId: entry.messageId, log: entry };
+    } catch (err) {
+      const errMsg = err && err.message ? err.message : 'SES send failed';
+      const status = /not verified|sandbox/i.test(errMsg) ? 'BLOCKED_SANDBOX' : 'FAILED';
+      const entry = {
+        logId,
+        createdAt,
+        month,
+        date: createdAt.slice(0, 10),
+        studentId: student.studentId,
+        studentName: student.name,
+        recipientEmail: recipient,
+        status,
+        messageId: null,
+        errorMessage: errMsg
+      };
+      await store.logEmail(entry);
+      return { status, warning: errMsg, log: entry };
+    }
+  }
 }
 
 module.exports = {

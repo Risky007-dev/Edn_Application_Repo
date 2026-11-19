@@ -32,8 +32,10 @@ const { PortalEmailService } = require('./emailService');
 const {
   renderLoginPage,
   renderChangePasswordPage,
+  renderDashboardPage,
   renderAttendancePage,
   renderStudentsPage,
+  renderStudentProfilePage,
   renderInvoicesPage,
   renderSettingsPage,
   renderEmailsPage,
@@ -194,8 +196,48 @@ function createPortalRouters(options = {}) {
     }
   });
 
-  // Main Daily Attendance Dashboard
+  // School Dashboard (Home)
   officeRouter.get('/', authGuard, async (req, res, next) => {
+    try {
+      const base = getBasePrefix(req);
+      const today = todayIso();
+      const month = currentMonthIso();
+
+      const [students, monthRecords, recentLogs, settings] = await Promise.all([
+        store.listStudents({ includeArchived: true }),
+        store.listAttendanceByMonth(month),
+        store.listEmailLogs(month),
+        store.getSettings()
+      ]);
+
+      const todayRecords = monthRecords.filter(r => r.date === today);
+      const monthInvoices = computeMonthInvoices(students, monthRecords, settings, month);
+      const flash = req.query.msg
+        ? {
+            type: req.query.type === 'warning' ? 'warning' : req.query.type === 'error' ? 'error' : 'success',
+            message: String(req.query.msg)
+          }
+        : null;
+
+      res.send(renderDashboardPage({
+        base,
+        today,
+        month,
+        students,
+        todayRecords,
+        monthInvoices,
+        recentLogs,
+        settings,
+        flash,
+        csrfToken: req.portalSession.csrfToken
+      }));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Roll-Call Attendance Grid
+  officeRouter.get('/attendance', authGuard, async (req, res, next) => {
     try {
       const base = getBasePrefix(req);
       const date = isValidDateStr(req.query.date) ? req.query.date : todayIso();
@@ -208,13 +250,12 @@ function createPortalRouters(options = {}) {
       ]);
 
       const monthInvoices = computeMonthInvoices(students, monthRecords, settings, month);
-      let flash = null;
-      if (req.query.msg) {
-        flash = {
-          type: req.query.type === 'warning' ? 'warning' : req.query.type === 'error' ? 'error' : 'success',
-          message: String(req.query.msg)
-        };
-      }
+      const flash = req.query.msg
+        ? {
+            type: req.query.type === 'warning' ? 'warning' : req.query.type === 'error' ? 'error' : 'success',
+            message: String(req.query.msg)
+          }
+        : null;
 
       res.send(renderAttendancePage({
         base,
@@ -227,6 +268,79 @@ function createPortalRouters(options = {}) {
         flash,
         csrfToken: req.portalSession.csrfToken
       }));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Batch Save Roll-Call Grid
+  officeRouter.post('/attendance/batch', authGuard, verifyCsrf, async (req, res, next) => {
+    try {
+      const base = getBasePrefix(req);
+      const date = isValidDateStr(req.body.date) ? req.body.date : todayIso();
+      const month = isValidMonthStr(req.body.month) ? req.body.month : date.slice(0, 7);
+      const skipEmail = req.body.skipEmail === '1';
+
+      const [students, settings] = await Promise.all([
+        store.listStudents({ includeArchived: false }),
+        store.getSettings()
+      ]);
+
+      let savedCount = 0;
+      let sentCount = 0;
+      let warningMsgs = [];
+
+      for (const student of students) {
+        const rawStatus = req.body[`status_${student.studentId}`];
+        if (!rawStatus) continue;
+        const status = String(rawStatus).toLowerCase().trim();
+        if (!VALID_STATUSES.includes(status)) continue;
+
+        const note = String(req.body[`note_${student.studentId}`] || '').trim().slice(0, 400);
+        const billable = isStatusBillable(status, settings);
+        const priceApplied = computeAttendancePrice(status, student.pricePerSession, settings);
+
+        const record = {
+          studentId: student.studentId,
+          date,
+          month: date.slice(0, 7),
+          status,
+          billable,
+          priceApplied,
+          note,
+          updatedAt: new Date().toISOString()
+        };
+
+        await store.putAttendance(record);
+        savedCount++;
+
+        if (!skipEmail) {
+          const parentLink = `${getPortalOrigin(req)}/p/${student.parentToken}?month=${record.month}`;
+          const emailRes = await emailService.sendAttendanceNotice({
+            store,
+            student,
+            record,
+            settings,
+            parentLink
+          });
+          if (emailRes.status === 'SENT') sentCount++;
+          else if (emailRes.status === 'BLOCKED_SANDBOX' || emailRes.status === 'FAILED') {
+            warningMsgs.push(`${student.name}: ${emailRes.warning}`);
+          }
+        }
+      }
+
+      let msg = `Saved roll call for ${savedCount} student(s) on ${date}.`;
+      let type = 'success';
+      if (!skipEmail && sentCount > 0) {
+        msg += ` Sent ${sentCount} parent email(s).`;
+      }
+      if (warningMsgs.length > 0) {
+        type = 'warning';
+        msg += ` Warning: ${warningMsgs.join(' | ')}`;
+      }
+
+      return res.redirect(`${base}/attendance?date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&type=${encodeURIComponent(type)}&msg=${encodeURIComponent(msg)}`);
     } catch (err) {
       next(err);
     }
@@ -295,7 +409,7 @@ function createPortalRouters(options = {}) {
         }
       }
 
-      return res.redirect(`${base || '/'}?date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&type=${encodeURIComponent(type)}&msg=${encodeURIComponent(msg)}`);
+      return res.redirect(`${base}/attendance?date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&type=${encodeURIComponent(type)}&msg=${encodeURIComponent(msg)}`);
     } catch (err) {
       next(err);
     }
@@ -313,7 +427,7 @@ function createPortalRouters(options = {}) {
         await store.deleteAttendance(date.slice(0, 7), date, studentId);
       }
 
-      return res.redirect(`${base || '/'}?date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&type=success&msg=${encodeURIComponent('Attendance entry removed.')}`);
+      return res.redirect(`${base}/attendance?date=${encodeURIComponent(date)}&month=${encodeURIComponent(month)}&type=success&msg=${encodeURIComponent('Attendance entry removed.')}`);
     } catch (err) {
       next(err);
     }
@@ -352,8 +466,10 @@ function createPortalRouters(options = {}) {
     try {
       const base = getBasePrefix(req);
       const name = String(req.body.name || '').trim().slice(0, 100);
+      const gradeLevel = String(req.body.gradeLevel || '').trim().slice(0, 50);
       const parentName = String(req.body.parentName || '').trim().slice(0, 100);
       const parentEmail = String(req.body.parentEmail || '').trim().slice(0, 150);
+      const parentPhone = String(req.body.parentPhone || '').trim().slice(0, 40);
       const pricePerSession = normalizePrice(req.body.pricePerSession);
       const notes = String(req.body.notes || '').trim().slice(0, 500);
 
@@ -365,8 +481,10 @@ function createPortalRouters(options = {}) {
       const student = {
         studentId: `stu_${crypto.randomBytes(6).toString('hex')}`,
         name,
+        gradeLevel,
         parentName,
         parentEmail,
+        parentPhone,
         pricePerSession,
         notes,
         archived: false,
@@ -378,6 +496,135 @@ function createPortalRouters(options = {}) {
 
       await store.saveStudent(student);
       return res.redirect(`${base}/students?type=success&msg=${encodeURIComponent(`Added ${name}.`)}`);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Student Profile (Tabbed SIS View)
+  officeRouter.get('/students/:id', authGuard, async (req, res, next) => {
+    try {
+      const base = getBasePrefix(req);
+      const student = await store.getStudent(req.params.id);
+      if (!student) {
+        return res.redirect(`${base}/students?type=error&msg=${encodeURIComponent('Student not found.')}`);
+      }
+
+      const tab = ['overview', 'attendance', 'progress', 'message'].includes(req.query.tab) ? req.query.tab : 'overview';
+      const month = isValidMonthStr(req.query.month) ? req.query.month : currentMonthIso();
+
+      const [monthRecords, progressNotes, settings] = await Promise.all([
+        store.listAttendanceByMonth(month),
+        store.listProgressNotes(student.studentId),
+        store.getSettings()
+      ]);
+
+      const summary = computeStudentMonthSummary(
+        student,
+        monthRecords.filter(r => r.studentId === student.studentId),
+        settings
+      );
+
+      const flash = req.query.msg
+        ? { type: req.query.type || 'success', message: String(req.query.msg) }
+        : null;
+
+      res.send(renderStudentProfilePage({
+        base,
+        student,
+        tab,
+        month,
+        summary,
+        progressNotes,
+        portalOrigin: getPortalOrigin(req),
+        settings,
+        flash,
+        csrfToken: req.portalSession.csrfToken
+      }));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Add Homework & Mastery Note
+  officeRouter.post('/students/:id/progress', authGuard, verifyCsrf, async (req, res, next) => {
+    try {
+      const base = getBasePrefix(req);
+      const student = await store.getStudent(req.params.id);
+      if (!student) {
+        return res.redirect(`${base}/students?type=error&msg=${encodeURIComponent('Student not found.')}`);
+      }
+
+      const date = isValidDateStr(req.body.date) ? req.body.date : todayIso();
+      const topic = String(req.body.topic || '').trim().slice(0, 120);
+      const mastery = String(req.body.mastery || '').trim().slice(0, 60);
+      const homework = String(req.body.homework || '').trim().slice(0, 400);
+
+      if (!topic) {
+        return res.redirect(`${base}/students/${encodeURIComponent(student.studentId)}?tab=progress&type=error&msg=${encodeURIComponent('Topic is required.')}`);
+      }
+
+      const note = {
+        noteId: `note_${crypto.randomBytes(5).toString('hex')}`,
+        studentId: student.studentId,
+        date,
+        topic,
+        mastery,
+        homework,
+        createdAt: new Date().toISOString()
+      };
+
+      await store.putProgressNote(note);
+      return res.redirect(`${base}/students/${encodeURIComponent(student.studentId)}?tab=progress&type=success&msg=${encodeURIComponent('Saved homework & mastery note.')}`);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Delete Progress Note
+  officeRouter.post('/students/:id/progress/:noteId/delete', authGuard, verifyCsrf, async (req, res, next) => {
+    try {
+      const base = getBasePrefix(req);
+      const date = isValidDateStr(req.body.date) ? req.body.date : todayIso();
+      await store.deleteProgressNote(req.params.id, date, req.params.noteId);
+      return res.redirect(`${base}/students/${encodeURIComponent(req.params.id)}?tab=progress&type=success&msg=${encodeURIComponent('Removed progress note.')}`);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Send Direct Message to Parent via SES
+  officeRouter.post('/students/:id/notify', authGuard, verifyCsrf, async (req, res, next) => {
+    try {
+      const base = getBasePrefix(req);
+      const student = await store.getStudent(req.params.id);
+      if (!student) {
+        return res.redirect(`${base}/students?type=error&msg=${encodeURIComponent('Student not found.')}`);
+      }
+
+      const subject = String(req.body.subject || '').trim().slice(0, 150);
+      const message = String(req.body.message || '').trim().slice(0, 2000);
+      if (!message) {
+        return res.redirect(`${base}/students/${encodeURIComponent(student.studentId)}?tab=message&type=error&msg=${encodeURIComponent('Message cannot be empty.')}`);
+      }
+
+      const settings = await store.getSettings();
+      const parentLink = `${getPortalOrigin(req)}/p/${student.parentToken}`;
+      const result = await emailService.sendCustomParentNotice({
+        store,
+        student,
+        subject,
+        message,
+        settings,
+        parentLink
+      });
+
+      const type = result.status === 'SENT' ? 'success' : 'warning';
+      const msg = result.status === 'SENT'
+        ? `Email sent to ${student.parentEmail} (ID: ${result.messageId}).`
+        : `Email ${result.status}: ${result.warning}`;
+
+      return res.redirect(`${base}/students/${encodeURIComponent(student.studentId)}?tab=message&type=${encodeURIComponent(type)}&msg=${encodeURIComponent(msg)}`);
     } catch (err) {
       next(err);
     }
@@ -396,8 +643,10 @@ function createPortalRouters(options = {}) {
       const updated = {
         ...student,
         name: String(req.body.name || student.name).trim().slice(0, 100),
+        gradeLevel: String(req.body.gradeLevel ?? student.gradeLevel ?? '').trim().slice(0, 50),
         parentName: String(req.body.parentName || student.parentName).trim().slice(0, 100),
         parentEmail: String(req.body.parentEmail || student.parentEmail).trim().slice(0, 150),
+        parentPhone: String(req.body.parentPhone ?? student.parentPhone ?? '').trim().slice(0, 40),
         pricePerSession: normalizePrice(req.body.pricePerSession ?? student.pricePerSession),
         notes: String(req.body.notes ?? student.notes ?? '').trim().slice(0, 500),
         archived: toggleArchive ? !student.archived : Boolean(student.archived),
@@ -405,7 +654,10 @@ function createPortalRouters(options = {}) {
       };
 
       await store.saveStudent(updated);
-      return res.redirect(`${base}/students?type=success&msg=${encodeURIComponent(`Updated ${updated.name}.`)}`);
+      const dest = req.body.redirectProfile === '1'
+        ? `${base}/students/${encodeURIComponent(student.studentId)}?type=success&msg=${encodeURIComponent(`Updated ${updated.name}.`)}`
+        : `${base}/students?type=success&msg=${encodeURIComponent(`Updated ${updated.name}.`)}`;
+      return res.redirect(dest);
     } catch (err) {
       next(err);
     }
@@ -428,7 +680,11 @@ function createPortalRouters(options = {}) {
         updatedAt: new Date().toISOString()
       };
       await store.saveStudent(updated);
-      return res.redirect(`${base}/students?type=success&msg=${encodeURIComponent(`Regenerated private parent link for ${student.name}. Old link is now invalid.`)}`);
+      const msg = `Regenerated private parent link for ${student.name}. Old link is now invalid.`;
+      const dest = req.body.redirectProfile === '1'
+        ? `${base}/students/${encodeURIComponent(student.studentId)}?type=success&msg=${encodeURIComponent(msg)}`
+        : `${base}/students?type=success&msg=${encodeURIComponent(msg)}`;
+      return res.redirect(dest);
     } catch (err) {
       next(err);
     }
@@ -530,7 +786,8 @@ function createPortalRouters(options = {}) {
         defaultPricePerSession: normalizePrice(req.body.defaultPricePerSession ?? 50),
         currencySymbol: String(req.body.currencySymbol || '$').trim().slice(0, 5) || '$',
         lateIsBillable: req.body.lateIsBillable === '1',
-        sendParentEmails: req.body.sendParentEmails === '1'
+        sendParentEmails: req.body.sendParentEmails === '1',
+        showProgressOnParentView: req.body.showProgressOnParentView === '1'
       };
       await store.saveSettings(updated);
       return res.redirect(`${base}/settings?type=success&msg=${encodeURIComponent('Settings saved.')}`);
@@ -557,8 +814,9 @@ function createPortalRouters(options = {}) {
       }
 
       const month = isValidMonthStr(req.query.month) ? req.query.month : currentMonthIso();
-      const [monthRecords, settings] = await Promise.all([
+      const [monthRecords, progressNotes, settings] = await Promise.all([
         store.listAttendanceByMonth(month),
+        store.listProgressNotes(student.studentId),
         store.getSettings()
       ]);
 
@@ -569,6 +827,7 @@ function createPortalRouters(options = {}) {
       res.send(renderParentViewPage({
         student,
         summary,
+        progressNotes,
         month,
         settings
       }));

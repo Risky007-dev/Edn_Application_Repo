@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS = {
   tutorDisplayName: 'Teacher Cassie',
   defaultPricePerSession: 50,
   sendParentEmails: true,
+  showProgressOnParentView: true,
   currencySymbol: '$'
 };
 
@@ -40,6 +41,7 @@ function emptyLocalData() {
     sessions: {},
     students: {},
     attendance: {},
+    progressNotes: {},
     emailLogs: {},
     settings: null
   };
@@ -209,6 +211,34 @@ class LocalPortalStore {
     return Object.values(data.emailLogs)
       .filter(e => !month || e.month === month)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  }
+
+  async listProgressNotes(studentId) {
+    const data = readLocalData(this.getFilePath());
+    return Object.values(data.progressNotes || {})
+      .filter(n => n.studentId === studentId)
+      .sort((a, b) => `${b.date}#${b.createdAt}`.localeCompare(`${a.date}#${a.createdAt}`));
+  }
+
+  async putProgressNote(note) {
+    const file = this.getFilePath();
+    const data = readLocalData(file);
+    if (!data.progressNotes) data.progressNotes = {};
+    data.progressNotes[`${note.studentId}#${note.date}#${note.noteId}`] = note;
+    writeLocalData(file, data);
+    return note;
+  }
+
+  async deleteProgressNote(studentId, date, noteId) {
+    const file = this.getFilePath();
+    const data = readLocalData(file);
+    const key = `${studentId}#${date}#${noteId}`;
+    if (data.progressNotes && data.progressNotes[key]) {
+      delete data.progressNotes[key];
+      writeLocalData(file, data);
+      return true;
+    }
+    return false;
   }
 }
 
@@ -395,6 +425,37 @@ class AwsPortalStore {
       ScanIndexForward: false
     }));
     return res.Items || [];
+  }
+
+  async listProgressNotes(studentId) {
+    const res = await this.docClient.send(new QueryCommand({
+      TableName: this.tableName,
+      KeyConditionExpression: 'PK = :pk',
+      ExpressionAttributeValues: { ':pk': `PROGRESS#${studentId}` },
+      ScanIndexForward: false
+    }));
+    return res.Items || [];
+  }
+
+  async putProgressNote(note) {
+    await this.docClient.send(new PutCommand({
+      TableName: this.tableName,
+      Item: {
+        PK: `PROGRESS#${note.studentId}`,
+        SK: `${note.date}#${note.noteId}`,
+        entityType: 'PROGRESS',
+        ...note
+      }
+    }));
+    return note;
+  }
+
+  async deleteProgressNote(studentId, date, noteId) {
+    await this.docClient.send(new DeleteCommand({
+      TableName: this.tableName,
+      Key: { PK: `PROGRESS#${studentId}`, SK: `${date}#${noteId}` }
+    }));
+    return true;
   }
 }
 

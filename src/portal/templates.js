@@ -1,5 +1,5 @@
 /**
- * Server-Rendered HTML Templates for Kashamar's Private Portal & Parent View
+ * Server-Rendered HTML Templates for Kashamar's QuickSchools-Inspired SIS Portal & Parent View
  * All dynamic values escaped via escapeHtml(); strictly CSP-compliant.
  */
 
@@ -27,7 +27,7 @@ function renderPortalHead(title) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <title>${escapeHtml(title)} | Tutor Time Office</title>
+  <title>${escapeHtml(title)} | Tutor Time SIS</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32x32.png">
   <link rel="stylesheet" href="/css/tokens.css">
   <link rel="stylesheet" href="/css/portal.css">
@@ -37,37 +37,67 @@ function renderPortalHead(title) {
 
 function renderPortalShell({ title, base, activeTab, csrfToken, flash, bodyHtml }) {
   const navItems = [
-    { id: 'attendance', label: 'Attendance', href: `${base}` || '/' },
-    { id: 'students', label: 'Students', href: `${base}/students` },
-    { id: 'invoices', label: 'Invoices', href: `${base}/invoices` },
-    { id: 'emails', label: 'Email Log', href: `${base}/emails` },
-    { id: 'settings', label: 'Settings', href: `${base}/settings` }
+    { id: 'dashboard', icon: '🏠', label: 'Dashboard', href: `${base || '/'}` },
+    { id: 'attendance', icon: '✓', label: 'Roll Call', href: `${base}/attendance` },
+    { id: 'students', icon: '👥', label: 'Students', href: `${base}/students` },
+    { id: 'invoices', icon: '🧾', label: 'Fee & Invoices', href: `${base}/invoices` },
+    { id: 'emails', icon: '✉️', label: 'Parent Notices', href: `${base}/emails` },
+    { id: 'settings', icon: '⚙️', label: 'Settings', href: `${base}/settings` }
   ];
 
   return `${renderPortalHead(title)}
 <body class="portal-body">
-  <header class="portal-header no-print">
-    <div class="portal-header-inner">
-      <a href="${escapeHtml(base || '/')}" class="portal-brand">
-        <img src="/assets/logos/tutor-time-logo.png" alt="Tutor Time" width="36" height="36">
-        <span>
-          <span class="portal-brand-title">Tutor Time</span>
-          <span class="portal-brand-sub">Teacher Cassie&rsquo;s Private Office</span>
-        </span>
-      </a>
-      <nav class="portal-nav" aria-label="Portal Navigation">
-        ${navItems.map(item => `<a href="${escapeHtml(item.href)}" class="${activeTab === item.id ? 'active' : ''}">${escapeHtml(item.label)}</a>`).join('')}
-        <form method="POST" action="${escapeHtml(base)}/logout" style="display:inline;">
+  <div class="qs-shell">
+    <div class="qs-backdrop" data-sidebar-backdrop></div>
+    <aside class="qs-sidebar no-print" aria-label="Portal Sidebar">
+      <div>
+        <a href="${escapeHtml(base || '/')}" class="portal-brand">
+          <img src="/assets/logos/tutor-time-logo.png" alt="Tutor Time" width="36" height="36">
+          <span>
+            <span class="portal-brand-title">Tutor Time</span>
+            <span class="portal-brand-sub">Teacher Cassie SIS</span>
+          </span>
+        </a>
+
+        <nav class="qs-sidebar-nav" aria-label="Primary Navigation">
+          ${navItems.map(item => `
+            <a href="${escapeHtml(item.href)}" class="qs-nav-item ${activeTab === item.id ? 'active' : ''}">
+              <span class="qs-nav-icon" aria-hidden="true">${item.icon}</span>
+              <span>${escapeHtml(item.label)}</span>
+            </a>
+          `).join('')}
+        </nav>
+      </div>
+
+      <div class="qs-sidebar-footer">
+        <div class="qs-user-chip">
+          <strong>Kashamar</strong>
+          <span>Admin &bull; Teacher Cassie</span>
+        </div>
+        <form method="POST" action="${escapeHtml(base)}/logout">
           <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-          <button type="submit" class="portal-nav-logout">Log out</button>
+          <button type="submit" class="portal-btn portal-btn-secondary portal-btn-sm" style="width:100%;">Log out</button>
         </form>
-      </nav>
+      </div>
+    </aside>
+
+    <div class="qs-content-wrap">
+      <header class="qs-topbar no-print">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <button type="button" class="qs-menu-btn" data-sidebar-toggle aria-expanded="false" aria-label="Toggle navigation">&#9776; Menu</button>
+          <span class="qs-topbar-title">${escapeHtml(title)}</span>
+        </div>
+        <div class="portal-inline-actions">
+          <a href="${escapeHtml(base)}/attendance" class="portal-btn portal-btn-primary portal-btn-sm">Take Roll Call</a>
+        </div>
+      </header>
+
+      <main class="qs-main">
+        ${renderFlash(flash)}
+        ${bodyHtml}
+      </main>
     </div>
-  </header>
-  <main class="portal-main">
-    ${renderFlash(flash)}
-    ${bodyHtml}
-  </main>
+  </div>
 </body>
 </html>`;
 }
@@ -79,9 +109,9 @@ function renderLoginPage({ base, error }) {
     <div class="portal-auth-card">
       <aside class="portal-auth-aside">
         <div>
-          <span class="portal-auth-aside-badge">Private Tutor Office</span>
+          <span class="portal-auth-aside-badge">Private Tutor SIS</span>
           <h2>Tutor Time with Teacher Cassie</h2>
-          <p>Daily session check-in, parent attendance notices, and monthly invoicing in one quiet workspace.</p>
+          <p>Roll-call attendance, student profiles, homework notes, parent notices, and monthly fee statements in one workspace.</p>
         </div>
         <div style="font-size:0.84rem;opacity:0.85;">
           Protected workspace &bull; Encrypted sessions &bull; Not indexed
@@ -89,7 +119,7 @@ function renderLoginPage({ base, error }) {
       </aside>
       <section class="portal-auth-main">
         <h1>Sign in</h1>
-        <p style="color:#4A5568;font-size:0.92rem;margin:0 0 1.25rem;">Enter your account details to open today&rsquo;s attendance desk.</p>
+        <p style="color:#4A5568;font-size:0.92rem;margin:0 0 1.25rem;">Enter your account details to open your school office.</p>
         ${error ? `<div class="portal-alert portal-alert-error" role="alert">${escapeHtml(error)}</div>` : ''}
         <form method="POST" action="${escapeHtml(base)}/login">
           <div class="portal-field" style="margin-bottom:0.95rem;">
@@ -143,7 +173,7 @@ function renderChangePasswordPage({ base, error, mustChange, csrfToken }) {
           </div>
           <button type="submit" class="portal-btn portal-btn-primary" style="width:100%;">Save password</button>
         </form>
-        ${!mustChange ? `<p style="margin-top:1rem;"><a href="${escapeHtml(base || '/')}" style="color:#028090;font-weight:700;text-decoration:none;">Back to Attendance</a></p>` : ''}
+        ${!mustChange ? `<p style="margin-top:1rem;"><a href="${escapeHtml(base || '/')}" style="color:#028090;font-weight:700;text-decoration:none;">Back to Dashboard</a></p>` : ''}
       </section>
     </div>
   </div>
@@ -151,17 +181,122 @@ function renderChangePasswordPage({ base, error, mustChange, csrfToken }) {
 </html>`;
 }
 
+function renderDashboardPage({ base, today, month, students, todayRecords, monthInvoices, recentLogs, settings, flash, csrfToken }) {
+  const cur = settings.currencySymbol || '$';
+  const activeStudents = students.filter(s => !s.archived);
+  const markedMap = new Map(todayRecords.map(r => [r.studentId, r]));
+
+  const bodyHtml = `
+    <div class="portal-page-head">
+      <div>
+        <h1>School Dashboard</h1>
+        <p>Welcome back, Teacher Cassie. Today is <span class="num">${escapeHtml(today)}</span>.</p>
+      </div>
+      <div class="portal-inline-actions">
+        <a href="${escapeHtml(base)}/students" class="portal-btn portal-btn-secondary">Manage Students</a>
+        <a href="${escapeHtml(base)}/attendance?date=${escapeHtml(today)}" class="portal-btn portal-btn-primary">Open Roll Call</a>
+      </div>
+    </div>
+
+    <div class="portal-grid">
+      <div class="portal-stat">
+        <div class="portal-stat-label">Active students</div>
+        <div class="portal-stat-value num">${escapeHtml(String(activeStudents.length))}</div>
+      </div>
+      <div class="portal-stat stat-mint">
+        <div class="portal-stat-label">Marked today</div>
+        <div class="portal-stat-value num">${escapeHtml(String(todayRecords.length))} / ${escapeHtml(String(activeStudents.length))}</div>
+      </div>
+      <div class="portal-stat">
+        <div class="portal-stat-label">Billable sessions (${escapeHtml(month)})</div>
+        <div class="portal-stat-value num">${escapeHtml(String(monthInvoices.totalBillableSessions))}</div>
+      </div>
+      <div class="portal-stat stat-accent">
+        <div class="portal-stat-label">Month total (${escapeHtml(month)})</div>
+        <div class="portal-stat-value num">${escapeHtml(formatMoney(monthInvoices.grandTotal, cur))}</div>
+      </div>
+    </div>
+
+    <div class="portal-workspace">
+      <div class="portal-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+          <h2 style="margin:0;">Today&rsquo;s Attendance Snapshot</h2>
+          <a href="${escapeHtml(base)}/attendance?date=${escapeHtml(today)}" class="portal-btn portal-btn-secondary portal-btn-sm">Edit Roll Call</a>
+        </div>
+        ${activeStudents.length === 0
+          ? `<div class="portal-empty"><strong>No active students yet.</strong> <a href="${escapeHtml(base)}/students">Add your first student</a>.</div>`
+          : `<div class="portal-table-wrap">
+              <table class="portal-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Today (${escapeHtml(today)})</th>
+                    <th class="num">Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${activeStudents.map(s => {
+                    const rec = markedMap.get(s.studentId);
+                    return `<tr>
+                      <td><a href="${escapeHtml(base)}/students/${escapeHtml(s.studentId)}" style="color:#028090;font-weight:700;text-decoration:none;">${escapeHtml(s.name)}</a></td>
+                      <td>${rec ? `<span class="badge badge-${escapeHtml(rec.status)}">${escapeHtml(rec.status)}</span>` : '<span style="color:#94A3B8;">Unmarked</span>'}</td>
+                      <td class="num">${escapeHtml(formatMoney(s.pricePerSession, cur))}</td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>`}
+      </div>
+
+      <div class="portal-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.85rem;">
+          <h2 style="margin:0;">Recent Parent Notices</h2>
+          <a href="${escapeHtml(base)}/emails" class="portal-btn portal-btn-secondary portal-btn-sm">View All</a>
+        </div>
+        ${recentLogs.length === 0
+          ? '<div class="portal-empty">No parent emails sent this month yet.</div>'
+          : `<div class="portal-table-wrap">
+              <table class="portal-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${recentLogs.slice(0, 6).map(l => `<tr>
+                    <td><strong>${escapeHtml(l.studentName || l.studentId)}</strong><br><span style="font-size:0.78rem;color:#64748B;">${escapeHtml(l.recipientEmail)}</span></td>
+                    <td><span class="badge badge-${escapeHtml(String(l.status || '').toLowerCase())}">${escapeHtml(l.status)}</span></td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`}
+      </div>
+    </div>
+  `;
+
+  return renderPortalShell({
+    title: 'Dashboard',
+    base,
+    activeTab: 'dashboard',
+    csrfToken,
+    flash,
+    bodyHtml
+  });
+}
+
 function renderAttendancePage({ base, date, month, students, monthRecords, monthInvoices, settings, flash, csrfToken }) {
   const cur = settings.currencySymbol || '$';
   const activeStudents = students.filter(s => !s.archived);
   const dateRecords = monthRecords.filter(r => r.date === date);
+  const recordByStudent = new Map(dateRecords.map(r => [r.studentId, r]));
   const studentMap = new Map(students.map(s => [s.studentId, s]));
 
   const bodyHtml = `
     <div class="portal-page-head">
       <div>
-        <h1>Attendance Desk</h1>
-        <p>Mark daily sessions, send parent updates, and track ${escapeHtml(month)} totals.</p>
+        <h1>Roll-Call Attendance</h1>
+        <p>Quickly mark attendance for all students or adjust individual entries for <span class="num">${escapeHtml(date)}</span>.</p>
       </div>
       <div class="portal-inline-actions">
         <a href="${escapeHtml(base)}/export.csv?month=${escapeHtml(month)}" class="portal-btn portal-btn-secondary">Export CSV (${escapeHtml(month)})</a>
@@ -169,23 +304,8 @@ function renderAttendancePage({ base, date, month, students, monthRecords, month
       </div>
     </div>
 
-    <div class="portal-grid">
-      <div class="portal-stat">
-        <div class="portal-stat-label">Month total (${escapeHtml(month)})</div>
-        <div class="portal-stat-value num">${escapeHtml(formatMoney(monthInvoices.grandTotal, cur))}</div>
-      </div>
-      <div class="portal-stat stat-mint">
-        <div class="portal-stat-label">Billable sessions</div>
-        <div class="portal-stat-value num">${escapeHtml(String(monthInvoices.totalBillableSessions))}</div>
-      </div>
-      <div class="portal-stat stat-accent">
-        <div class="portal-stat-label">Active students</div>
-        <div class="portal-stat-value num">${escapeHtml(String(activeStudents.length))}</div>
-      </div>
-    </div>
-
     <div class="portal-card">
-      <form method="GET" action="${escapeHtml(base || '/')}" class="portal-form-row" style="align-items:end;margin-bottom:0;">
+      <form method="GET" action="${escapeHtml(base)}/attendance" class="portal-form-row" style="align-items:end;margin-bottom:0;">
         <div class="portal-field">
           <label for="date-picker">Session date</label>
           <input id="date-picker" name="date" type="date" value="${escapeHtml(date)}">
@@ -200,141 +320,138 @@ function renderAttendancePage({ base, date, month, students, monthRecords, month
       </form>
     </div>
 
-    <div class="portal-workspace">
-      <div>
-        <div class="portal-card">
-          <h2>Mark session for ${escapeHtml(date)}</h2>
-          ${activeStudents.length === 0
-            ? `<div class="portal-empty">
-                <p style="margin:0 0 0.75rem;"><strong>No active students yet.</strong> Add a student to begin marking attendance.</p>
-                <a href="${escapeHtml(base)}/students" class="portal-btn portal-btn-primary">Add first student</a>
-              </div>`
-            : `<form method="POST" action="${escapeHtml(base)}/attendance">
-                <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-                <input type="hidden" name="date" value="${escapeHtml(date)}">
-                <input type="hidden" name="month" value="${escapeHtml(month)}">
-                <div class="portal-form-row">
-                  <div class="portal-field">
-                    <label for="att-student">Student</label>
-                    <select id="att-student" name="studentId" required>
-                      ${activeStudents.map(s => `<option value="${escapeHtml(s.studentId)}">${escapeHtml(s.name)} (${escapeHtml(formatMoney(s.pricePerSession, cur))})</option>`).join('')}
-                    </select>
-                  </div>
-                  <div class="portal-field">
-                    <label for="att-status">Status</label>
-                    <select id="att-status" name="status" required>
-                      <option value="present">Present (Billed)</option>
-                      <option value="late">Late (${settings.lateIsBillable !== false ? 'Billed' : 'Not Billed'})</option>
-                      <option value="absent">Absent (Not Billed)</option>
-                      <option value="cancelled">Cancelled (Not Billed)</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="portal-field" style="margin-bottom:0.95rem;">
-                  <label for="att-note">Session note (optional, included in parent email)</label>
-                  <input id="att-note" name="note" type="text" maxlength="400" placeholder="e.g., Covered fractions &amp; word problems">
-                </div>
-                <div class="portal-inline-actions" style="justify-content:space-between;">
-                  <label class="portal-checkbox">
-                    <input type="checkbox" name="skipEmail" value="1">
-                    <span>Save without emailing parent</span>
-                  </label>
-                  <button type="submit" class="portal-btn portal-btn-primary">Save &amp; notify parent</button>
-                </div>
-              </form>`}
-        </div>
-
-        <div class="portal-card">
-          <h2>Entries on ${escapeHtml(date)}</h2>
-          ${dateRecords.length === 0
-            ? '<div class="portal-empty">No attendance recorded for this date yet.</div>'
-            : `<div class="portal-table-wrap">
-                <table class="portal-table">
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Status</th>
-                      <th class="num">Billed</th>
-                      <th>Note</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${dateRecords.map(rec => {
-                      const stu = studentMap.get(rec.studentId) || { name: rec.studentId };
-                      return `<tr>
-                        <td><strong>${escapeHtml(stu.name)}</strong></td>
-                        <td><span class="badge badge-${escapeHtml(rec.status)}">${escapeHtml(rec.status)}</span></td>
-                        <td class="num">${rec.billable ? escapeHtml(formatMoney(rec.priceApplied, cur)) : '$0.00'}</td>
-                        <td>${escapeHtml(rec.note || '')}</td>
-                        <td>
-                          <div class="portal-inline-actions">
-                            <form method="POST" action="${escapeHtml(base)}/attendance" style="display:inline-flex;gap:0.3rem;align-items:center;">
-                              <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-                              <input type="hidden" name="date" value="${escapeHtml(date)}">
-                              <input type="hidden" name="month" value="${escapeHtml(month)}">
-                              <input type="hidden" name="studentId" value="${escapeHtml(rec.studentId)}">
-                              <input type="hidden" name="skipEmail" value="1">
-                              <select name="status" aria-label="Change status" style="padding:0.28rem 0.45rem;border-radius:7px;border:1px solid #D8CFC0;font-size:0.82rem;">
-                                <option value="present" ${rec.status === 'present' ? 'selected' : ''}>present</option>
-                                <option value="late" ${rec.status === 'late' ? 'selected' : ''}>late</option>
-                                <option value="absent" ${rec.status === 'absent' ? 'selected' : ''}>absent</option>
-                                <option value="cancelled" ${rec.status === 'cancelled' ? 'selected' : ''}>cancelled</option>
-                              </select>
-                              <input type="hidden" name="note" value="${escapeHtml(rec.note || '')}">
-                              <button type="submit" class="portal-btn portal-btn-secondary portal-btn-sm">Update</button>
-                            </form>
-                            <form method="POST" action="${escapeHtml(base)}/attendance/delete" data-confirm="Undo this attendance entry?" style="display:inline;">
-                              <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-                              <input type="hidden" name="date" value="${escapeHtml(date)}">
-                              <input type="hidden" name="month" value="${escapeHtml(month)}">
-                              <input type="hidden" name="studentId" value="${escapeHtml(rec.studentId)}">
-                              <button type="submit" class="portal-btn portal-btn-danger portal-btn-sm">Undo</button>
-                            </form>
-                          </div>
-                        </td>
-                      </tr>`;
-                    }).join('')}
-                  </tbody>
-                </table>
-              </div>`}
-        </div>
+    <div class="portal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+        <h2 style="margin:0;">Daily Roll-Call Grid &mdash; ${escapeHtml(date)}</h2>
+        ${activeStudents.length > 0 ? `<button type="button" class="portal-btn portal-btn-secondary portal-btn-sm" data-mark-all="present">Mark All Present</button>` : ''}
       </div>
 
-      <div>
-        <div class="portal-card">
-          <h2>Running totals (${escapeHtml(month)})</h2>
-          ${monthInvoices.studentInvoices.length === 0
-            ? '<div class="portal-empty">Student totals will appear here once sessions are logged.</div>'
-            : `<div class="portal-table-wrap">
-                <table class="portal-table">
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th class="num">Present</th>
-                      <th class="num">Late</th>
-                      <th class="num">Billable</th>
-                      <th class="num">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${monthInvoices.studentInvoices.map(inv => `<tr>
-                      <td><strong>${escapeHtml(inv.student.name)}</strong></td>
-                      <td class="num">${inv.presentCount}</td>
-                      <td class="num">${inv.lateCount}</td>
-                      <td class="num">${inv.billableCount}</td>
-                      <td class="num"><strong>${escapeHtml(formatMoney(inv.totalAmount, cur))}</strong></td>
-                    </tr>`).join('')}
-                  </tbody>
-                </table>
-              </div>`}
+      ${activeStudents.length === 0
+        ? `<div class="portal-empty">
+            <p style="margin:0 0 0.75rem;"><strong>No active students yet.</strong> Add a student to begin taking roll call.</p>
+            <a href="${escapeHtml(base)}/students" class="portal-btn portal-btn-primary">Add first student</a>
+          </div>`
+        : `<form method="POST" action="${escapeHtml(base)}/attendance/batch">
+            <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+            <input type="hidden" name="date" value="${escapeHtml(date)}">
+            <input type="hidden" name="month" value="${escapeHtml(month)}">
+            <div class="portal-table-wrap">
+              <table class="portal-table qs-rollcall-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Status</th>
+                    <th>Session Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${activeStudents.map(s => {
+                    const existing = recordByStudent.get(s.studentId);
+                    const curStatus = existing ? existing.status : '';
+                    return `<tr>
+                      <td>
+                        <a href="${escapeHtml(base)}/students/${escapeHtml(s.studentId)}" style="color:#028090;font-weight:700;text-decoration:none;">${escapeHtml(s.name)}</a>
+                        <div style="font-size:0.78rem;color:#64748B;">${escapeHtml(formatMoney(s.pricePerSession, cur))} / session</div>
+                      </td>
+                      <td>
+                        <div class="qs-pill-group" role="radiogroup" aria-label="Status for ${escapeHtml(s.name)}">
+                          ${['present', 'late', 'absent', 'cancelled'].map(st => `
+                            <label class="qs-pill">
+                              <input type="radio" name="status_${escapeHtml(s.studentId)}" value="${st}" ${curStatus === st ? 'checked' : ''}>
+                              <span>${st}</span>
+                            </label>
+                          `).join('')}
+                        </div>
+                      </td>
+                      <td>
+                        <input type="text" name="note_${escapeHtml(s.studentId)}" value="${escapeHtml(existing ? existing.note || '' : '')}" maxlength="400" placeholder="Optional note..." style="width:100%;min-width:160px;padding:0.42rem 0.6rem;border:1px solid #D8CFC0;border-radius:8px;font-family:inherit;font-size:0.86rem;">
+                      </td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div class="portal-inline-actions" style="justify-content:space-between;margin-top:1rem;">
+              <label class="portal-checkbox">
+                <input type="checkbox" name="skipEmail" value="1">
+                <span>Save without emailing parents</span>
+              </label>
+              <button type="submit" class="portal-btn portal-btn-primary">Save Roll Call &amp; Notify Parents</button>
+            </div>
+          </form>`}
+    </div>
+
+    ${dateRecords.length > 0 ? `
+      <div class="portal-card">
+        <h2>Saved Entries for ${escapeHtml(date)}</h2>
+        <div class="portal-table-wrap">
+          <table class="portal-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Status</th>
+                <th class="num">Billed</th>
+                <th>Note</th>
+                <th>Undo</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dateRecords.map(rec => {
+                const stu = studentMap.get(rec.studentId) || { name: rec.studentId };
+                return `<tr>
+                  <td><strong>${escapeHtml(stu.name)}</strong></td>
+                  <td><span class="badge badge-${escapeHtml(rec.status)}">${escapeHtml(rec.status)}</span></td>
+                  <td class="num">${rec.billable ? escapeHtml(formatMoney(rec.priceApplied, cur)) : '$0.00'}</td>
+                  <td>${escapeHtml(rec.note || '')}</td>
+                  <td>
+                    <form method="POST" action="${escapeHtml(base)}/attendance/delete" data-confirm="Undo this attendance entry?" style="display:inline;">
+                      <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+                      <input type="hidden" name="date" value="${escapeHtml(date)}">
+                      <input type="hidden" name="month" value="${escapeHtml(month)}">
+                      <input type="hidden" name="studentId" value="${escapeHtml(rec.studentId)}">
+                      <button type="submit" class="portal-btn portal-btn-danger portal-btn-sm">Undo</button>
+                    </form>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </div>` : ''}
+
+    <div class="portal-card">
+      <h2>Month Running Totals (${escapeHtml(month)})</h2>
+      ${monthInvoices.studentInvoices.length === 0
+        ? '<div class="portal-empty">No attendance logged for this month yet.</div>'
+        : `<div class="portal-table-wrap">
+            <table class="portal-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th class="num">Present</th>
+                  <th class="num">Late</th>
+                  <th class="num">Absent/Canc.</th>
+                  <th class="num">Billable</th>
+                  <th class="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${monthInvoices.studentInvoices.map(inv => `<tr>
+                  <td><strong>${escapeHtml(inv.student.name)}</strong></td>
+                  <td class="num">${inv.presentCount}</td>
+                  <td class="num">${inv.lateCount}</td>
+                  <td class="num">${inv.absentCount + inv.cancelledCount}</td>
+                  <td class="num">${inv.billableCount}</td>
+                  <td class="num"><strong>${escapeHtml(formatMoney(inv.totalAmount, cur))}</strong></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`}
     </div>
   `;
 
   return renderPortalShell({
-    title: 'Attendance',
+    title: 'Roll Call',
     base,
     activeTab: 'attendance',
     csrfToken,
@@ -350,22 +467,75 @@ function renderStudentsPage({ base, students, includeArchived, portalOrigin, set
   const bodyHtml = `
     <div class="portal-page-head">
       <div>
-        <h1>Student Roster</h1>
-        <p>Manage student profiles, per-session rates, and private parent links.</p>
+        <h1>Student Directory (SIS)</h1>
+        <p>Click any student to open their full profile, attendance history, homework notes, and private parent link.</p>
       </div>
-      <a href="${escapeHtml(base)}/students${includeArchived ? '' : '?archived=1'}" class="portal-btn portal-btn-secondary">
-        ${includeArchived ? 'Hide archived' : 'Show archived'}
-      </a>
+      <div class="portal-inline-actions">
+        <input type="search" class="qs-search" placeholder="Search student or parent..." data-table-filter="#student-roster-table tbody tr" aria-label="Search students">
+        <a href="${escapeHtml(base)}/students${includeArchived ? '' : '?archived=1'}" class="portal-btn portal-btn-secondary">
+          ${includeArchived ? 'Hide archived' : 'Show archived'}
+        </a>
+      </div>
     </div>
 
     <div class="portal-card">
-      <h2>Add student</h2>
+      <h2>Enrolled Students (${students.length})</h2>
+      ${students.length === 0
+        ? '<div class="portal-empty">No students found. Use the form below to enroll your first student.</div>'
+        : `<div class="portal-table-wrap">
+            <table class="portal-table" id="student-roster-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Guardian</th>
+                  <th>Status</th>
+                  <th class="num">Rate</th>
+                  <th>Parent Link</th>
+                  <th>Profile</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${students.map(stu => {
+                  const parentUrl = `${portalOrigin}/p/${stu.parentToken}`;
+                  return `<tr data-search="${escapeHtml(`${stu.name} ${stu.parentName} ${stu.parentEmail} ${stu.gradeLevel || ''}`)}">
+                    <td>
+                      <a href="${escapeHtml(base)}/students/${escapeHtml(stu.studentId)}" style="color:#028090;font-weight:700;text-decoration:none;">${escapeHtml(stu.name)}</a>
+                      ${stu.gradeLevel ? `<div style="font-size:0.78rem;color:#64748B;">${escapeHtml(stu.gradeLevel)}</div>` : ''}
+                    </td>
+                    <td>
+                      <strong>${escapeHtml(stu.parentName)}</strong>
+                      <div style="font-size:0.8rem;color:#64748B;">${escapeHtml(stu.parentEmail)}</div>
+                    </td>
+                    <td>${stu.archived ? '<span class="badge badge-archived">Archived</span>' : '<span class="badge badge-present">Active</span>'}</td>
+                    <td class="num">${escapeHtml(formatMoney(stu.pricePerSession, cur))}</td>
+                    <td>
+                      <div class="portal-inline-actions">
+                        <button type="button" class="portal-btn portal-btn-secondary portal-btn-sm" data-copy-text="${escapeHtml(parentUrl)}">Copy Link</button>
+                        <a href="${escapeHtml(parentUrl)}" target="_blank" rel="noopener" class="portal-btn portal-btn-secondary portal-btn-sm">Preview</a>
+                      </div>
+                    </td>
+                    <td>
+                      <a href="${escapeHtml(base)}/students/${escapeHtml(stu.studentId)}" class="portal-btn portal-btn-primary portal-btn-sm">Open Profile</a>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`}
+    </div>
+
+    <div class="portal-card">
+      <h2>Enroll New Student</h2>
       <form method="POST" action="${escapeHtml(base)}/students">
         <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
         <div class="portal-form-row">
           <div class="portal-field">
             <label for="stu-name">Student name</label>
             <input id="stu-name" name="name" type="text" required maxlength="100">
+          </div>
+          <div class="portal-field">
+            <label for="stu-grade">Grade / level (optional)</label>
+            <input id="stu-grade" name="gradeLevel" type="text" maxlength="50" placeholder="e.g., Grade 5 / CPEA">
           </div>
           <div class="portal-field">
             <label for="stu-parent">Parent / guardian name</label>
@@ -375,6 +545,12 @@ function renderStudentsPage({ base, students, includeArchived, portalOrigin, set
             <label for="stu-email">Parent email</label>
             <input id="stu-email" name="parentEmail" type="email" required maxlength="150">
           </div>
+        </div>
+        <div class="portal-form-row">
+          <div class="portal-field">
+            <label for="stu-phone">Parent phone (optional)</label>
+            <input id="stu-phone" name="parentPhone" type="text" maxlength="40">
+          </div>
           <div class="portal-field">
             <label for="stu-price">Per-session price (${escapeHtml(cur)})</label>
             <input id="stu-price" name="pricePerSession" type="number" step="0.01" min="0" required value="${escapeHtml(String(defaultPrice))}">
@@ -382,78 +558,227 @@ function renderStudentsPage({ base, students, includeArchived, portalOrigin, set
         </div>
         <div class="portal-field" style="margin-bottom:0.95rem;">
           <label for="stu-notes">Notes (optional)</label>
-          <input id="stu-notes" name="notes" type="text" maxlength="500" placeholder="Grade level, focus areas, or scheduling notes">
+          <input id="stu-notes" name="notes" type="text" maxlength="500" placeholder="Focus areas, learning preferences, or schedule notes">
         </div>
         <button type="submit" class="portal-btn portal-btn-primary">Add student</button>
       </form>
-    </div>
-
-    <div class="portal-card">
-      <h2>Enrolled students (${students.length})</h2>
-      ${students.length === 0
-        ? '<div class="portal-empty">No students found in this view.</div>'
-        : students.map(stu => {
-            const parentUrl = `${portalOrigin}/p/${stu.parentToken}`;
-            return `<div class="portal-subcard">
-              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
-                <div style="display:flex;align-items:center;gap:0.5rem;">
-                  <strong style="font-size:1.05rem;">${escapeHtml(stu.name)}</strong>
-                  ${stu.archived ? '<span class="badge badge-archived">Archived</span>' : '<span class="badge badge-present">Active</span>'}
-                </div>
-                <span class="portal-money" style="font-weight:700;color:#028090;">${escapeHtml(formatMoney(stu.pricePerSession, cur))} / session</span>
-              </div>
-              <form method="POST" action="${escapeHtml(base)}/students/${escapeHtml(stu.studentId)}">
-                <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-                <div class="portal-form-row">
-                  <div class="portal-field">
-                    <label>Student name</label>
-                    <input name="name" type="text" required value="${escapeHtml(stu.name)}">
-                  </div>
-                  <div class="portal-field">
-                    <label>Parent name</label>
-                    <input name="parentName" type="text" required value="${escapeHtml(stu.parentName)}">
-                  </div>
-                  <div class="portal-field">
-                    <label>Parent email</label>
-                    <input name="parentEmail" type="email" required value="${escapeHtml(stu.parentEmail)}">
-                  </div>
-                  <div class="portal-field">
-                    <label>Price (${escapeHtml(cur)})</label>
-                    <input name="pricePerSession" type="number" step="0.01" min="0" required value="${escapeHtml(String(stu.pricePerSession))}">
-                  </div>
-                </div>
-                <div class="portal-field" style="margin-bottom:0.85rem;">
-                  <label>Notes</label>
-                  <input name="notes" type="text" value="${escapeHtml(stu.notes || '')}">
-                </div>
-                <div class="portal-inline-actions">
-                  <button type="submit" class="portal-btn portal-btn-primary portal-btn-sm">Save changes</button>
-                  <button type="submit" name="toggleArchive" value="1" class="portal-btn portal-btn-secondary portal-btn-sm">
-                    ${stu.archived ? 'Unarchive' : 'Archive'}
-                  </button>
-                </div>
-              </form>
-              <div style="margin-top:0.85rem;padding-top:0.85rem;border-top:1px solid #E8E0D2;display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;justify-content:space-between;">
-                <div style="display:flex;flex-wrap:wrap;gap:0.45rem;align-items:center;">
-                  <span style="font-size:0.82rem;font-weight:700;color:#4A5568;">Parent link:</span>
-                  <span class="portal-token-box">${escapeHtml(parentUrl)}</span>
-                </div>
-                <div class="portal-inline-actions">
-                  <button type="button" class="portal-btn portal-btn-secondary portal-btn-sm" data-copy-text="${escapeHtml(parentUrl)}">Copy link</button>
-                  <a href="${escapeHtml(parentUrl)}" target="_blank" rel="noopener" class="portal-btn portal-btn-secondary portal-btn-sm">Preview</a>
-                  <form method="POST" action="${escapeHtml(base)}/students/${escapeHtml(stu.studentId)}/regenerate-token" data-confirm="Regenerate this child's private link? The old link will stop working immediately." style="display:inline;">
-                    <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-                    <button type="submit" class="portal-btn portal-btn-danger portal-btn-sm">Regenerate link</button>
-                  </form>
-                </div>
-              </div>
-            </div>`;
-          }).join('')}
     </div>
   `;
 
   return renderPortalShell({
     title: 'Students',
+    base,
+    activeTab: 'students',
+    csrfToken,
+    flash,
+    bodyHtml
+  });
+}
+
+function renderStudentProfilePage({ base, student, tab, month, summary, progressNotes, portalOrigin, settings, flash, csrfToken }) {
+  const cur = settings.currencySymbol || '$';
+  const parentUrl = `${portalOrigin}/p/${student.parentToken}`;
+  const tabs = [
+    { id: 'overview', label: 'Profile & Guardian' },
+    { id: 'attendance', label: 'Attendance History' },
+    { id: 'progress', label: 'Homework & Mastery' },
+    { id: 'message', label: 'Message Parent' }
+  ];
+
+  let tabContent = '';
+  if (tab === 'attendance') {
+    tabContent = `
+      <div class="portal-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem;">
+          <h2 style="margin:0;">Attendance History (${escapeHtml(month)})</h2>
+          <form method="GET" action="${escapeHtml(base)}/students/${escapeHtml(student.studentId)}" class="portal-inline-actions">
+            <input type="hidden" name="tab" value="attendance">
+            <input name="month" type="month" value="${escapeHtml(month)}" style="padding:0.4rem 0.6rem;border:1.5px solid #D8CFC0;border-radius:8px;font-family:inherit;font-weight:600;">
+            <button type="submit" class="portal-btn portal-btn-secondary portal-btn-sm">Load</button>
+          </form>
+        </div>
+        <p style="margin:0 0 1rem;color:#4A5568;">
+          Billable sessions: <strong class="num">${summary.billableCount}</strong> &bull;
+          Month total: <strong class="num">${escapeHtml(formatMoney(summary.totalAmount, cur))}</strong>
+        </p>
+        ${summary.sessions.length === 0
+          ? '<div class="portal-empty">No attendance entries for this month.</div>'
+          : `<div class="portal-table-wrap">
+              <table class="portal-table">
+                <thead><tr><th>Date</th><th>Status</th><th>Note</th><th class="num">Fee</th></tr></thead>
+                <tbody>
+                  ${summary.sessions.map(s => `<tr>
+                    <td class="num">${escapeHtml(s.date)}</td>
+                    <td><span class="badge badge-${escapeHtml(s.status)}">${escapeHtml(s.status)}</span></td>
+                    <td>${escapeHtml(s.note || '')}</td>
+                    <td class="num">${s.billable ? escapeHtml(formatMoney(s.appliedPrice, cur)) : '$0.00'}</td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`}
+      </div>
+    `;
+  } else if (tab === 'progress') {
+    tabContent = `
+      <div class="portal-card">
+        <h2>Log Homework &amp; Mastery Note</h2>
+        <form method="POST" action="${escapeHtml(base)}/students/${escapeHtml(student.studentId)}/progress">
+          <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+          <div class="portal-form-row">
+            <div class="portal-field">
+              <label for="prog-date">Date</label>
+              <input id="prog-date" name="date" type="date" required value="${escapeHtml(new Date().toISOString().slice(0, 10))}">
+            </div>
+            <div class="portal-field">
+              <label for="prog-topic">Topic / Skill</label>
+              <input id="prog-topic" name="topic" type="text" required maxlength="120" placeholder="e.g., Equivalent Fractions">
+            </div>
+            <div class="portal-field">
+              <label for="prog-mastery">Mastery / Score</label>
+              <input id="prog-mastery" name="mastery" type="text" maxlength="60" placeholder="e.g., 9/10 or Mastered">
+            </div>
+          </div>
+          <div class="portal-field" style="margin-bottom:0.9rem;">
+            <label for="prog-hw">Homework / Next Steps</label>
+            <input id="prog-hw" name="homework" type="text" maxlength="400" placeholder="e.g., Complete worksheet p.14 #1-8">
+          </div>
+          <button type="submit" class="portal-btn portal-btn-primary">Save Progress Note</button>
+        </form>
+      </div>
+
+      <div class="portal-card">
+        <h2>Recorded Notes (${progressNotes.length})</h2>
+        ${progressNotes.length === 0
+          ? '<div class="portal-empty">No homework or mastery notes recorded yet.</div>'
+          : `<div class="portal-table-wrap">
+              <table class="portal-table">
+                <thead><tr><th>Date</th><th>Topic</th><th>Mastery</th><th>Homework</th><th>Remove</th></tr></thead>
+                <tbody>
+                  ${progressNotes.map(n => `<tr>
+                    <td class="num">${escapeHtml(n.date)}</td>
+                    <td><strong>${escapeHtml(n.topic)}</strong></td>
+                    <td>${escapeHtml(n.mastery || '')}</td>
+                    <td>${escapeHtml(n.homework || '')}</td>
+                    <td>
+                      <form method="POST" action="${escapeHtml(base)}/students/${escapeHtml(student.studentId)}/progress/${escapeHtml(n.noteId)}/delete" data-confirm="Remove this progress note?">
+                        <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+                        <input type="hidden" name="date" value="${escapeHtml(n.date)}">
+                        <button type="submit" class="portal-btn portal-btn-danger portal-btn-sm">Delete</button>
+                      </form>
+                    </td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`}
+      </div>
+    `;
+  } else if (tab === 'message') {
+    tabContent = `
+      <div class="portal-card">
+        <h2>Send Direct Notice to ${escapeHtml(student.parentName)}</h2>
+        <p style="color:#4A5568;font-size:0.9rem;">Sends via SES to <strong>${escapeHtml(student.parentEmail)}</strong> with Reply-To set to ${escapeHtml(settings.replyToEmail || 'Cassie@tutortime.ai')}.</p>
+        <form method="POST" action="${escapeHtml(base)}/students/${escapeHtml(student.studentId)}/notify">
+          <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+          <div class="portal-field" style="margin-bottom:0.85rem;">
+            <label for="msg-subject">Subject</label>
+            <input id="msg-subject" name="subject" type="text" required maxlength="150" value="Tutor Time Update: ${escapeHtml(student.name)}">
+          </div>
+          <div class="portal-field" style="margin-bottom:0.95rem;">
+            <label for="msg-body">Message</label>
+            <textarea id="msg-body" name="message" rows="5" required maxlength="2000" placeholder="Share a progress update, homework reminder, or scheduling note..."></textarea>
+          </div>
+          <button type="submit" class="portal-btn portal-btn-primary">Send Email via SES</button>
+        </form>
+      </div>
+    `;
+  } else {
+    tabContent = `
+      <div class="portal-card">
+        <h2>Profile &amp; Guardian Details</h2>
+        <form method="POST" action="${escapeHtml(base)}/students/${escapeHtml(student.studentId)}">
+          <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+          <input type="hidden" name="redirectProfile" value="1">
+          <div class="portal-form-row">
+            <div class="portal-field">
+              <label>Student name</label>
+              <input name="name" type="text" required value="${escapeHtml(student.name)}">
+            </div>
+            <div class="portal-field">
+              <label>Grade / level</label>
+              <input name="gradeLevel" type="text" value="${escapeHtml(student.gradeLevel || '')}">
+            </div>
+            <div class="portal-field">
+              <label>Parent name</label>
+              <input name="parentName" type="text" required value="${escapeHtml(student.parentName)}">
+            </div>
+            <div class="portal-field">
+              <label>Parent email</label>
+              <input name="parentEmail" type="email" required value="${escapeHtml(student.parentEmail)}">
+            </div>
+          </div>
+          <div class="portal-form-row">
+            <div class="portal-field">
+              <label>Parent phone</label>
+              <input name="parentPhone" type="text" value="${escapeHtml(student.parentPhone || '')}">
+            </div>
+            <div class="portal-field">
+              <label>Price (${escapeHtml(cur)})</label>
+              <input name="pricePerSession" type="number" step="0.01" min="0" required value="${escapeHtml(String(student.pricePerSession))}">
+            </div>
+          </div>
+          <div class="portal-field" style="margin-bottom:0.95rem;">
+            <label>Notes</label>
+            <input name="notes" type="text" value="${escapeHtml(student.notes || '')}">
+          </div>
+          <div class="portal-inline-actions">
+            <button type="submit" class="portal-btn portal-btn-primary">Save Profile</button>
+            <button type="submit" name="toggleArchive" value="1" class="portal-btn portal-btn-secondary">
+              ${student.archived ? 'Unarchive Student' : 'Archive Student'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="portal-card">
+        <h2>Private Parent Link (No Login Required)</h2>
+        <p style="color:#4A5568;font-size:0.9rem;">Only ${escapeHtml(student.name)}&rsquo;s attendance and progress are reachable via this token.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.65rem;align-items:center;justify-content:space-between;">
+          <span class="portal-token-box">${escapeHtml(parentUrl)}</span>
+          <div class="portal-inline-actions">
+            <button type="button" class="portal-btn portal-btn-secondary portal-btn-sm" data-copy-text="${escapeHtml(parentUrl)}">Copy Link</button>
+            <a href="${escapeHtml(parentUrl)}" target="_blank" rel="noopener" class="portal-btn portal-btn-secondary portal-btn-sm">Open Parent View</a>
+            <form method="POST" action="${escapeHtml(base)}/students/${escapeHtml(student.studentId)}/regenerate-token" data-confirm="Regenerate this child's private link? The old link will stop working immediately." style="display:inline;">
+              <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+              <input type="hidden" name="redirectProfile" value="1">
+              <button type="submit" class="portal-btn portal-btn-danger portal-btn-sm">Regenerate Link</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const bodyHtml = `
+    <div class="portal-page-head">
+      <div>
+        <h1>${escapeHtml(student.name)} ${student.archived ? '<span class="badge badge-archived">Archived</span>' : ''}</h1>
+        <p>Guardian: ${escapeHtml(student.parentName)} &bull; Rate: <span class="num">${escapeHtml(formatMoney(student.pricePerSession, cur))}</span>/session</p>
+      </div>
+      <div class="portal-inline-actions">
+        <a href="${escapeHtml(base)}/students" class="portal-btn portal-btn-secondary">&larr; All Students</a>
+        <a href="${escapeHtml(base)}/invoices?month=${escapeHtml(month)}&studentId=${escapeHtml(student.studentId)}" class="portal-btn portal-btn-primary">Print Statement</a>
+      </div>
+    </div>
+
+    <nav class="qs-tabs" aria-label="Student Profile Sections">
+      ${tabs.map(t => `<a href="${escapeHtml(base)}/students/${escapeHtml(student.studentId)}?tab=${escapeHtml(t.id)}&month=${escapeHtml(month)}" class="qs-tab ${tab === t.id ? 'active' : ''}">${escapeHtml(t.label)}</a>`).join('')}
+    </nav>
+
+    ${tabContent}
+  `;
+
+  return renderPortalShell({
+    title: student.name,
     base,
     activeTab: 'students',
     csrfToken,
@@ -479,7 +804,7 @@ function renderInvoicesPage({ base, month, selectedStudentId, students, invoices
 
     <div class="portal-page-head no-print">
       <div>
-        <h1>Monthly Invoices</h1>
+        <h1>Fee Tracking &amp; Invoices</h1>
         <p>Live billing statements computed from ${escapeHtml(month)} attendance records.</p>
       </div>
       <button type="button" class="portal-btn portal-btn-primary" data-action="print">
@@ -574,8 +899,8 @@ function renderSettingsPage({ base, settings, flash, csrfToken }) {
   const bodyHtml = `
     <div class="portal-page-head">
       <div>
-        <h1>Office Settings</h1>
-        <p>Configure billing rules, default rates, and parent email notifications.</p>
+        <h1>Office &amp; Module Settings</h1>
+        <p>Configure billing rules, parent portal visibility, and SES email notifications.</p>
       </div>
     </div>
 
@@ -612,6 +937,10 @@ function renderSettingsPage({ base, settings, flash, csrfToken }) {
             <input type="checkbox" name="sendParentEmails" value="1" ${settings.sendParentEmails !== false ? 'checked' : ''}>
             <span>Send parent attendance email notifications automatically via SES</span>
           </label>
+          <label class="portal-checkbox">
+            <input type="checkbox" name="showProgressOnParentView" value="1" ${settings.showProgressOnParentView !== false ? 'checked' : ''}>
+            <span>Show Homework &amp; Mastery notes on private parent links (/p/:token)</span>
+          </label>
         </div>
         <button type="submit" class="portal-btn portal-btn-primary">Save settings</button>
       </form>
@@ -638,7 +967,7 @@ function renderEmailsPage({ base, month, logs, settings, csrfToken }) {
   const bodyHtml = `
     <div class="portal-page-head">
       <div>
-        <h1>Email Delivery Log</h1>
+        <h1>Parent Notices &amp; Email Log</h1>
         <p>
           Sender: <strong>${escapeHtml(settings.senderEmail || 'noreply@mail.tutortime.ai')}</strong> &bull;
           Reply-To: <strong>${escapeHtml(settings.replyToEmail || 'Cassie@tutortime.ai')}</strong>
@@ -679,7 +1008,7 @@ function renderEmailsPage({ base, month, logs, settings, csrfToken }) {
   `;
 
   return renderPortalShell({
-    title: 'Email Log',
+    title: 'Parent Notices',
     base,
     activeTab: 'emails',
     csrfToken,
@@ -688,10 +1017,11 @@ function renderEmailsPage({ base, month, logs, settings, csrfToken }) {
   });
 }
 
-function renderParentViewPage({ student, summary, month, settings }) {
+function renderParentViewPage({ student, summary, progressNotes = [], month, settings }) {
   const cur = settings.currencySymbol || '$';
   const tutorName = settings.tutorDisplayName || 'Teacher Cassie';
   const replyTo = settings.replyToEmail || 'Cassie@tutortime.ai';
+  const showProgress = settings.showProgressOnParentView !== false;
 
   return `${renderPortalHead(`${student.name} — Attendance`)}
 <body class="portal-body">
@@ -701,7 +1031,7 @@ function renderParentViewPage({ student, summary, month, settings }) {
         <img src="/assets/logos/tutor-time-logo.png" alt="Tutor Time" width="36" height="36">
         <span>
           <span class="portal-brand-title">Tutor Time with ${escapeHtml(tutorName)}</span>
-          <span class="portal-brand-sub">Private Parent Attendance Summary</span>
+          <span class="portal-brand-sub">Private Parent Attendance &amp; Progress Summary</span>
         </span>
       </div>
       <form method="GET" class="portal-inline-actions">
@@ -715,7 +1045,7 @@ function renderParentViewPage({ student, summary, month, settings }) {
     <div class="portal-page-head">
       <div>
         <h1>${escapeHtml(student.name)}</h1>
-        <p>Rate: <span class="num">${escapeHtml(formatMoney(student.pricePerSession, cur))}</span> per session</p>
+        <p>${student.gradeLevel ? `${escapeHtml(student.gradeLevel)} &bull; ` : ''}Rate: <span class="num">${escapeHtml(formatMoney(student.pricePerSession, cur))}</span> per session</p>
       </div>
     </div>
 
@@ -758,11 +1088,32 @@ function renderParentViewPage({ student, summary, month, settings }) {
               </tbody>
             </table>
           </div>`}
-      <p style="margin-top:1.25rem;font-size:0.88rem;color:#4A5568;">
-        Questions about a session? Contact ${escapeHtml(tutorName)} at
-        <a href="mailto:${escapeHtml(replyTo)}" style="color:#028090;font-weight:700;">${escapeHtml(replyTo)}</a>.
-      </p>
     </div>
+
+    ${showProgress ? `
+      <div class="portal-card">
+        <h2>Homework &amp; Mastery Notes</h2>
+        ${progressNotes.length === 0
+          ? '<div class="portal-empty">No homework or mastery notes posted yet.</div>'
+          : `<div class="portal-table-wrap">
+              <table class="portal-table">
+                <thead><tr><th>Date</th><th>Topic</th><th>Mastery</th><th>Homework</th></tr></thead>
+                <tbody>
+                  ${progressNotes.map(n => `<tr>
+                    <td class="num">${escapeHtml(n.date)}</td>
+                    <td><strong>${escapeHtml(n.topic)}</strong></td>
+                    <td>${escapeHtml(n.mastery || '')}</td>
+                    <td>${escapeHtml(n.homework || '')}</td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`}
+      </div>` : ''}
+
+    <p style="margin-top:1.25rem;font-size:0.88rem;color:#4A5568;">
+      Questions about a session? Contact ${escapeHtml(tutorName)} at
+      <a href="mailto:${escapeHtml(replyTo)}" style="color:#028090;font-weight:700;">${escapeHtml(replyTo)}</a>.
+    </p>
   </main>
 </body>
 </html>`;
@@ -772,8 +1123,10 @@ module.exports = {
   renderPortalShell,
   renderLoginPage,
   renderChangePasswordPage,
+  renderDashboardPage,
   renderAttendancePage,
   renderStudentsPage,
+  renderStudentProfilePage,
   renderInvoicesPage,
   renderSettingsPage,
   renderEmailsPage,
