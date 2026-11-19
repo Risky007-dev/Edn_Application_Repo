@@ -1,0 +1,52 @@
+{
+ "note": "Credits for the photographs in this folder: photos.mjs credits prints the footer block for the ones the pages use.",
+ "photos": [
+  {
+   "file": "photo-f175117225.webp",
+   "files": [
+    "photo-f175117225-500.webp",
+    "photo-f175117225-960.webp",
+    "photo-f175117225-1280.webp",
+    "photo-f175117225.webp",
+    "photo-f175117225-780x975.webp"
+   ],
+   "id": "f175117225",
+   "alt": "Study Desk, Eavan Boland Library",
+   "by": "Orf3us",
+   "licence": "CC BY-SA 4.0",
+   "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Study_Desk,_Eavan_Boland_Library.jpg",
+   "source": "Wikimedia Commons"
+  },
+  {
+   "file": "photo-d183.webp",
+   "files": [
+    "photo-d183-500.webp",
+    "photo-d183-960.webp",
+    "photo-d183.webp"
+   ],
+   "id": "d183",
+   "alt": "Open blank notebook with a ribbon marker and a pencil lying across the pages on a dark wooden table",
+   "by": "Jan Kahánek",
+   "licence": "CC0",
+   "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+   "page": "https://commons.wikimedia.org/wiki/File:Tabel_day_1_(Unsplash).jpg",
+   "source": "Wikimedia Commons"
+  },
+  {
+   "file": "photo-c877.webp",
+   "files": [
+    "photo-c877-500.webp",
+    "photo-c877-960.webp",
+    "photo-c877.webp"
+   ],
+   "id": "c877",
+   "alt": "Close-up of soft-focus stacked books showing page edges and covers with no readable spines",
+   "by": "Nenad Stojkovic",
+   "licence": "CC BY 2.0",
+   "licenceUrl": "https://creativecommons.org/licenses/by/2.0/",
+   "page": "https://commons.wikimedia.org/wiki/File:Close-up_of_stacked_books._(51539890528).jpg",
+   "source": "Wikimedia Commons"
+  }
+ ]
+}

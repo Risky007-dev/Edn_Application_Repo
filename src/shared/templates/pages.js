@@ -43,256 +43,156 @@ function renderFormStatus(formId) {
 function renderHomePage() {
   const hp = content.homepage.hero;
   const bodyHtml = `
-    <section class="hero-section">
-      <div class="hero-container">
-        <h1 class="hero-headline">${escapeHtml(hp.headline.text)}</h1>
-        <p class="hero-tagline">${escapeHtml(hp.tagline.text)}</p>
-        <p class="hero-subhead">${escapeHtml(hp.subhead.text)}</p>
+    <!-- Screen 1: Split Editorial Hero (Flat Ivory Ground) -->
+    <section class="hero-section hero-split-section">
+      <div class="container hero-split-grid">
+        <div class="hero-split-copy">
+          <h1 class="hero-headline">${escapeHtml(hp.headline.text)}</h1>
+          <p class="hero-tagline">${escapeHtml(hp.tagline.text)}</p>
+          <p class="hero-subhead">${escapeHtml(hp.subhead.text)}</p>
 
-        <div class="hero-mascot-wrapper">
-          <!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
-          ${renderGuideMascot({ expression: 'happy', size: 104, className: 'animated' })}
-          ${renderSpeechBubble({ text: escapeHtml(hp.mascotGreeting ? hp.mascotGreeting.text : "Hi! I'm your Tutor Time guide. Ready to explore learning that pops?") })}
-        </div>
-
-        <div class="hero-ctas">
-          <a href="/book" class="btn btn-primary btn-large">${escapeHtml(hp.ctaBook.text)}</a>
-          <a href="#programmes" class="btn btn-secondary btn-large">${escapeHtml(hp.ctaExplore.text)}</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- Feature Showcase Carousel -->
-    <section class="carousel-section" aria-label="Featured Tutor Time Programmes and Tools">
-      <div class="container">
-        <div class="section-header">
-          <h2>Explore What Makes Tutor Time Different</h2>
-          <p>Interactive math practice, tailored 1-on-1 coaching, and parent-friendly progress tools built for real results.</p>
-        </div>
-
-        <div class="tt-carousel" id="home-carousel" role="region" aria-roledescription="carousel" aria-label="Tutor Time Features">
-          <div class="tt-carousel-viewport">
-            <div class="tt-carousel-track" data-carousel-track>
-              <article class="tt-carousel-slide is-active" data-carousel-slide="0">
-                <div class="tt-slide-copy">
-                  <span class="tt-slide-tag">1-on-1 Core Tutoring</span>
-                  <h3>Personalised Tutoring &amp; Weekly Parent Clarity</h3>
-                  <p>Every child learns at their own pace with structured diagnostics, calm 1-on-1 guidance, and clear session notes sent straight to parents.</p>
-                  <ul class="tt-slide-highlights">
-                    <li>Customised lesson plans aligned to school &amp; CPEA goals</li>
-                    <li>Direct session attendance &amp; progress summaries for families</li>
-                    <li>Flexible in-person and online scheduling</li>
-                  </ul>
-                  <div class="tt-slide-actions">
-                    <a href="/services/traditional-tutoring" class="btn btn-primary">Explore Tutoring &rarr;</a>
-                    <a href="/book" class="btn btn-secondary">Book Consultation</a>
-                  </div>
-                </div>
-                <div class="tt-slide-panel">
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">1:1</span>
-                    <span class="tt-metric-label">Focused Attention</span>
-                  </div>
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">100%</span>
-                    <span class="tt-metric-label">Parent Visibility</span>
-                  </div>
-                </div>
-              </article>
-
-              <article class="tt-carousel-slide" data-carousel-slide="1">
-                <div class="tt-slide-copy">
-                  <span class="tt-slide-tag">Flagship Math Experience</span>
-                  <h3>Popcorn Math: Playful Fluency That Sticks</h3>
-                  <p>Turn multiplication, mental arithmetic, and problem-solving into an energising experience with multi-level challenges and live school workshops.</p>
-                  <ul class="tt-slide-highlights">
-                    <li>3 skill bands: Little Kernels, Popping Poppers &amp; Mega Crunch</li>
-                    <li>Zero-tracking, kid-safe interactive browser mini-game</li>
-                    <li>Community cohorts &amp; primary school partnerships</li>
-                  </ul>
-                  <div class="tt-slide-actions">
-                    <a href="/popcorn-math/play" class="btn btn-primary">Play Popcorn Math &rarr;</a>
-                    <a href="/services/popcorn-math" class="btn btn-secondary">View Hub</a>
-                  </div>
-                </div>
-                <div class="tt-slide-panel tt-panel-popcorn">
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">3</span>
-                    <span class="tt-metric-label">Skill Bands (Ages 4&ndash;12)</span>
-                  </div>
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">0</span>
-                    <span class="tt-metric-label">Trackers or Ads</span>
-                  </div>
-                </div>
-              </article>
-
-              <article class="tt-carousel-slide" data-carousel-slide="2">
-                <div class="tt-slide-copy">
-                  <span class="tt-slide-tag">Executive &amp; Study Coaching</span>
-                  <h3>Concierge Academic Coaching for Busy Families</h3>
-                  <p>Beyond homework help: we build study routines, exam temperament, and independent organisation skills that carry across every subject.</p>
-                  <ul class="tt-slide-highlights">
-                    <li>Diagnostic academic check-ins &amp; study-habit blueprints</li>
-                    <li>Dedicated tutor coordination &amp; goal milestones</li>
-                    <li>Smart Programme Finder to match your child in 3 steps</li>
-                  </ul>
-                  <div class="tt-slide-actions">
-                    <a href="/services/concierge" class="btn btn-primary">Explore Concierge &rarr;</a>
-                    <a href="/find-your-programme" class="btn btn-secondary">Try Programme Finder</a>
-                  </div>
-                </div>
-                <div class="tt-slide-panel tt-panel-concierge">
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">84</span>
-                    <span class="tt-metric-label">Matched Pathways</span>
-                  </div>
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">3</span>
-                    <span class="tt-metric-label">Quick Finder Steps</span>
-                  </div>
-                </div>
-              </article>
-
-              <article class="tt-carousel-slide" data-carousel-slide="3">
-                <div class="tt-slide-copy">
-                  <span class="tt-slide-tag">Inclusive &amp; Exam Ready</span>
-                  <h3>Individualised Learning Support &amp; CPEA Check</h3>
-                  <p>Gentle, structured support for diverse learners alongside our free 12-question CPEA Readiness Check with instant printable summaries.</p>
-                  <ul class="tt-slide-highlights">
-                    <li>Differentiated pacing tailored to how your child learns best</li>
-                    <li>12-question CPEA Readiness Check with printable parent sheet</li>
-                    <li>Warm, encouraging environment led by Teacher Cassie</li>
-                  </ul>
-                  <div class="tt-slide-actions">
-                    <a href="/readiness-check" class="btn btn-primary">Take Readiness Check &rarr;</a>
-                    <a href="/services/specialist-support" class="btn btn-secondary">Learning Support</a>
-                  </div>
-                </div>
-                <div class="tt-slide-panel tt-panel-specialist">
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">12</span>
-                    <span class="tt-metric-label">Readiness Questions</span>
-                  </div>
-                  <div class="tt-feature-metric">
-                    <span class="tt-metric-num">100%</span>
-                    <span class="tt-metric-label">Private &amp; Printable</span>
-                  </div>
-                </div>
-              </article>
-            </div>
+          <div class="hero-ctas">
+            <a href="/book" class="btn btn-primary btn-large">${escapeHtml(hp.ctaBook.text)}</a>
+            <a href="#programmes" class="btn btn-secondary btn-large">${escapeHtml(hp.ctaExplore.text)}</a>
           </div>
 
-          <div class="tt-carousel-controls">
-            <button type="button" class="tt-carousel-btn" data-carousel-prev aria-label="Previous feature slide">&larr;</button>
-            <div class="tt-carousel-dots" role="tablist" aria-label="Choose feature slide">
-              <button type="button" class="tt-carousel-dot is-active" data-carousel-dot="0" aria-label="Slide 1" aria-selected="true"></button>
-              <button type="button" class="tt-carousel-dot" data-carousel-dot="1" aria-label="Slide 2" aria-selected="false"></button>
-              <button type="button" class="tt-carousel-dot" data-carousel-dot="2" aria-label="Slide 3" aria-selected="false"></button>
-              <button type="button" class="tt-carousel-dot" data-carousel-dot="3" aria-label="Slide 4" aria-selected="false"></button>
-            </div>
-            <button type="button" class="tt-carousel-btn" data-carousel-next aria-label="Next feature slide">&rarr;</button>
+          <div class="hero-mascot-wrapper hero-mascot-compact">
+            <!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
+            ${renderGuideMascot({ expression: 'happy', size: 84, className: 'animated' })}
+            ${renderSpeechBubble({ text: escapeHtml(hp.mascotGreeting ? hp.mascotGreeting.text : "Hi! I'm your Tutor Time guide. Ready to explore learning that pops?") })}
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- Holiday Specials (3 Seasonal Programmes) -->
-    <section id="holiday-specials" class="holiday-section">
-      <div class="container">
-        <div class="section-header">
-          <span class="badge-accent">Limited Seasonal Enrolment</span>
-          <h2>Holiday Specials with Teacher Cassie</h2>
-          <p>Short, high-impact holiday intensives designed to keep skills sharp and build joyful momentum for the new term.</p>
-        </div>
-
-        <div class="holiday-grid">
-          <article class="holiday-card">
-            <span class="holiday-badge">Ages 7&ndash;11 &bull; 5-Day Intensive</span>
-            <h3>Winter Spark Math Camp</h3>
-            <p>Hands-on number fluency, Popcorn Math speed challenges, and confidence-boosting word problems in small, encouraging groups.</p>
-            <a href="/book?interest=popcorn-math" class="btn btn-card">Reserve a Spot &rarr;</a>
-          </article>
-
-          <article class="holiday-card holiday-card-featured">
-            <span class="holiday-badge">Ages 9&ndash;12 &bull; Exam Clinic</span>
-            <h3>Festive CPEA Sprint &amp; Past-Paper Studio</h3>
-            <p>Focused holiday prep covering timed reasoning, step-by-step error review, and calm test-taking habits ahead of exam term.</p>
-            <a href="/book?interest=traditional-tutoring" class="btn btn-primary">Book Holiday Sprint &rarr;</a>
-          </article>
-
-          <article class="holiday-card">
-            <span class="holiday-badge">All Primary Levels &bull; Diagnostic</span>
-            <h3>New Year Reading &amp; Numeracy Jumpstart</h3>
-            <p>A fresh-start academic check-in with personalised goal setting and a two-week roadmap so your child steps into January ahead.</p>
-            <a href="/book?interest=concierge" class="btn btn-card">Claim Jumpstart &rarr;</a>
-          </article>
+        <div class="hero-split-media">
+          <picture data-phone-fill>
+            <source media="(max-width: 639px)" srcset="/assets/photos/photo-f175117225-780x975.webp 780w" sizes="100vw">
+            <img src="/assets/photos/photo-f175117225.webp"
+                 srcset="/assets/photos/photo-f175117225-500.webp 500w, /assets/photos/photo-f175117225-960.webp 960w, /assets/photos/photo-f175117225-1280.webp 1280w, /assets/photos/photo-f175117225.webp 1920w"
+                 sizes="(max-width: 1023px) 100vw, 50vw"
+                 width="1920" height="1444"
+                 alt="Quiet wooden study desk with lamp and chair in natural daylight"
+                 fetchpriority="high" decoding="async"
+                 data-source="stand-in" data-subject="study-desk">
+          </picture>
         </div>
       </div>
     </section>
 
-    <section id="programmes" class="programmes-section">
+    <!-- Screen 2: Four Core Educational Pathways (Warm Cream Ground) -->
+    <section id="programmes" class="programmes-section pathways-cream">
       <div class="container">
-        <div class="section-header">
+        <div class="section-header-left">
           <h2>Our Core Educational Pathways</h2>
-          <p>Personalised learning experiences designed to inspire confidence and real results.</p>
+          <p>Personalised learning experiences designed to inspire confidence and steady academic progress.</p>
         </div>
 
-        <div class="programme-grid">
+        <div class="pathways-grid">
           ${hp.options.map(opt => `
-            <article class="programme-card card-${escapeHtml(opt.key)}">
-              <div class="card-icon" aria-hidden="true">${opt.icon}</div>
-              <h3 class="card-title">${escapeHtml(opt.title.text)}</h3>
-              <h4 class="card-subtitle">${escapeHtml(opt.name.text)}</h4>
-              <p class="card-desc">${escapeHtml(opt.desc.text)}</p>
-              <a href="${escapeHtml(opt.href)}" class="btn btn-card">${escapeHtml(opt.cta.text)} &rarr;</a>
+            <article class="pathway-card pathway-${escapeHtml(opt.key)}">
+              <div class="pathway-top-rule" aria-hidden="true"></div>
+              <h3 class="pathway-title">${escapeHtml(opt.title.text)}</h3>
+              <p class="pathway-name">${escapeHtml(opt.name.text)}</p>
+              <p class="pathway-desc">${escapeHtml(opt.desc.text)}</p>
+              <a href="${escapeHtml(opt.href)}" class="pathway-link">${escapeHtml(opt.cta.text)}</a>
             </article>
           `).join('')}
         </div>
       </div>
     </section>
 
-    <!-- Smart Service Finder Banner Card -->
-    <section class="finder-cta-section">
-      <div class="container">
-        <div class="finder-cta-card">
-          <div class="finder-cta-content">
-            <span class="badge-accent">Interactive Tool</span>
-            <h2>Not Sure Which Programme Is Right for Your Child?</h2>
-            <p>Answer three quick questions to discover the most relevant educational programme for your child.</p>
+    <!-- Screen 3: Brand Band — Popcorn Math & Interactive Parent Tools -->
+    <section class="brand-band-section">
+      <div class="container brand-band-grid">
+        <div class="brand-band-copy">
+          <h2>Interactive Practice &amp; Parent Clarity Tools</h2>
+          <p class="brand-band-lead">Try our kid-safe math mini-game, match your child to the right pathway, or run a quick CPEA readiness check.</p>
+
+          <div class="brand-tool-list">
+            <a href="/popcorn-math/play" class="brand-tool-row">
+              <div>
+                <strong>Popcorn Math Mini-Game</strong>
+                <span>Three skill bands for ages 4&ndash;12, zero tracking or ads.</span>
+              </div>
+              <span class="brand-tool-action">Play now</span>
+            </a>
+            <a href="/find-your-programme" class="brand-tool-row">
+              <div>
+                <strong>Smart Programme Finder</strong>
+                <span>Three quick questions to match your child&rsquo;s learning goals.</span>
+              </div>
+              <span class="brand-tool-action">Find match</span>
+            </a>
+            <a href="/readiness-check" class="brand-tool-row readiness-cta-section">
+              <div>
+                <strong>${escapeHtml(content.homepage.readinessCta.title.text)}</strong>
+                <span>12 interactive questions with a printable parent summary.</span>
+              </div>
+              <span class="brand-tool-action">${escapeHtml(content.homepage.readinessCta.buttonText.text)}</span>
+            </a>
           </div>
-          <div class="finder-cta-action">
-            <a href="/find-your-programme" class="btn btn-primary btn-large">Try Programme Finder &rarr;</a>
-          </div>
+        </div>
+
+        <div class="brand-band-media">
+          <img src="/assets/photos/photo-d183.webp"
+               srcset="/assets/photos/photo-d183-500.webp 500w, /assets/photos/photo-d183-960.webp 960w, /assets/photos/photo-d183.webp 1280w"
+               sizes="(max-width: 1023px) 100vw, 48vw"
+               width="1280" height="853"
+               alt="Open blank notebook with a ribbon marker and pencil on a wooden study table"
+               loading="lazy" decoding="async"
+               data-source="library-057" data-subject="desk">
         </div>
       </div>
     </section>
 
-    <!-- Gamified CPEA Readiness Check Card (Task 4) -->
-    <section class="readiness-cta-section">
+    <!-- Screen 4: Holiday Specials (3 Seasonal Programmes) -->
+    <section id="holiday-specials" class="holiday-section">
       <div class="container">
-        <div class="readiness-cta-card">
-          <div class="readiness-cta-content">
-            <span class="badge-accent">${escapeHtml(content.homepage.readinessCta.tag.text)}</span>
-            <h2>${escapeHtml(content.homepage.readinessCta.title.text)}</h2>
-            <p>${escapeHtml(content.homepage.readinessCta.desc.text)}</p>
-            <div class="readiness-cta-features">
-              <span class="readiness-feature-tag">🌟 12 Interactive Questions</span>
-              <span class="readiness-feature-tag">🖨️ Printable Summary</span>
-              <span class="readiness-feature-tag">🔒 100% Client-Side</span>
-            </div>
+        <div class="holiday-intro-grid">
+          <div class="section-header-left">
+            <h2>Holiday Specials with Teacher Cassie</h2>
+            <p>Short, focused holiday intensives designed to keep skills sharp and build joyful momentum before the new term begins.</p>
           </div>
-          <div class="readiness-cta-action">
-            <a href="/readiness-check" class="btn btn-primary btn-large">${escapeHtml(content.homepage.readinessCta.buttonText.text)} &rarr;</a>
+          <div class="holiday-intro-media">
+            <img src="/assets/photos/photo-c877.webp"
+                 srcset="/assets/photos/photo-c877-500.webp 500w, /assets/photos/photo-c877-960.webp 960w, /assets/photos/photo-c877.webp 1280w"
+                 sizes="(max-width: 1023px) 100vw, 40vw"
+                 width="1280" height="853"
+                 alt="Stacked study books prepared for holiday learning sessions"
+                 loading="lazy" decoding="async"
+                 data-source="library-057" data-subject="desk">
           </div>
+        </div>
+
+        <div class="holiday-grid">
+          <article class="holiday-card">
+            <span class="holiday-meta">Ages 7&ndash;11 &bull; 5-Day Intensive</span>
+            <h3>Winter Spark Math Camp</h3>
+            <p>Hands-on number fluency, Popcorn Math speed challenges, and confidence-building word problems in small, encouraging groups.</p>
+            <a href="/book?interest=popcorn-math" class="btn btn-secondary">Reserve a Spot</a>
+          </article>
+
+          <article class="holiday-card holiday-card-featured">
+            <span class="holiday-meta">Ages 9&ndash;12 &bull; Exam Clinic</span>
+            <h3>Festive CPEA Sprint &amp; Past-Paper Studio</h3>
+            <p>Focused holiday prep covering timed reasoning, step-by-step error review, and calm test-taking habits ahead of exam term.</p>
+            <a href="/book?interest=traditional-tutoring" class="btn btn-primary">Book Holiday Sprint</a>
+          </article>
+
+          <article class="holiday-card">
+            <span class="holiday-meta">All Primary Levels &bull; Diagnostic</span>
+            <h3>New Year Reading &amp; Numeracy Jumpstart</h3>
+            <p>A fresh-start academic check-in with personalised goal setting and a two-week roadmap so your child steps into January ahead.</p>
+            <a href="/book?interest=concierge" class="btn btn-secondary">Claim Jumpstart</a>
+          </article>
         </div>
       </div>
     </section>
 
+    <!-- Screen 5: Parent Updates & Quiet Close -->
     <section class="interest-section">
       <div class="container interest-container">
         <div class="interest-copy">
-          <h3>${escapeHtml(content.homepage.subscribeSection.title.text)}</h3>
+          <h2>${escapeHtml(content.homepage.subscribeSection.title.text)}</h2>
           <p>${escapeHtml(content.homepage.subscribeSection.description.text)}</p>
         </div>
 
@@ -312,7 +212,10 @@ function renderHomePage() {
     title: 'Home',
     description: hp.subhead.text,
     bodyHtml,
-    currentPath: '/'
+    currentPath: '/',
+    pageType: 'service',
+    siteKind: 'other',
+    photoCredit: 'Photographs: Orf3us (CC BY-SA 4.0, Wikimedia Commons) & taste-skill library (stand-in frames).'
   });
 }
 

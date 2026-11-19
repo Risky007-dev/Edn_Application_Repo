@@ -17,7 +17,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function renderLayout({ title, description, bodyHtml, currentPath = '/', extraScripts = [] }) {
+function renderLayout({ title, description, bodyHtml, currentPath = '/', extraScripts = [], pageType = 'service', siteKind = 'other', photoCredit = '' }) {
   const whatsappNum = (process.env.WHATSAPP_PHONE_NUMBER || '').trim();
   const whatsappLink = whatsappNum ? `https://wa.me/${whatsappNum.replace(/[^0-9]/g, '')}` : '';
 
@@ -30,10 +30,12 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
   const chatbotAvailable = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ENABLE_MOCK_CHATBOT_FRONTEND === 'true');
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-type="${escapeHtml(pageType)}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page-type" content="${escapeHtml(pageType)}">
+  <meta name="site-kind" content="${escapeHtml(siteKind)}">
   <title>${fullTitle}</title>
   <meta name="description" content="${metaDesc}">
   <meta property="og:title" content="${fullTitle}">
@@ -175,6 +177,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
     <div class="footer-bottom">
       <div class="footer-bottom-container">
         <p class="copyright">&copy; ${new Date().getFullYear()} Tutor Time with Teacher Cassie. All rights reserved.</p>
+        ${photoCredit ? `<p class="footer-photo-credit">${escapeHtml(photoCredit)}</p>` : ''}
         <div class="footer-meta-links" data-todo="legal">
           <a href="/privacy">Privacy Policy</a>
           <span class="sep" aria-hidden="true">&bull;</span>
