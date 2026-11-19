@@ -93,6 +93,52 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ----------------------------------------------------------------------------
+  # 1b. DynamoDB Private Portal Table (Attendance, Students, Sessions, Settings)
+  # ----------------------------------------------------------------------------
+  PortalTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: tutortime-portal
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
   # 2. Private S3 Bucket for Presigned CV Uploads
   # ----------------------------------------------------------------------------
   UploadsBucket:
@@ -173,6 +219,20 @@ Resources:
               - dynamodb:Query
             Resource:
               - !GetAtt SubmissionsTable.Arn
+
+          # DynamoDB: Portal table CRUD + GSI1 query
+          - Sid: DynamoDBPortalAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource:
+              - !GetAtt PortalTable.Arn
+              - !Sub "${PortalTable.Arn}/index/*"
 
           # S3: PutObject only within cv-uploads/ prefix
           - Sid: S3CvUploadsPutAccess
