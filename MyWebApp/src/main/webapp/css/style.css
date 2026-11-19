@@ -1191,6 +1191,81 @@ h1, h2, h3, h4, h5, h6,
 }
 
 /* ==========================================================================
+   EDITORIAL STUDIO RETOUCH (Typography, Elevation, Micro-Interactions)
+   ========================================================================== */
+.hero-section {
+  padding-top: clamp(2.5rem, 5vw, 4.25rem);
+  padding-bottom: clamp(2.5rem, 5vw, 4rem);
+}
+
+.hero-headline,
+.section-title {
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.hero-subtitle,
+.section-subtitle,
+.card-description {
+  max-width: 66ch;
+  line-height: 1.65;
+}
+
+.service-card,
+.feature-card,
+.info-card,
+.faq-item,
+.form-card {
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: 0 4px 18px rgba(180, 100, 20, 0.05);
+  transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.service-card:hover,
+.feature-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(2, 128, 144, 0.35);
+  box-shadow: 0 12px 28px rgba(2, 128, 144, 0.09);
+}
+
+.btn,
+.cta-button {
+  transition: transform 120ms ease, background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.btn:hover,
+.cta-button:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active,
+.cta-button:active {
+  transform: scale(0.98);
+}
+
+.nav-link {
+  border-radius: 8px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background-color: rgba(2, 128, 144, 0.08);
+  color: var(--color-brand-tt-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-card,
+  .feature-card,
+  .btn,
+  .cta-button,
+  .nav-link {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
    PRINT STYLESHEET (Feature X2: Global Clean Semantic Printing)
    ========================================================================== */
 @media print {
