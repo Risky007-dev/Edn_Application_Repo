@@ -1,0 +1,358 @@
+/* ==========================================================================
+   Tutor Time Private Portal Stylesheet (Responsive + Clean Print Layout)
+   ========================================================================== */
+
+.portal-body {
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
+  margin: 0;
+  min-height: 100vh;
+}
+
+.portal-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.75rem 1rem;
+}
+
+.portal-header-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.portal-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #1e293b;
+  text-decoration: none;
+}
+
+.portal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.portal-nav a,
+.portal-nav button {
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #334155;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.portal-nav a:hover,
+.portal-nav button:hover {
+  background: #f1f5f9;
+}
+
+.portal-nav a.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.portal-main {
+  max-width: 1040px;
+  margin: 1.25rem auto;
+  padding: 0 1rem 3rem;
+}
+
+.portal-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.portal-card h1,
+.portal-card h2,
+.portal-card h3 {
+  margin-top: 0;
+  color: #0f172a;
+}
+
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.portal-stat {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.portal-stat-label {
+  font-size: 0.82rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.portal-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 0.25rem;
+}
+
+.portal-alert {
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.94rem;
+  border: 1px solid transparent;
+}
+
+.portal-alert-success {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.portal-alert-warning {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.portal-alert-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.portal-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.portal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.portal-field label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.portal-field input,
+.portal-field select,
+.portal-field textarea {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #ffffff;
+}
+
+.portal-field input:focus,
+.portal-field select:focus,
+.portal-field textarea:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+
+.portal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.portal-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.portal-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.portal-btn-secondary {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.portal-btn-secondary:hover {
+  background: #f1f5f9;
+}
+
+.portal-btn-danger {
+  background: #ffffff;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.portal-btn-danger:hover {
+  background: #fef2f2;
+}
+
+.portal-btn-sm {
+  padding: 0.32rem 0.65rem;
+  font-size: 0.82rem;
+}
+
+.portal-table-wrap {
+  overflow-x: auto;
+}
+
+.portal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.portal-table th,
+.portal-table td {
+  text-align: left;
+  padding: 0.65rem 0.6rem;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.portal-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+  background: #f8fafc;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge-present { background: #dcfce7; color: #166534; }
+.badge-late { background: #fef3c7; color: #92400e; }
+.badge-absent { background: #fee2e2; color: #991b1b; }
+.badge-cancelled { background: #e2e8f0; color: #475569; }
+.badge-sent { background: #dcfce7; color: #166534; }
+.badge-blocked_sandbox { background: #fef3c7; color: #92400e; }
+.badge-failed { background: #fee2e2; color: #991b1b; }
+.badge-skipped { background: #e2e8f0; color: #475569; }
+
+.portal-auth-wrap {
+  max-width: 420px;
+  margin: 3.5rem auto;
+  padding: 0 1rem;
+}
+
+.portal-token-box {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  background: #f1f5f9;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.portal-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.portal-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.portal-checkbox input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* Print Stylesheet for Monthly Invoices */
+@media print {
+  .no-print,
+  .portal-header,
+  .portal-nav,
+  .portal-alert,
+  .portal-filter-bar {
+    display: none !important;
+  }
+
+  .portal-body {
+    background: #ffffff;
+  }
+
+  .portal-main {
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+  }
+
+  .portal-card {
+    border: 1px solid #cbd5e1;
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .invoice-print-header {
+    display: block !important;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 0.5rem;
+  }
+}
+
+.invoice-print-header {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .portal-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .portal-card {
+    padding: 1rem;
+  }
+}

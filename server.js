@@ -15,8 +15,9 @@ if (process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1') {
 // Shared Infrastructure & Modular Middleware
 const config = require('./src/shared/config');
 const requestLogger = require('./src/shared/middleware/logger');
-const { helmetMiddleware, generalApiLimiter } = require('./src/shared/middleware/security');
+const { helmetMiddleware, generalApiLimiter, formSubmissionLimiter, timingSafeCompare } = require('./src/shared/middleware/security');
 const brand = require('./src/shared/brand');
+const storage = require('./src/shared/storage');
 const formPipeline = require('./src/shared/forms/formPipeline');
 const {
   renderHomePage,
@@ -89,7 +90,7 @@ app.post('/api/debug/fault', (req, res) => {
   const expectedKey = process.env.FAULT_INJECTION_KEY || '';
   const providedKey = req.headers['x-debug-fault-key'] || '';
 
-  if (!faultEnabled || !expectedKey || providedKey !== expectedKey) {
+  if (!faultEnabled || !expectedKey || !timingSafeCompare(String(providedKey), expectedKey)) {
     return res.status(404).send('Not Found');
   }
 
@@ -128,8 +129,11 @@ const CANONICAL_PUBLIC_ROUTES = [
 
 app.get('/robots.txt', (req, res) => {
   const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
+  if ((req.headers.host || '').split(':')[0].toLowerCase() === 'checkin.tutortime.ai') {
+    return res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+  }
   res.type('text/plain').send(
-    `User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${siteOrigin}/sitemap.xml\n`
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /office\nDisallow: /p/\nSitemap: ${siteOrigin}/sitemap.xml\n`
   );
 });
 
@@ -157,6 +161,18 @@ app.use('/assets', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp
 app.use('/fonts', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/fonts')));
 app.use('/finalnewmathapo-01.png', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/finalnewmathapo-01.png')));
 
+// Private Attendance & Invoicing Portal (unlisted /office, checkin.tutortime.ai, and /p/:token)
+const { createPortalRouters, isCheckinHost } = require('./src/portal/router');
+const { officeRouter, parentRouter } = createPortalRouters();
+app.use('/p', parentRouter);
+app.use('/office', officeRouter);
+app.use((req, res, next) => {
+  if (isCheckinHost(req)) {
+    return officeRouter(req, res, next);
+  }
+  next();
+});
+
 // Database file path (supports test isolation via SUBSCRIBERS_DB_FILE)
 const dbFile = process.env.SUBSCRIBERS_DB_FILE || path.join(__dirname, 'subscribers.json');
 
@@ -176,10 +192,12 @@ function getSubscribers() {
   }
 }
 
-// Helper function to save subscribers
+// Helper function to save subscribers atomically
 function saveSubscribers(subscribers) {
   try {
-    fs.writeFileSync(dbFile, JSON.stringify({ subscribers }, null, 2));
+    const tmpFile = `${dbFile}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify({ subscribers }, null, 2));
+    fs.renameSync(tmpFile, dbFile);
     return true;
   } catch (err) {
     console.error('Error saving subscribers:', err);
@@ -189,14 +207,31 @@ function saveSubscribers(subscribers) {
 
 // Helper function to validate email
 function isValidEmail(email) {
+  if (typeof email !== 'string') return false;
+  const trimmed = email.trim();
+  if (trimmed.length > 150) return false;
   const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return pattern.test(email);
+  return pattern.test(trimmed);
 }
 
-// Helper function to send confirmation email
-function sendConfirmationEmail(email) {
-  console.log(`✉️  Confirmation email sent to: ${email}`);
-  return Promise.resolve(true);
+// Helper function to send confirmation email (zero-PII logging)
+async function sendConfirmationEmail(recipientEmail) {
+  if (!recipientEmail) {
+    console.log('✉️  Confirmation email queued');
+    return true;
+  }
+  try {
+    const result = await storage.sendNotificationEmail(
+      recipientEmail,
+      'Welcome to Tutor Time & Popcorn Math!',
+      '<p>Thank you for subscribing to updates from <strong>Tutor Time with Teacher Cassie</strong> and <strong>Popcorn Math</strong>.</p>' +
+      '<p>We will keep you posted on upcoming sessions, workshops, and resources.</p>'
+    );
+    return !(result && result.skipped);
+  } catch (err) {
+    console.error('[Email] Confirmation email failed:', err.message);
+    return false;
+  }
 }
 
 // Routes
@@ -336,13 +371,13 @@ app.get('/favicon.png', (req, res) => {
   res.sendFile(path.join(__dirname, 'MyWebApp/src/main/webapp/assets/icons/favicon-32x32.png'));
 });
 
-// POST /subscribe - Subscribe a new email (PRESERVED - UNCHANGED)
-app.post('/subscribe', async (req, res) => {
+// POST /subscribe - Subscribe a new email (rate-limited & type-safe)
+app.post('/subscribe', formSubmissionLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email } = (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) ? req.body : {};
     
     // Validate input
-    if (!email || !isValidEmail(email.trim())) {
+    if (typeof email !== 'string' || !isValidEmail(email)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid email address'
@@ -387,7 +422,7 @@ app.post('/subscribe', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Error in /subscribe:', err);
+    console.error('Error in /subscribe:', err.message);
     return res.status(500).json({
       success: false,
       message: 'Error processing subscription'
@@ -395,8 +430,18 @@ app.post('/subscribe', async (req, res) => {
   }
 });
 
-// GET /subscribers - Get all subscribers (admin endpoint)
-app.get('/subscribers', (req, res) => {
+// GET /subscribers - Get all subscribers (admin endpoint, requires X-Admin-Key)
+app.get('/subscribers', generalApiLimiter, (req, res) => {
+  const expectedKey = process.env.ADMIN_API_KEY;
+  if (!expectedKey) {
+    return res.status(404).send('Not Found');
+  }
+
+  const providedKey = req.headers['x-admin-key'];
+  if (!timingSafeCompare(providedKey, expectedKey)) {
+    return res.status(404).send('Not Found');
+  }
+
   try {
     const subscribers = getSubscribers();
     return res.json({
@@ -404,7 +449,7 @@ app.get('/subscribers', (req, res) => {
       subscribers: subscribers
     });
   } catch (err) {
-    console.error('Error fetching subscribers:', err);
+    console.error('Error fetching subscribers:', err.message);
     return res.status(500).json({
       success: false,
       message: 'Error fetching subscribers'
