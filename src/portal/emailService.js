@@ -31,44 +31,116 @@ function buildAttendanceEmail({ student, record, settings, parentLink }) {
   const replyTo = settings.replyToEmail || 'Cassie@tutortime.ai';
   const prettyDate = formatDisplayDate(record.date);
 
-  const statusTextMap = {
-    present: 'attended a one-on-one session',
-    late: 'attended a one-on-one session (arrived late)',
-    absent: 'was marked absent for a scheduled session',
-    cancelled: 'had a scheduled session cancelled'
+  const statusMeta = {
+    present: {
+      phrase: 'attended a one-on-one session',
+      label: 'Present',
+      bg: '#E6F7F2',
+      fg: '#0D7A5F'
+    },
+    late: {
+      phrase: 'attended a one-on-one session (arrived late)',
+      label: 'Late',
+      bg: '#FEF3C7',
+      fg: '#B45309'
+    },
+    absent: {
+      phrase: 'was marked absent for a scheduled session',
+      label: 'Absent',
+      bg: '#FEE2E2',
+      fg: '#B91C1C'
+    },
+    cancelled: {
+      phrase: 'had a scheduled session cancelled',
+      label: 'Cancelled',
+      bg: '#F1F5F9',
+      fg: '#475569'
+    }
   };
-  const actionPhrase = statusTextMap[record.status] || `had attendance updated (${record.status})`;
+  const meta = statusMeta[record.status] || {
+    phrase: `had attendance updated (${record.status})`,
+    label: record.status,
+    bg: '#F1F5F9',
+    fg: '#334155'
+  };
   const subject = `Tutor Time Attendance: ${student.name} — ${record.date}`;
 
   const noteHtml = record.note
-    ? `<p style="margin:12px 0;padding:10px 14px;background:#f8fafc;border-left:3px solid #2563eb;"><strong>Session Note:</strong> ${escapeHtml(record.note)}</p>`
+    ? `<tr><td style="padding:14px 16px;background:#FFFDF9;border:1px solid #E8E0D2;border-left:4px solid #028090;border-radius:8px;font-size:14px;color:#1C2434;">
+         <strong style="display:block;margin-bottom:4px;color:#028090;">Session Note</strong>
+         ${escapeHtml(record.note)}
+       </td></tr>
+       <tr><td style="height:16px;"></td></tr>`
     : '';
   const noteText = record.note ? `\nSession Note: ${record.note}\n` : '';
 
   const linkHtml = parentLink
-    ? `<p style="margin:16px 0;"><a href="${escapeHtml(parentLink)}" style="display:inline-block;padding:10px 18px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">View ${escapeHtml(student.name)}'s Attendance &amp; Sessions</a></p>
-       <p style="font-size:13px;color:#475569;">Or copy this private link: ${escapeHtml(parentLink)}</p>`
+    ? `<tr><td align="left" style="padding:4px 0 12px;">
+         <a href="${escapeHtml(parentLink)}" style="display:inline-block;padding:12px 22px;background:#028090;color:#FFFFFF;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">View ${escapeHtml(student.name)}'s Attendance &amp; Progress</a>
+       </td></tr>
+       <tr><td style="font-size:12px;color:#64748B;word-break:break-all;">
+         Direct private link: <a href="${escapeHtml(parentLink)}" style="color:#028090;">${escapeHtml(parentLink)}</a>
+       </td></tr>`
     : '';
-  const linkText = parentLink ? `\nView ${student.name}'s attendance & sessions: ${parentLink}\n` : '';
+  const linkText = parentLink ? `\nView ${student.name}'s attendance & progress: ${parentLink}\n` : '';
 
-  const bodyHtml = `
-    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;color:#1e293b;line-height:1.5;">
-      <p>Hello ${escapeHtml(student.parentName || 'Parent/Guardian')},</p>
-      <p>Your child <strong>${escapeHtml(student.name)}</strong> ${escapeHtml(actionPhrase)} with <strong>${escapeHtml(tutorName)}</strong> on <strong>${escapeHtml(prettyDate)}</strong>.</p>
-      ${noteHtml}
-      ${linkHtml}
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
-      <p style="font-size:12px;color:#64748b;">
-        This is a transactional attendance notice from ${escapeHtml(tutorName)} (Tutor Time).
-        To update your preferences, stop these notices, or ask a question, simply reply to this email or contact ${escapeHtml(tutorName)} at <a href="mailto:${escapeHtml(replyTo)}">${escapeHtml(replyTo)}</a>.
-      </p>
-    </div>
-  `.trim();
+  const bodyHtml = `<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#FFF8EE;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1C2434;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF8EE;padding:28px 14px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#FFFFFF;border:1px solid #E8E0D2;border-radius:16px;overflow:hidden;">
+          <tr>
+            <td style="background:#028090;padding:22px 26px;color:#FFFFFF;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.04em;opacity:0.9;margin-bottom:4px;">TUTOR TIME WITH ${escapeHtml(tutorName.toUpperCase())}</div>
+              <div style="font-size:20px;font-weight:700;line-height:1.25;">Session Attendance Update</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 26px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-size:15px;line-height:1.6;color:#1C2434;padding-bottom:14px;">
+                    Hello <strong>${escapeHtml(student.parentName || 'Parent/Guardian')}</strong>,
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-size:15px;line-height:1.6;color:#1C2434;padding-bottom:16px;">
+                    Your child <strong>${escapeHtml(student.name)}</strong> ${escapeHtml(meta.phrase)} with <strong>${escapeHtml(tutorName)}</strong> on <strong>${escapeHtml(prettyDate)}</strong>.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom:18px;">
+                    <span style="display:inline-block;padding:5px 14px;border-radius:999px;background:${meta.bg};color:${meta.fg};font-size:13px;font-weight:700;">
+                      Status: ${escapeHtml(meta.label)}
+                    </span>
+                  </td>
+                </tr>
+                ${noteHtml}
+                ${linkHtml}
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#FFFDF9;border-top:1px solid #EFE7DA;padding:16px 26px;font-size:12px;line-height:1.55;color:#64748B;">
+              This is a transactional attendance notice from ${escapeHtml(tutorName)} (Tutor Time).
+              To update your preferences, stop these notices, or ask a question, simply reply to this email or contact ${escapeHtml(tutorName)} at
+              <a href="mailto:${escapeHtml(replyTo)}" style="color:#028090;font-weight:600;">${escapeHtml(replyTo)}</a>.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
 
   const bodyText = [
     `Hello ${student.parentName || 'Parent/Guardian'},`,
     '',
-    `Your child ${student.name} ${actionPhrase} with ${tutorName} on ${prettyDate}.`,
+    `Your child ${student.name} ${meta.phrase} with ${tutorName} on ${prettyDate}.`,
+    `Status: ${meta.label}`,
     noteText,
     linkText,
     '---',
@@ -284,17 +356,38 @@ class PortalEmailService {
     const cleanSubject = String(subject || `Message from ${tutorName}: ${student.name}`).trim();
     const cleanMsg = String(message || '').trim();
 
-    const bodyHtml = `
-      <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;color:#1e293b;line-height:1.55;">
-        <p>Hello ${escapeHtml(student.parentName || 'Parent/Guardian')},</p>
-        <p style="white-space:pre-line;">${escapeHtml(cleanMsg)}</p>
-        ${parentLink ? `<p style="margin:16px 0;"><a href="${escapeHtml(parentLink)}" style="display:inline-block;padding:10px 18px;background:#028090;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">View ${escapeHtml(student.name)}'s Portal</a></p>` : ''}
-        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
-        <p style="font-size:12px;color:#64748b;">
-          Sent by ${escapeHtml(tutorName)} (Tutor Time). To reply or stop receiving notices, reply to this email or contact <a href="mailto:${escapeHtml(replyTo)}">${escapeHtml(replyTo)}</a>.
-        </p>
-      </div>
-    `.trim();
+    const bodyHtml = `<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#FFF8EE;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1C2434;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF8EE;padding:28px 14px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:#FFFFFF;border:1px solid #E8E0D2;border-radius:16px;overflow:hidden;">
+          <tr>
+            <td style="background:#028090;padding:22px 26px;color:#FFFFFF;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:0.04em;opacity:0.9;margin-bottom:4px;">TUTOR TIME WITH ${escapeHtml(tutorName.toUpperCase())}</div>
+              <div style="font-size:20px;font-weight:700;line-height:1.25;">${escapeHtml(cleanSubject)}</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 26px;font-size:15px;line-height:1.6;color:#1C2434;">
+              <p style="margin:0 0 14px;">Hello <strong>${escapeHtml(student.parentName || 'Parent/Guardian')}</strong>,</p>
+              <p style="margin:0 0 18px;white-space:pre-line;">${escapeHtml(cleanMsg)}</p>
+              ${parentLink ? `<p style="margin:0 0 8px;"><a href="${escapeHtml(parentLink)}" style="display:inline-block;padding:12px 22px;background:#028090;color:#FFFFFF;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">View ${escapeHtml(student.name)}'s Portal</a></p>` : ''}
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#FFFDF9;border-top:1px solid #EFE7DA;padding:16px 26px;font-size:12px;line-height:1.55;color:#64748B;">
+              Sent by ${escapeHtml(tutorName)} (Tutor Time). To reply or stop receiving notices, reply to this email or contact
+              <a href="mailto:${escapeHtml(replyTo)}" style="color:#028090;font-weight:600;">${escapeHtml(replyTo)}</a>.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
 
     const bodyText = [
       `Hello ${student.parentName || 'Parent/Guardian'},`,

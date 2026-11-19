@@ -285,86 +285,136 @@ function renderDashboardPage({ base, today, month, students, todayRecords, month
   });
 }
 
+function shiftIsoDate(isoDate, deltaDays) {
+  const parts = String(isoDate).split('-').map(Number);
+  if (parts.length !== 3) return isoDate;
+  const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + deltaDays));
+  return d.toISOString().slice(0, 10);
+}
+
+function getInitials(name) {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+
 function renderAttendancePage({ base, date, month, students, monthRecords, monthInvoices, settings, flash, csrfToken }) {
   const cur = settings.currencySymbol || '$';
   const activeStudents = students.filter(s => !s.archived);
   const dateRecords = monthRecords.filter(r => r.date === date);
   const recordByStudent = new Map(dateRecords.map(r => [r.studentId, r]));
-  const studentMap = new Map(students.map(s => [s.studentId, s]));
+
+  const prevDate = shiftIsoDate(date, -1);
+  const nextDate = shiftIsoDate(date, 1);
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  let countPresent = 0;
+  let countLate = 0;
+  let countAbsent = 0;
+  let countCancelled = 0;
+  for (const r of dateRecords) {
+    if (r.status === 'present') countPresent++;
+    else if (r.status === 'late') countLate++;
+    else if (r.status === 'absent') countAbsent++;
+    else if (r.status === 'cancelled') countCancelled++;
+  }
+  const countUnmarked = Math.max(0, activeStudents.length - dateRecords.length);
 
   const bodyHtml = `
     <div class="portal-page-head">
       <div>
         <h1>Roll-Call Attendance</h1>
-        <p>Quickly mark attendance for all students or adjust individual entries for <span class="num">${escapeHtml(date)}</span>.</p>
+        <p>Daily attendance sheet for <strong class="num">${escapeHtml(date)}</strong>.</p>
       </div>
       <div class="portal-inline-actions">
         <a href="${escapeHtml(base)}/export.csv?month=${escapeHtml(month)}" class="portal-btn portal-btn-secondary">Export CSV (${escapeHtml(month)})</a>
-        <a href="${escapeHtml(base)}/invoices?month=${escapeHtml(month)}" class="portal-btn portal-btn-primary">Monthly Invoices</a>
+        <a href="${escapeHtml(base)}/invoices?month=${escapeHtml(month)}" class="portal-btn portal-btn-primary">Fee &amp; Invoices</a>
       </div>
     </div>
 
     <div class="portal-card">
-      <form method="GET" action="${escapeHtml(base)}/attendance" class="portal-form-row" style="align-items:end;margin-bottom:0;">
-        <div class="portal-field">
-          <label for="date-picker">Session date</label>
-          <input id="date-picker" name="date" type="date" value="${escapeHtml(date)}">
+      <div class="qs-rc-toolbar">
+        <div class="qs-rc-date-nav">
+          <a href="${escapeHtml(base)}/attendance?date=${escapeHtml(prevDate)}&month=${escapeHtml(prevDate.slice(0, 7))}" class="portal-btn portal-btn-secondary portal-btn-sm" aria-label="Previous day">&larr; Prev</a>
+          <form method="GET" action="${escapeHtml(base)}/attendance" style="display:inline-flex;gap:0.35rem;align-items:center;">
+            <input id="date-picker" name="date" type="date" value="${escapeHtml(date)}" aria-label="Session date">
+            <input type="hidden" name="month" value="${escapeHtml(month)}">
+            <button type="submit" class="portal-btn portal-btn-secondary portal-btn-sm">Go</button>
+          </form>
+          <a href="${escapeHtml(base)}/attendance?date=${escapeHtml(nextDate)}&month=${escapeHtml(nextDate.slice(0, 7))}" class="portal-btn portal-btn-secondary portal-btn-sm" aria-label="Next day">Next &rarr;</a>
+          <a href="${escapeHtml(base)}/attendance?date=${escapeHtml(todayStr)}&month=${escapeHtml(todayStr.slice(0, 7))}" class="portal-btn portal-btn-secondary portal-btn-sm">Today</a>
         </div>
-        <div class="portal-field">
-          <label for="month-picker">Summary month</label>
-          <input id="month-picker" name="month" type="month" value="${escapeHtml(month)}">
-        </div>
-        <div class="portal-field">
-          <button type="submit" class="portal-btn portal-btn-secondary">Load date &amp; month</button>
-        </div>
-      </form>
-    </div>
 
-    <div class="portal-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
-        <h2 style="margin:0;">Daily Roll-Call Grid &mdash; ${escapeHtml(date)}</h2>
-        ${activeStudents.length > 0 ? `<button type="button" class="portal-btn portal-btn-secondary portal-btn-sm" data-mark-all="present">Mark All Present</button>` : ''}
+        <div class="portal-inline-actions">
+          <input type="search" class="qs-search" placeholder="Filter students..." data-table-filter="#rollcall-grid-table tbody tr" aria-label="Filter roll call students">
+          ${activeStudents.length > 0 ? `<button type="button" class="portal-btn portal-btn-secondary portal-btn-sm" data-mark-all="present">Mark All Present</button>` : ''}
+        </div>
+      </div>
+
+      <div class="qs-rc-counters" aria-label="Daily Attendance Summary">
+        <span class="qs-rc-counter c-present">Present: <strong class="num">${countPresent}</strong></span>
+        <span class="qs-rc-counter c-late">Late: <strong class="num">${countLate}</strong></span>
+        <span class="qs-rc-counter c-absent">Absent: <strong class="num">${countAbsent}</strong></span>
+        <span class="qs-rc-counter c-cancelled">Cancelled: <strong class="num">${countCancelled}</strong></span>
+        <span class="qs-rc-counter">Unmarked: <strong class="num">${countUnmarked}</strong></span>
       </div>
 
       ${activeStudents.length === 0
         ? `<div class="portal-empty">
-            <p style="margin:0 0 0.75rem;"><strong>No active students yet.</strong> Add a student to begin taking roll call.</p>
-            <a href="${escapeHtml(base)}/students" class="portal-btn portal-btn-primary">Add first student</a>
+            <p style="margin:0 0 0.75rem;"><strong>No active students yet.</strong> Enroll a student to start taking roll call.</p>
+            <a href="${escapeHtml(base)}/students" class="portal-btn portal-btn-primary">Enroll first student</a>
           </div>`
-        : `<form method="POST" action="${escapeHtml(base)}/attendance/batch">
+        : `<form method="POST" action="${escapeHtml(base)}/attendance/batch" id="rollcall-batch-form">
             <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
             <input type="hidden" name="date" value="${escapeHtml(date)}">
             <input type="hidden" name="month" value="${escapeHtml(month)}">
             <div class="portal-table-wrap">
-              <table class="portal-table qs-rollcall-table">
+              <table class="portal-table qs-rollcall-table" id="rollcall-grid-table">
                 <thead>
                   <tr>
                     <th>Student</th>
-                    <th>Status</th>
+                    <th>Attendance</th>
                     <th>Session Note</th>
+                    <th>Saved</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${activeStudents.map(s => {
                     const existing = recordByStudent.get(s.studentId);
                     const curStatus = existing ? existing.status : '';
-                    return `<tr>
+                    return `<tr class="${existing ? 'qs-rc-row-saved' : ''}" data-search="${escapeHtml(`${s.name} ${s.gradeLevel || ''}`)}">
                       <td>
-                        <a href="${escapeHtml(base)}/students/${escapeHtml(s.studentId)}" style="color:#028090;font-weight:700;text-decoration:none;">${escapeHtml(s.name)}</a>
-                        <div style="font-size:0.78rem;color:#64748B;">${escapeHtml(formatMoney(s.pricePerSession, cur))} / session</div>
+                        <div class="qs-student-cell">
+                          <span class="qs-avatar" aria-hidden="true">${escapeHtml(getInitials(s.name))}</span>
+                          <div>
+                            <a href="${escapeHtml(base)}/students/${escapeHtml(s.studentId)}" style="color:#1C2434;font-weight:700;text-decoration:none;">${escapeHtml(s.name)}</a>
+                            <div style="font-size:0.78rem;color:#64748B;">${s.gradeLevel ? `${escapeHtml(s.gradeLevel)} &bull; ` : ''}<span class="num">${escapeHtml(formatMoney(s.pricePerSession, cur))}</span></div>
+                          </div>
+                        </div>
                       </td>
                       <td>
                         <div class="qs-pill-group" role="radiogroup" aria-label="Status for ${escapeHtml(s.name)}">
-                          ${['present', 'late', 'absent', 'cancelled'].map(st => `
+                          ${[
+                            { v: 'present', label: 'P · Present' },
+                            { v: 'late', label: 'L · Late' },
+                            { v: 'absent', label: 'A · Absent' },
+                            { v: 'cancelled', label: 'C · Cancelled' }
+                          ].map(st => `
                             <label class="qs-pill">
-                              <input type="radio" name="status_${escapeHtml(s.studentId)}" value="${st}" ${curStatus === st ? 'checked' : ''}>
-                              <span>${st}</span>
+                              <input type="radio" name="status_${escapeHtml(s.studentId)}" value="${st.v}" ${curStatus === st.v ? 'checked' : ''}>
+                              <span>${st.label}</span>
                             </label>
                           `).join('')}
                         </div>
                       </td>
                       <td>
-                        <input type="text" name="note_${escapeHtml(s.studentId)}" value="${escapeHtml(existing ? existing.note || '' : '')}" maxlength="400" placeholder="Optional note..." style="width:100%;min-width:160px;padding:0.42rem 0.6rem;border:1px solid #D8CFC0;border-radius:8px;font-family:inherit;font-size:0.86rem;">
+                        <input type="text" name="note_${escapeHtml(s.studentId)}" value="${escapeHtml(existing ? existing.note || '' : '')}" maxlength="400" placeholder="Add session note..." style="width:100%;min-width:170px;padding:0.45rem 0.65rem;border:1.5px solid #D8CFC0;border-radius:8px;font-family:inherit;font-size:0.86rem;">
+                      </td>
+                      <td>
+                        ${existing
+                          ? `<button type="submit" form="undo-${escapeHtml(s.studentId)}" class="portal-btn portal-btn-danger portal-btn-sm">Undo</button>`
+                          : '<span style="font-size:0.8rem;color:#94A3B8;">&mdash;</span>'}
                       </td>
                     </tr>`;
                   }).join('')}
@@ -378,49 +428,26 @@ function renderAttendancePage({ base, date, month, students, monthRecords, month
               </label>
               <button type="submit" class="portal-btn portal-btn-primary">Save Roll Call &amp; Notify Parents</button>
             </div>
-          </form>`}
+          </form>
+          ${activeStudents.filter(s => recordByStudent.has(s.studentId)).map(s => `
+            <form id="undo-${escapeHtml(s.studentId)}" method="POST" action="${escapeHtml(base)}/attendance/delete" data-confirm="Undo ${escapeHtml(s.name)}'s entry for ${escapeHtml(date)}?" style="display:none;">
+              <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
+              <input type="hidden" name="date" value="${escapeHtml(date)}">
+              <input type="hidden" name="month" value="${escapeHtml(month)}">
+              <input type="hidden" name="studentId" value="${escapeHtml(s.studentId)}">
+            </form>
+          `).join('')}`}
     </div>
 
-    ${dateRecords.length > 0 ? `
-      <div class="portal-card">
-        <h2>Saved Entries for ${escapeHtml(date)}</h2>
-        <div class="portal-table-wrap">
-          <table class="portal-table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Status</th>
-                <th class="num">Billed</th>
-                <th>Note</th>
-                <th>Undo</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dateRecords.map(rec => {
-                const stu = studentMap.get(rec.studentId) || { name: rec.studentId };
-                return `<tr>
-                  <td><strong>${escapeHtml(stu.name)}</strong></td>
-                  <td><span class="badge badge-${escapeHtml(rec.status)}">${escapeHtml(rec.status)}</span></td>
-                  <td class="num">${rec.billable ? escapeHtml(formatMoney(rec.priceApplied, cur)) : '$0.00'}</td>
-                  <td>${escapeHtml(rec.note || '')}</td>
-                  <td>
-                    <form method="POST" action="${escapeHtml(base)}/attendance/delete" data-confirm="Undo this attendance entry?" style="display:inline;">
-                      <input type="hidden" name="_csrf" value="${escapeHtml(csrfToken)}">
-                      <input type="hidden" name="date" value="${escapeHtml(date)}">
-                      <input type="hidden" name="month" value="${escapeHtml(month)}">
-                      <input type="hidden" name="studentId" value="${escapeHtml(rec.studentId)}">
-                      <button type="submit" class="portal-btn portal-btn-danger portal-btn-sm">Undo</button>
-                    </form>
-                  </td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>` : ''}
-
     <div class="portal-card">
-      <h2>Month Running Totals (${escapeHtml(month)})</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem;">
+        <h2 style="margin:0;">Month Running Totals (${escapeHtml(month)})</h2>
+        <form method="GET" action="${escapeHtml(base)}/attendance" class="portal-inline-actions">
+          <input type="hidden" name="date" value="${escapeHtml(date)}">
+          <input name="month" type="month" value="${escapeHtml(month)}" style="padding:0.38rem 0.6rem;border:1.5px solid #D8CFC0;border-radius:8px;font-family:inherit;font-weight:600;">
+          <button type="submit" class="portal-btn portal-btn-secondary portal-btn-sm">Switch Month</button>
+        </form>
+      </div>
       ${monthInvoices.studentInvoices.length === 0
         ? '<div class="portal-empty">No attendance logged for this month yet.</div>'
         : `<div class="portal-table-wrap">
@@ -1045,27 +1072,27 @@ function renderParentViewPage({ student, summary, progressNotes = [], month, set
     <div class="portal-page-head">
       <div>
         <h1>${escapeHtml(student.name)}</h1>
-        <p>${student.gradeLevel ? `${escapeHtml(student.gradeLevel)} &bull; ` : ''}Rate: <span class="num">${escapeHtml(formatMoney(student.pricePerSession, cur))}</span> per session</p>
+        ${student.gradeLevel ? `<p>${escapeHtml(student.gradeLevel)}</p>` : ''}
       </div>
     </div>
 
     <div class="portal-grid">
       <div class="portal-stat">
-        <div class="portal-stat-label">Billing month</div>
+        <div class="portal-stat-label">Month</div>
         <div class="portal-stat-value num">${escapeHtml(month)}</div>
       </div>
       <div class="portal-stat stat-mint">
-        <div class="portal-stat-label">Billable sessions</div>
-        <div class="portal-stat-value num">${escapeHtml(String(summary.billableCount))}</div>
+        <div class="portal-stat-label">Sessions attended</div>
+        <div class="portal-stat-value num">${escapeHtml(String(summary.presentCount + summary.lateCount))}</div>
       </div>
       <div class="portal-stat stat-accent">
-        <div class="portal-stat-label">Month total</div>
-        <div class="portal-stat-value num">${escapeHtml(formatMoney(summary.totalAmount, cur))}</div>
+        <div class="portal-stat-label">Recorded sessions</div>
+        <div class="portal-stat-value num">${escapeHtml(String(summary.totalSessions))}</div>
       </div>
     </div>
 
     <div class="portal-card">
-      <h2>Session history (${escapeHtml(month)})</h2>
+      <h2>Attendance &amp; Session Log (${escapeHtml(month)})</h2>
       ${summary.sessions.length === 0
         ? '<div class="portal-empty">No sessions recorded for this month yet.</div>'
         : `<div class="portal-table-wrap">
@@ -1074,8 +1101,7 @@ function renderParentViewPage({ student, summary, progressNotes = [], month, set
                 <tr>
                   <th>Date</th>
                   <th>Status</th>
-                  <th>Note</th>
-                  <th class="num">Fee</th>
+                  <th>Session Note</th>
                 </tr>
               </thead>
               <tbody>
@@ -1083,7 +1109,6 @@ function renderParentViewPage({ student, summary, progressNotes = [], month, set
                   <td class="num">${escapeHtml(s.date)}</td>
                   <td><span class="badge badge-${escapeHtml(s.status)}">${escapeHtml(s.status)}</span></td>
                   <td>${escapeHtml(s.note || '')}</td>
-                  <td class="num">${s.billable ? escapeHtml(formatMoney(s.appliedPrice, cur)) : '$0.00'}</td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -1109,6 +1134,13 @@ function renderParentViewPage({ student, summary, progressNotes = [], month, set
               </table>
             </div>`}
       </div>` : ''}
+
+    <div class="portal-card" style="background:#FFFDF9;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;font-size:0.9rem;color:#4A5568;">
+        <span>Monthly summary (${escapeHtml(month)}): <strong class="num">${escapeHtml(String(summary.billableCount))}</strong> billable session(s)</span>
+        <span>Total: <strong class="num" style="color:#1C2434;">${escapeHtml(formatMoney(summary.totalAmount, cur))}</strong></span>
+      </div>
+    </div>
 
     <p style="margin-top:1.25rem;font-size:0.88rem;color:#4A5568;">
       Questions about a session? Contact ${escapeHtml(tutorName)} at

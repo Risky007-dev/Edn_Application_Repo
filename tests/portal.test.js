@@ -359,7 +359,7 @@ async function run() {
         headers: { Cookie: cookie }
       });
       assert.strictEqual(rcPage.status, 200);
-      assert.ok(rcPage.body.includes('Daily Roll-Call Grid'));
+      assert.ok(rcPage.body.includes('Roll-Call Attendance'));
 
       // Batch roll call save
       const batchParams = new URLSearchParams({
