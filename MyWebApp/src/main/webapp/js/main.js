@@ -252,4 +252,45 @@ document.addEventListener('DOMContentLoaded', () => {
       window.print();
     });
   }
+
+  // 8. Homepage Feature Carousel
+  const carousel = document.getElementById('home-carousel');
+  if (carousel) {
+    const slides = Array.from(carousel.querySelectorAll('[data-carousel-slide]'));
+    const dots = Array.from(carousel.querySelectorAll('[data-carousel-dot]'));
+    const prevBtn = carousel.querySelector('[data-carousel-prev]');
+    const nextBtn = carousel.querySelector('[data-carousel-next]');
+    let activeIdx = 0;
+
+    function showSlide(index) {
+      if (!slides.length) return;
+      activeIdx = (index + slides.length) % slides.length;
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('is-active', i === activeIdx);
+      });
+      dots.forEach((dot, i) => {
+        const active = i === activeIdx;
+        dot.classList.toggle('is-active', active);
+        dot.setAttribute('aria-selected', String(active));
+      });
+    }
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => showSlide(activeIdx - 1));
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => showSlide(activeIdx + 1));
+    }
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        const idx = parseInt(dot.getAttribute('data-carousel-dot') || '0', 10);
+        showSlide(idx);
+      });
+    });
+
+    carousel.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') showSlide(activeIdx - 1);
+      if (e.key === 'ArrowRight') showSlide(activeIdx + 1);
+    });
+  }
 });

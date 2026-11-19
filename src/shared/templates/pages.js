@@ -62,6 +62,175 @@ function renderHomePage() {
       </div>
     </section>
 
+    <!-- Feature Showcase Carousel -->
+    <section class="carousel-section" aria-label="Featured Tutor Time Programmes and Tools">
+      <div class="container">
+        <div class="section-header">
+          <h2>Explore What Makes Tutor Time Different</h2>
+          <p>Interactive math practice, tailored 1-on-1 coaching, and parent-friendly progress tools built for real results.</p>
+        </div>
+
+        <div class="tt-carousel" id="home-carousel" role="region" aria-roledescription="carousel" aria-label="Tutor Time Features">
+          <div class="tt-carousel-viewport">
+            <div class="tt-carousel-track" data-carousel-track>
+              <article class="tt-carousel-slide is-active" data-carousel-slide="0">
+                <div class="tt-slide-copy">
+                  <span class="tt-slide-tag">1-on-1 Core Tutoring</span>
+                  <h3>Personalised Tutoring &amp; Weekly Parent Clarity</h3>
+                  <p>Every child learns at their own pace with structured diagnostics, calm 1-on-1 guidance, and clear session notes sent straight to parents.</p>
+                  <ul class="tt-slide-highlights">
+                    <li>Customised lesson plans aligned to school &amp; CPEA goals</li>
+                    <li>Direct session attendance &amp; progress summaries for families</li>
+                    <li>Flexible in-person and online scheduling</li>
+                  </ul>
+                  <div class="tt-slide-actions">
+                    <a href="/services/traditional-tutoring" class="btn btn-primary">Explore Tutoring &rarr;</a>
+                    <a href="/book" class="btn btn-secondary">Book Consultation</a>
+                  </div>
+                </div>
+                <div class="tt-slide-panel">
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">1:1</span>
+                    <span class="tt-metric-label">Focused Attention</span>
+                  </div>
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">100%</span>
+                    <span class="tt-metric-label">Parent Visibility</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="tt-carousel-slide" data-carousel-slide="1">
+                <div class="tt-slide-copy">
+                  <span class="tt-slide-tag">Flagship Math Experience</span>
+                  <h3>Popcorn Math: Playful Fluency That Sticks</h3>
+                  <p>Turn multiplication, mental arithmetic, and problem-solving into an energising experience with multi-level challenges and live school workshops.</p>
+                  <ul class="tt-slide-highlights">
+                    <li>3 skill bands: Little Kernels, Popping Poppers &amp; Mega Crunch</li>
+                    <li>Zero-tracking, kid-safe interactive browser mini-game</li>
+                    <li>Community cohorts &amp; primary school partnerships</li>
+                  </ul>
+                  <div class="tt-slide-actions">
+                    <a href="/popcorn-math/play" class="btn btn-primary">Play Popcorn Math &rarr;</a>
+                    <a href="/services/popcorn-math" class="btn btn-secondary">View Hub</a>
+                  </div>
+                </div>
+                <div class="tt-slide-panel tt-panel-popcorn">
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">3</span>
+                    <span class="tt-metric-label">Skill Bands (Ages 4&ndash;12)</span>
+                  </div>
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">0</span>
+                    <span class="tt-metric-label">Trackers or Ads</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="tt-carousel-slide" data-carousel-slide="2">
+                <div class="tt-slide-copy">
+                  <span class="tt-slide-tag">Executive &amp; Study Coaching</span>
+                  <h3>Concierge Academic Coaching for Busy Families</h3>
+                  <p>Beyond homework help: we build study routines, exam temperament, and independent organisation skills that carry across every subject.</p>
+                  <ul class="tt-slide-highlights">
+                    <li>Diagnostic academic check-ins &amp; study-habit blueprints</li>
+                    <li>Dedicated tutor coordination &amp; goal milestones</li>
+                    <li>Smart Programme Finder to match your child in 3 steps</li>
+                  </ul>
+                  <div class="tt-slide-actions">
+                    <a href="/services/concierge" class="btn btn-primary">Explore Concierge &rarr;</a>
+                    <a href="/find-your-programme" class="btn btn-secondary">Try Programme Finder</a>
+                  </div>
+                </div>
+                <div class="tt-slide-panel tt-panel-concierge">
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">84</span>
+                    <span class="tt-metric-label">Matched Pathways</span>
+                  </div>
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">3</span>
+                    <span class="tt-metric-label">Quick Finder Steps</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="tt-carousel-slide" data-carousel-slide="3">
+                <div class="tt-slide-copy">
+                  <span class="tt-slide-tag">Inclusive &amp; Exam Ready</span>
+                  <h3>Individualised Learning Support &amp; CPEA Check</h3>
+                  <p>Gentle, structured support for diverse learners alongside our free 12-question CPEA Readiness Check with instant printable summaries.</p>
+                  <ul class="tt-slide-highlights">
+                    <li>Differentiated pacing tailored to how your child learns best</li>
+                    <li>12-question CPEA Readiness Check with printable parent sheet</li>
+                    <li>Warm, encouraging environment led by Teacher Cassie</li>
+                  </ul>
+                  <div class="tt-slide-actions">
+                    <a href="/readiness-check" class="btn btn-primary">Take Readiness Check &rarr;</a>
+                    <a href="/services/specialist-support" class="btn btn-secondary">Learning Support</a>
+                  </div>
+                </div>
+                <div class="tt-slide-panel tt-panel-specialist">
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">12</span>
+                    <span class="tt-metric-label">Readiness Questions</span>
+                  </div>
+                  <div class="tt-feature-metric">
+                    <span class="tt-metric-num">100%</span>
+                    <span class="tt-metric-label">Private &amp; Printable</span>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="tt-carousel-controls">
+            <button type="button" class="tt-carousel-btn" data-carousel-prev aria-label="Previous feature slide">&larr;</button>
+            <div class="tt-carousel-dots" role="tablist" aria-label="Choose feature slide">
+              <button type="button" class="tt-carousel-dot is-active" data-carousel-dot="0" aria-label="Slide 1" aria-selected="true"></button>
+              <button type="button" class="tt-carousel-dot" data-carousel-dot="1" aria-label="Slide 2" aria-selected="false"></button>
+              <button type="button" class="tt-carousel-dot" data-carousel-dot="2" aria-label="Slide 3" aria-selected="false"></button>
+              <button type="button" class="tt-carousel-dot" data-carousel-dot="3" aria-label="Slide 4" aria-selected="false"></button>
+            </div>
+            <button type="button" class="tt-carousel-btn" data-carousel-next aria-label="Next feature slide">&rarr;</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Holiday Specials (3 Seasonal Programmes) -->
+    <section id="holiday-specials" class="holiday-section">
+      <div class="container">
+        <div class="section-header">
+          <span class="badge-accent">Limited Seasonal Enrolment</span>
+          <h2>Holiday Specials with Teacher Cassie</h2>
+          <p>Short, high-impact holiday intensives designed to keep skills sharp and build joyful momentum for the new term.</p>
+        </div>
+
+        <div class="holiday-grid">
+          <article class="holiday-card">
+            <span class="holiday-badge">Ages 7&ndash;11 &bull; 5-Day Intensive</span>
+            <h3>Winter Spark Math Camp</h3>
+            <p>Hands-on number fluency, Popcorn Math speed challenges, and confidence-boosting word problems in small, encouraging groups.</p>
+            <a href="/book?interest=popcorn-math" class="btn btn-card">Reserve a Spot &rarr;</a>
+          </article>
+
+          <article class="holiday-card holiday-card-featured">
+            <span class="holiday-badge">Ages 9&ndash;12 &bull; Exam Clinic</span>
+            <h3>Festive CPEA Sprint &amp; Past-Paper Studio</h3>
+            <p>Focused holiday prep covering timed reasoning, step-by-step error review, and calm test-taking habits ahead of exam term.</p>
+            <a href="/book?interest=traditional-tutoring" class="btn btn-primary">Book Holiday Sprint &rarr;</a>
+          </article>
+
+          <article class="holiday-card">
+            <span class="holiday-badge">All Primary Levels &bull; Diagnostic</span>
+            <h3>New Year Reading &amp; Numeracy Jumpstart</h3>
+            <p>A fresh-start academic check-in with personalised goal setting and a two-week roadmap so your child steps into January ahead.</p>
+            <a href="/book?interest=concierge" class="btn btn-card">Claim Jumpstart &rarr;</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <section id="programmes" class="programmes-section">
       <div class="container">
         <div class="section-header">
