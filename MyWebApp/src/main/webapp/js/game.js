@@ -48,8 +48,19 @@
     var feedbackEl = document.getElementById('game-feedback');
     var playAgainBtn = document.getElementById('btn-play-again');
     var levelSelect = document.getElementById('game-level-select');
+    var scoreCounterEl = document.getElementById('game-score-counter');
 
     if (!gridEl || !promptEl) return;
+
+    function updateScoreCounter() {
+      if (!scoreCounterEl) return;
+      var strongEl = scoreCounterEl.querySelector('strong');
+      if (strongEl) {
+        strongEl.textContent = String(correctCount);
+      } else {
+        scoreCounterEl.textContent = 'Kernels Popped: ' + correctCount + ' / 3';
+      }
+    }
 
     function getCurrentQuestions() {
       var level = levelSelect ? levelSelect.value : 'poppers';
@@ -75,6 +86,7 @@
           k.removeAttribute('aria-label');
         }
       }
+      updateScoreCounter();
     }
 
     function popKernel(num) {
@@ -83,6 +95,7 @@
         k.classList.add('kernel-popped');
         k.setAttribute('aria-label', 'Kernel ' + num + ' popped in bucket');
       }
+      updateScoreCounter();
     }
 
     function showQuestion() {

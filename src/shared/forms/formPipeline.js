@@ -11,7 +11,7 @@
 const express = require('express');
 const router = express.Router();
 const storage = require('../storage');
-const { formSubmissionLimiter } = require('../middleware/security');
+const { formSubmissionLimiter, timingSafeCompare } = require('../middleware/security');
 const {
   validateHoneypot,
   validateConsent,
@@ -20,7 +20,8 @@ const {
   validatePresenterForm,
   validateLearningNeedsForm,
   validateContactForm,
-  validateSchoolEnquiryForm
+  validateSchoolEnquiryForm,
+  validatePopcornParentForm
 } = require('./validators');
 
 // In-memory telemetry counter (no personal data stored or exposed)
@@ -49,6 +50,8 @@ function getValidator(formType) {
       return validateContactForm;
     case 'school-enquiry':
       return validateSchoolEnquiryForm;
+    case 'popcorn-parent-interest':
+      return validatePopcornParentForm;
     default:
       return null;
   }
@@ -190,7 +193,7 @@ router.get('/metrics', (req, res) => {
   }
 
   const providedKey = req.headers['x-admin-key'];
-  if (!providedKey || providedKey !== expectedKey) {
+  if (!timingSafeCompare(providedKey, expectedKey)) {
     return res.status(404).send('Not Found');
   }
 

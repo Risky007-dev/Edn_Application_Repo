@@ -10,3 +10,6 @@ data/
 *.log
 .DS_Store
 SECURITY_FINDINGS_PRIVATE.md
+*.xlsx
+*.csv
+tests/temp_test_env/

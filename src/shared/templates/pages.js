@@ -8,6 +8,9 @@
 const content = require('../content');
 const config = require('../config');
 const { escapeHtml, renderLayout } = require('./layout');
+const { renderGuideMascot, renderSpeechBubble } = require('../components/mascotGuide');
+const { renderBucketMascot } = require('../components/mascotBucket');
+const { READINESS_QUESTIONS } = require('../content/readiness-questions');
 
 // Helper for consent checkbox
 function renderConsentCheckbox() {
@@ -15,7 +18,7 @@ function renderConsentCheckbox() {
     <div class="form-group form-checkbox-group">
       <input type="checkbox" id="consent" name="consent" required class="form-checkbox">
       <label for="consent" class="checkbox-label" data-todo="legal">
-        ${escapeHtml(content.global.privacyNote.text)}
+        I agree to the processing of my details in accordance with the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
       </label>
     </div>
   `;
@@ -40,60 +43,156 @@ function renderFormStatus(formId) {
 function renderHomePage() {
   const hp = content.homepage.hero;
   const bodyHtml = `
-    <section class="hero-section">
-      <div class="hero-container">
-        <h1 class="hero-headline">${escapeHtml(hp.headline.text)}</h1>
-        <p class="hero-tagline">${escapeHtml(hp.tagline.text)}</p>
-        <p class="hero-subhead">${escapeHtml(hp.subhead.text)}</p>
+    <!-- Screen 1: Split Editorial Hero (Flat Ivory Ground) -->
+    <section class="hero-section hero-split-section">
+      <div class="container hero-split-grid">
+        <div class="hero-split-copy">
+          <h1 class="hero-headline">${escapeHtml(hp.headline.text)}</h1>
+          <p class="hero-tagline">${escapeHtml(hp.tagline.text)}</p>
+          <p class="hero-subhead">${escapeHtml(hp.subhead.text)}</p>
 
-        <div class="hero-ctas">
-          <a href="/book" class="btn btn-primary btn-large">${escapeHtml(hp.ctaBook.text)}</a>
-          <a href="#programmes" class="btn btn-secondary btn-large">${escapeHtml(hp.ctaExplore.text)}</a>
+          <div class="hero-ctas">
+            <a href="/book" class="btn btn-primary btn-large">${escapeHtml(hp.ctaBook.text)}</a>
+            <a href="#programmes" class="btn btn-secondary btn-large">${escapeHtml(hp.ctaExplore.text)}</a>
+          </div>
+
+          <div class="hero-mascot-wrapper hero-mascot-compact">
+            <!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
+            ${renderGuideMascot({ expression: 'happy', size: 84, className: 'animated' })}
+            ${renderSpeechBubble({ text: escapeHtml(hp.mascotGreeting ? hp.mascotGreeting.text : "Hi! I'm your Tutor Time guide. Ready to explore learning that pops?") })}
+          </div>
+        </div>
+
+        <div class="hero-split-media">
+          <picture data-phone-fill>
+            <source media="(max-width: 639px)" srcset="/assets/photos/photo-f175117225-780x975.webp 780w" sizes="100vw">
+            <img src="/assets/photos/photo-f175117225.webp"
+                 srcset="/assets/photos/photo-f175117225-500.webp 500w, /assets/photos/photo-f175117225-960.webp 960w, /assets/photos/photo-f175117225-1280.webp 1280w, /assets/photos/photo-f175117225.webp 1920w"
+                 sizes="(max-width: 1023px) 100vw, 50vw"
+                 width="1920" height="1444"
+                 alt="Quiet wooden study desk with lamp and chair in natural daylight"
+                 fetchpriority="high" decoding="async"
+                 data-source="stand-in" data-subject="study-desk">
+          </picture>
         </div>
       </div>
     </section>
 
-    <section id="programmes" class="programmes-section">
+    <!-- Screen 2: Four Core Educational Pathways (Warm Cream Ground) -->
+    <section id="programmes" class="programmes-section pathways-cream">
       <div class="container">
-        <div class="section-header">
+        <div class="section-header-left">
           <h2>Our Core Educational Pathways</h2>
-          <p>Personalised learning experiences designed to inspire confidence and real results.</p>
+          <p>Personalised learning experiences designed to inspire confidence and steady academic progress.</p>
         </div>
 
-        <div class="programme-grid">
+        <div class="pathways-grid">
           ${hp.options.map(opt => `
-            <article class="programme-card card-${escapeHtml(opt.key)}">
-              <div class="card-icon" aria-hidden="true">${opt.icon}</div>
-              <h3 class="card-title">${escapeHtml(opt.title.text)}</h3>
-              <h4 class="card-subtitle">${escapeHtml(opt.name.text)}</h4>
-              <p class="card-desc">${escapeHtml(opt.desc.text)}</p>
-              <a href="${escapeHtml(opt.href)}" class="btn btn-card">${escapeHtml(opt.cta.text)} &rarr;</a>
+            <article class="pathway-card pathway-${escapeHtml(opt.key)}">
+              <div class="pathway-top-rule" aria-hidden="true"></div>
+              <h3 class="pathway-title">${escapeHtml(opt.title.text)}</h3>
+              <p class="pathway-name">${escapeHtml(opt.name.text)}</p>
+              <p class="pathway-desc">${escapeHtml(opt.desc.text)}</p>
+              <a href="${escapeHtml(opt.href)}" class="pathway-link">${escapeHtml(opt.cta.text)}</a>
             </article>
           `).join('')}
         </div>
       </div>
     </section>
 
-    <!-- Smart Service Finder Banner Card -->
-    <section class="finder-cta-section">
-      <div class="container">
-        <div class="finder-cta-card">
-          <div class="finder-cta-content">
-            <span class="badge-accent">Interactive Tool</span>
-            <h2>Not Sure Which Programme Is Right for Your Child?</h2>
-            <p>Answer three quick questions to discover the most relevant educational programme for your child.</p>
+    <!-- Screen 3: Brand Band — Popcorn Math & Interactive Parent Tools -->
+    <section class="brand-band-section">
+      <div class="container brand-band-grid">
+        <div class="brand-band-copy">
+          <h2>Interactive Practice &amp; Parent Clarity Tools</h2>
+          <p class="brand-band-lead">Try our kid-safe math mini-game, match your child to the right pathway, or run a quick CPEA readiness check.</p>
+
+          <div class="brand-tool-list">
+            <a href="/popcorn-math/play" class="brand-tool-row">
+              <div>
+                <strong>Popcorn Math Mini-Game</strong>
+                <span>Three skill bands for ages 4&ndash;12, zero tracking or ads.</span>
+              </div>
+              <span class="brand-tool-action">Play now</span>
+            </a>
+            <a href="/find-your-programme" class="brand-tool-row">
+              <div>
+                <strong>Smart Programme Finder</strong>
+                <span>Three quick questions to match your child&rsquo;s learning goals.</span>
+              </div>
+              <span class="brand-tool-action">Find match</span>
+            </a>
+            <a href="/readiness-check" class="brand-tool-row readiness-cta-section">
+              <div>
+                <strong>${escapeHtml(content.homepage.readinessCta.title.text)}</strong>
+                <span>12 interactive questions with a printable parent summary.</span>
+              </div>
+              <span class="brand-tool-action">${escapeHtml(content.homepage.readinessCta.buttonText.text)}</span>
+            </a>
           </div>
-          <div class="finder-cta-action">
-            <a href="/find-your-programme" class="btn btn-primary btn-large">Try Programme Finder &rarr;</a>
-          </div>
+        </div>
+
+        <div class="brand-band-media">
+          <img src="/assets/photos/photo-d183.webp"
+               srcset="/assets/photos/photo-d183-500.webp 500w, /assets/photos/photo-d183-960.webp 960w, /assets/photos/photo-d183.webp 1280w"
+               sizes="(max-width: 1023px) 100vw, 48vw"
+               width="1280" height="853"
+               alt="Open blank notebook with a ribbon marker and pencil on a wooden study table"
+               loading="lazy" decoding="async"
+               data-source="library-057" data-subject="desk">
         </div>
       </div>
     </section>
 
+    <!-- Screen 4: Holiday Specials (3 Seasonal Programmes) -->
+    <section id="holiday-specials" class="holiday-section">
+      <div class="container">
+        <div class="holiday-intro-grid">
+          <div class="section-header-left">
+            <h2>Holiday Specials with Teacher Cassie</h2>
+            <p>Short, focused holiday intensives designed to keep skills sharp and build joyful momentum before the new term begins.</p>
+          </div>
+          <div class="holiday-intro-media">
+            <img src="/assets/photos/photo-c877.webp"
+                 srcset="/assets/photos/photo-c877-500.webp 500w, /assets/photos/photo-c877-960.webp 960w, /assets/photos/photo-c877.webp 1280w"
+                 sizes="(max-width: 1023px) 100vw, 40vw"
+                 width="1280" height="853"
+                 alt="Stacked study books prepared for holiday learning sessions"
+                 loading="lazy" decoding="async"
+                 data-source="library-057" data-subject="desk">
+          </div>
+        </div>
+
+        <div class="holiday-grid">
+          <article class="holiday-card">
+            <span class="holiday-meta">Ages 7&ndash;11 &bull; 5-Day Intensive</span>
+            <h3>Winter Spark Math Camp</h3>
+            <p>Hands-on number fluency, Popcorn Math speed challenges, and confidence-building word problems in small, encouraging groups.</p>
+            <a href="/book?interest=popcorn-math" class="btn btn-secondary">Reserve a Spot</a>
+          </article>
+
+          <article class="holiday-card holiday-card-featured">
+            <span class="holiday-meta">Ages 9&ndash;12 &bull; Exam Clinic</span>
+            <h3>Festive CPEA Sprint &amp; Past-Paper Studio</h3>
+            <p>Focused holiday prep covering timed reasoning, step-by-step error review, and calm test-taking habits ahead of exam term.</p>
+            <a href="/book?interest=traditional-tutoring" class="btn btn-primary">Book Holiday Sprint</a>
+          </article>
+
+          <article class="holiday-card">
+            <span class="holiday-meta">All Primary Levels &bull; Diagnostic</span>
+            <h3>New Year Reading &amp; Numeracy Jumpstart</h3>
+            <p>A fresh-start academic check-in with personalised goal setting and a two-week roadmap so your child steps into January ahead.</p>
+            <a href="/book?interest=concierge" class="btn btn-secondary">Claim Jumpstart</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5: Parent Updates & Quiet Close -->
     <section class="interest-section">
       <div class="container interest-container">
         <div class="interest-copy">
-          <h3>${escapeHtml(content.homepage.subscribeSection.title.text)}</h3>
+          <h2>${escapeHtml(content.homepage.subscribeSection.title.text)}</h2>
           <p>${escapeHtml(content.homepage.subscribeSection.description.text)}</p>
         </div>
 
@@ -113,7 +212,10 @@ function renderHomePage() {
     title: 'Home',
     description: hp.subhead.text,
     bodyHtml,
-    currentPath: '/'
+    currentPath: '/',
+    pageType: 'service',
+    siteKind: 'other',
+    photoCredit: 'Photographs: Orf3us (CC BY-SA 4.0, Wikimedia Commons) & taste-skill library (stand-in frames).'
   });
 }
 
@@ -279,85 +381,7 @@ function renderConciergePage() {
   });
 }
 
-// 4. Popcorn Math (/services/popcorn-maths)
-function renderPopcornMathsPage() {
-  const pop = content.services['popcorn-maths'];
-  const bodyHtml = `
-    <div class="page-header header-popcorn">
-      <div class="container">
-        <div class="popcorn-badge" aria-hidden="true">🍿 Popcorn Math</div>
-        <h1>${escapeHtml(pop.title.text)}</h1>
-        <p class="lead">${escapeHtml(pop.headline.text)}</p>
-        <p class="sublead">${escapeHtml(pop.tagline.text)}</p>
-      </div>
-    </div>
-
-    <div class="container content-container">
-      <section class="content-block text-center">
-        <img src="/assets/logos/popcorn-math-logo.png" alt="Popcorn Math Logo" class="popcorn-logo-display" width="360" height="216">
-        <p class="lead mt-4">${escapeHtml(pop.overview.text)}</p>
-      </section>
-
-      <section class="cta-cards-section mt-5">
-        <div class="cta-cards-grid">
-          <div class="cta-card">
-            <div class="cta-card-icon" aria-hidden="true">🍿</div>
-            <h3>Join a Session</h3>
-            <p>Interactive group mathematics workshops designed to build fluency, problem solving, and confidence.</p>
-            <a href="${escapeHtml(pop.ctaSession.href)}" class="btn btn-primary">${escapeHtml(pop.ctaSession.text)}</a>
-          </div>
-
-          <div class="cta-card">
-            <div class="cta-card-icon" aria-hidden="true">🏫</div>
-            <h3>School Partnerships</h3>
-            <p>Bring our high-energy mathematics workshops, enrichment days, or after-school clubs directly to your school.</p>
-            <a href="${escapeHtml(pop.ctaSchool.href)}" class="btn btn-secondary">${escapeHtml(pop.ctaSchool.text)}</a>
-          </div>
-
-          <div class="cta-card">
-            <div class="cta-card-icon" aria-hidden="true">🎤</div>
-            <h3>Become a Presenter</h3>
-            <p>Energetic educators, university students, and facilitators wanted to help bring Popcorn Math to life!</p>
-            <a href="${escapeHtml(pop.ctaPresenter.href)}" class="btn btn-accent">${escapeHtml(pop.ctaPresenter.text)}</a>
-          </div>
-        </div>
-      </section>
-
-      ${config.popcornLocationDirectory ? `
-        <section class="content-block mt-5" id="locations">
-          <h2>Find a Popcorn Math Session Near You</h2>
-          <p>Choose your community or select our online cohort to see current session schedules and availability.</p>
-
-          <div class="form-group mt-3" style="max-width: 480px; margin-left: auto; margin-right: auto;">
-            <label for="popcorn-location-select">Select Location / Community:</label>
-            <select id="popcorn-location-select" class="form-select" data-locations="${escapeHtml(JSON.stringify(content.popcornLocations || []))}">
-              <option value="">-- Choose a Community / Cohort --</option>
-              ${(content.popcornLocations || []).map(loc => `<option value="${escapeHtml(loc.id)}">${escapeHtml(loc.name)}</option>`).join('')}
-            </select>
-
-            <div id="location-details" class="mt-4" style="display:none;" aria-live="polite" role="region" aria-label="Selected location details">
-              <h3 id="loc-title"></h3>
-              <p><strong>Venue:</strong> <span id="loc-venue"></span></p>
-              <p><strong>Schedule:</strong> <span id="loc-schedule"></span></p>
-              <p><strong>Ages:</strong> <span id="loc-ages"></span></p>
-              <p><strong>Status:</strong> <span id="loc-status" class="badge"></span></p>
-              <a id="loc-cta" href="/book?service=popcorn-maths" class="btn btn-primary btn-sm mt-2">Enquire for This Location</a>
-            </div>
-          </div>
-        </section>
-      ` : ''}
-    </div>
-  `;
-
-  return renderLayout({
-    title: pop.title.text,
-    description: pop.tagline.text,
-    bodyHtml,
-    currentPath: '/services/popcorn-maths'
-  });
-}
-
-// 5. Individualised Learning Support (/services/specialist-support)
+// 4. Individualised Learning Support (/services/specialist-support)
 function renderSpecialistSupportPage() {
   const spec = content.services['specialist-support'];
   const bodyHtml = `
@@ -445,139 +469,7 @@ function renderSpecialistSupportPage() {
   });
 }
 
-// 6. Popcorn Math Presenter Recruitment (/popcorn-maths/presenter)
-function renderPresenterPage() {
-  const prs = content.presenter;
-  const bodyHtml = `
-    <div class="page-header header-presenter">
-      <div class="container">
-        <span class="badge badge-hiring">${escapeHtml(prs.badge.text)}</span>
-        <h1>${escapeHtml(prs.title.text)}</h1>
-        <p class="lead">${escapeHtml(prs.tagline.text)}</p>
-      </div>
-    </div>
-
-    <div class="container content-container">
-      <section class="content-block">
-        <p class="lead">${escapeHtml(prs.lead.text)}</p>
-        <p>${escapeHtml(prs.description.text)}</p>
-
-        <h3 class="mt-4">${escapeHtml(prs.whoWeLookForTitle.text)}</h3>
-        <ul class="feature-checklist">
-          ${prs.qualities.map(q => `<li><span class="check-icon" aria-hidden="true">✓</span> ${escapeHtml(q.text)}</li>`).join('')}
-        </ul>
-
-        <h3 class="mt-4">${escapeHtml(prs.whatWeOfferTitle.text)}</h3>
-        <p data-todo="content">${escapeHtml(prs.whatWeOfferContent.text)}</p>
-      </section>
-
-      <section class="form-section mt-5" id="apply">
-        <div class="form-card">
-          <h2>Presenter Application Form</h2>
-          <p class="form-intro">Apply to join our enthusiastic mathematics presentation team.</p>
-
-          <form id="presenter-application-form" class="app-form" data-form-type="presenter-application" novalidate>
-            ${renderHoneypot()}
-
-            <div class="form-group">
-              <label for="fullName">Full Name <span class="required">*</span></label>
-              <input type="text" id="fullName" name="fullName" required maxlength="100" class="form-input">
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="email">Email Address <span class="required">*</span></label>
-                <input type="email" id="email" name="email" required maxlength="150" class="form-input">
-              </div>
-
-              <div class="form-group">
-                <label for="phone">Phone Number <span class="required">*</span></label>
-                <input type="tel" id="phone" name="phone" required maxlength="25" placeholder="+1 (264) 555-0199" class="form-input">
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="location">Location (Island / Country) <span class="required">*</span></label>
-                <input type="text" id="location" name="location" required maxlength="100" placeholder="e.g. Anguilla" class="form-input">
-              </div>
-
-              <div class="form-group">
-                <label for="preferredRole">Preferred Role</label>
-                <select id="preferredRole" name="preferredRole" class="form-select">
-                  <option value="Presenter">Presenter</option>
-                  <option value="Assistant Presenter">Assistant Presenter</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="educationalBackground">Educational Background <span class="required">*</span></label>
-              <textarea id="educationalBackground" name="educationalBackground" rows="3" required maxlength="500" placeholder="Qualifications, relevant study, or teaching background..." class="form-textarea"></textarea>
-            </div>
-
-            <div class="form-group">
-              <label for="experienceWithChildren">Experience Working With Children <span class="required">*</span></label>
-              <textarea id="experienceWithChildren" name="experienceWithChildren" rows="3" required maxlength="500" placeholder="Describe previous teaching, youth work, or tutoring experience..." class="form-textarea"></textarea>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="mathConfidence">Mathematics Confidence</label>
-                <select id="mathConfidence" name="mathConfidence" class="form-select">
-                  <option value="High">High - Very confident across curriculum</option>
-                  <option value="Moderate">Moderate - Strong primary/foundational skills</option>
-                  <option value="Foundational">Foundational</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="availability">Availability <span class="required">*</span></label>
-                <input type="text" id="availability" name="availability" required maxlength="250" placeholder="e.g. Weekday afternoons, weekends, holidays" class="form-input">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="whyPopcornMath">Why Popcorn Math? <span class="required">*</span></label>
-              <textarea id="whyPopcornMath" name="whyPopcornMath" rows="4" required maxlength="1000" placeholder="Tell us why you would like to be part of our dynamic team..." class="form-textarea"></textarea>
-            </div>
-
-            <!-- CV Upload via Presigned S3 POST flow -->
-            <div class="form-group cv-upload-group">
-              <label for="cvFile">Upload Curriculum Vitae (PDF only, max 5 MB)</label>
-              <input type="file" id="cvFile" accept=".pdf,application/pdf" class="form-file-input">
-              <input type="hidden" id="cvUploadKey" name="cvUploadKey">
-              <p class="file-helper-text">Select your CV in PDF format. It will be securely uploaded before submitting.</p>
-              <div id="cv-upload-status" class="upload-status" aria-live="polite"></div>
-            </div>
-
-            <!-- 18+ Age Confirmation Checkbox -->
-            <div class="form-group form-checkbox-group">
-              <input type="checkbox" id="ageConfirmation" name="ageConfirmation" required class="form-checkbox">
-              <label for="ageConfirmation" class="checkbox-label">
-                <strong>I confirm that I am 18 years of age or older. <span class="required">*</span></strong>
-              </label>
-            </div>
-
-            ${renderConsentCheckbox()}
-            ${renderFormStatus('presenter-application-form')}
-
-            <button type="submit" class="btn btn-primary btn-submit">Submit Application</button>
-          </form>
-        </div>
-      </section>
-    </div>
-  `;
-
-  return renderLayout({
-    title: prs.title.text,
-    description: prs.tagline.text,
-    bodyHtml,
-    currentPath: '/popcorn-maths/presenter'
-  });
-}
-
-// 7. Book Consultation (/book)
+// 5. Book Consultation (/book)
 function renderBookPage() {
   const bk = content.bookPage;
   const bodyHtml = `
@@ -697,8 +589,9 @@ function renderContactPage() {
           ` : ''}
 
           <div class="service-notice mt-4" data-todo="content">
-            <h4>Office Hours &amp; Locations</h4>
-            <p>${escapeHtml(content.global.detailsComingSoon.text)}</p>
+            <h4>Locations &amp; Office Hours</h4>
+            <p>Tutor Time and Popcorn Math operate on Anguilla. In-person Popcorn Math sessions are planned to run 1 hour weekly after school across primary school terms (8 to 10 weeks per series).</p>
+            <p class="text-muted"><em>Confirmed office hours and mailing address will be published following owner confirmation.</em></p>
           </div>
         </div>
 
@@ -808,15 +701,16 @@ function renderAboutPage() {
     <div class="container content-container">
       <section class="content-block">
         <h2>Our Mission</h2>
-        <p data-todo="content">${escapeHtml(ab.mission.text)}</p>
+        <p>${escapeHtml(ab.mission.text)}</p>
 
         <h2 class="mt-4">Teacher Cassie &amp; Our Team</h2>
-        <p data-todo="content">${escapeHtml(ab.biography.text)}</p>
+        <p>${escapeHtml(ab.biography.text)}</p>
+        <p class="text-muted" data-todo="content"><em>${escapeHtml(ab.biographyPendingNote.text)}</em></p>
 
         <div class="cta-box mt-5">
           <h3>Learn More About Our Programmes</h3>
           <p>Explore how our tailored learning pathways inspire academic confidence and curiosity.</p>
-          <a href="/services/popcorn-maths" class="btn btn-primary">Discover Popcorn Math</a>
+          <a href="/services/popcorn-math" class="btn btn-primary">Discover Popcorn Math</a>
           <a href="/book" class="btn btn-secondary">Book a Consultation</a>
         </div>
       </section>
@@ -831,99 +725,7 @@ function renderAboutPage() {
   });
 }
 
-// 11. TT-13 Popcorn Math Mini-Game (/popcorn-maths/game)
-function renderPopcornGamePage() {
-  const gp = content.gamePage;
-  const bodyHtml = `
-    <div class="page-header header-game">
-      <div class="container text-center" data-canonical="Popcorn Math Mini-Game">
-        <span class="page-eyebrow">Play &amp; Learn</span>
-        <h1>${escapeHtml(gp.headline.text)}</h1>
-        <p class="hero-tagline">${escapeHtml(gp.subhead.text)}</p>
-        <p class="game-privacy-notice">${escapeHtml(gp.privacyNotice.text)}</p>
-      </div>
-    </div>
-
-    <div class="container game-container">
-      <!-- Mascot Placeholder (No custom mascot or logo variation created) -->
-      <div class="mascot-placeholder" data-todo="mascot" aria-label="Mascot artwork placeholder">
-        <div class="placeholder-box">
-          <span class="placeholder-icon">🍿</span>
-          <span class="placeholder-text">Mascot Placeholder</span>
-        </div>
-      </div>
-
-      <!-- Popcorn Bucket Animation Track -->
-      <div class="bucket-stage" aria-label="Popcorn bucket tracker">
-        <div class="bucket-visual-wrapper">
-          <svg class="popcorn-bucket-svg" viewBox="0 0 160 160" width="140" height="140" aria-hidden="true" role="img">
-            <defs>
-              <linearGradient id="gameBucketGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#E62B25" />
-                <stop offset="100%" stop-color="#C51B15" />
-              </linearGradient>
-            </defs>
-            <polygon points="35,50 125,50 110,145 50,145" fill="url(#gameBucketGrad)" stroke="#A0120D" stroke-width="3" />
-            <line x1="57" y1="50" x2="65" y2="145" stroke="#FFFFFF" stroke-width="6" opacity="0.85" />
-            <line x1="80" y1="50" x2="80" y2="145" stroke="#FFFFFF" stroke-width="6" opacity="0.85" />
-            <line x1="103" y1="50" x2="95" y2="145" stroke="#FFFFFF" stroke-width="6" opacity="0.85" />
-          </svg>
-          <div class="bucket-slots" id="bucket-slots" aria-hidden="true">
-            <span class="kernel-item" id="kernel-1">🍿</span>
-            <span class="kernel-item" id="kernel-2">🍿</span>
-            <span class="kernel-item" id="kernel-3">🍿</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Feedback Area (Announced via aria-live, never color alone) -->
-      <div id="game-feedback" class="game-feedback" aria-live="polite" role="status"></div>
-
-      ${config.popcornGameMultiLevel ? `
-        <div class="game-level-selector text-center mb-3">
-          <label for="game-level-select">Select Difficulty Level:</label>
-          <select id="game-level-select" class="form-select" style="display:inline-block; width:auto; max-width:100%;">
-            <option value="kernels">Little Kernels (Ages 4–6: Addition)</option>
-            <option value="poppers" selected>Popping Poppers (Ages 7–9: Times Tables)</option>
-            <option value="crunch">Mega Crunch (Ages 10–12: Mental Arithmetic)</option>
-          </select>
-        </div>
-      ` : ''}
-
-      <!-- Active Quiz Card -->
-      <div id="game-arena" class="game-arena">
-        <div class="game-card">
-          <div class="question-tracker" id="question-tracker">Question 1 of 3</div>
-          <div class="question-prompt" id="question-prompt">What is 8 &times; 7?</div>
-          <div class="answers-grid" id="answers-grid" role="group" aria-label="Answer options">
-            <!-- Rendered and updated dynamically by game.js in-memory -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Popcorn Math Star Completion Screen (Shown when 3 answers correct) -->
-      <div id="game-star-screen" class="game-star-screen" style="display:none;" role="region" aria-label="Game completion">
-        <div class="star-badge" aria-hidden="true">🎉</div>
-        <h2>${escapeHtml(gp.starTitle.text)}</h2>
-        <p class="lead">${escapeHtml(gp.starLead.text)}</p>
-        <div class="star-actions">
-          <a href="/services/popcorn-maths" class="btn btn-primary btn-large">${escapeHtml(gp.starCta.text)}</a>
-          <button type="button" id="btn-play-again" class="btn btn-secondary btn-large">Play Again</button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  return renderLayout({
-    title: gp.title.text,
-    description: gp.subhead.text,
-    bodyHtml,
-    currentPath: '/popcorn-maths/game',
-    extraScripts: ['/js/game.js']
-  });
-}
-
-// 12. TT-14 Smart Service Finder (/find-your-programme)
+// 9. Smart Service Finder (/find-your-programme)
 function renderServiceFinderPage(interestHint = null) {
   const fp = content.finderPage;
   const bodyHtml = `
@@ -1025,7 +827,7 @@ function renderServiceFinderPage(interestHint = null) {
           <h2 id="rec-title">We Recommend Popcorn Math!</h2>
           <p class="rec-reason" id="rec-reason"></p>
           <div class="rec-cta mt-4">
-            <a id="rec-cta-link" href="/services/popcorn-maths" class="btn btn-primary btn-large">Explore Recommended Service</a>
+            <a id="rec-cta-link" href="/services/popcorn-math" class="btn btn-primary btn-large">Explore Recommended Service</a>
             <a href="/book" class="btn btn-secondary btn-large">Book a Consultation</a>
           </div>
         </div>
@@ -1042,132 +844,7 @@ function renderServiceFinderPage(interestHint = null) {
   });
 }
 
-// 13. TT-15 School Partnership Enquiry Form (/popcorn-maths/school-partnership)
-function renderSchoolPartnershipPage() {
-  const sp = content.schoolEnquiryPage;
-  const bodyHtml = `
-    <div class="page-header header-school">
-      <div class="container" data-canonical="School Partnerships">
-        <span class="page-eyebrow">School Partnerships</span>
-        <h1>${escapeHtml(sp.headline.text)}</h1>
-        <p class="hero-tagline">${escapeHtml(sp.tagline.text)}</p>
-        <p class="lead">${escapeHtml(sp.overview.text)}</p>
-      </div>
-    </div>
-
-    <div class="container content-container">
-      <section class="offerings-section">
-        <h2>School Engagement Programmes</h2>
-        <div class="programme-grid mt-4">
-          <div class="programme-card">
-            <h3>In-School Workshops</h3>
-            <p>High-energy interactive mathematics workshops delivered directly in classrooms, aligned with core curriculum themes.</p>
-          </div>
-          <div class="programme-card">
-            <h3>After-School Clubs</h3>
-            <p>Weekly mathematics clubs combining hands-on challenges and game-based learning to build confidence and fluency.</p>
-          </div>
-          <div class="programme-card">
-            <h3>Enrichment &amp; Special Events</h3>
-            <p>Custom mathematics enrichment days, festival challenges, and collaborative school-wide problem-solving events.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="form-section mt-5" id="enquiry-form">
-        <div class="form-header">
-          <h2>Request a School Programme</h2>
-          <p class="service-notice"><strong>Please note:</strong> ${escapeHtml(sp.disclaimer.text)}</p>
-        </div>
-
-        <form id="school-enquiry-form" class="form-card" data-form-type="school-enquiry" method="POST" action="/api/forms/school-enquiry" novalidate>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="schoolName">School Name *</label>
-              <input type="text" id="schoolName" name="schoolName" required class="form-input" placeholder="e.g. Valley Primary School">
-            </div>
-            <div class="form-group">
-              <label for="contactPerson">Contact Person *</label>
-              <input type="text" id="contactPerson" name="contactPerson" required class="form-input" placeholder="Your full name">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="roleTitle">Role Title *</label>
-              <input type="text" id="roleTitle" name="roleTitle" required class="form-input" placeholder="e.g. Principal, Head of Mathematics">
-            </div>
-            <div class="form-group">
-              <label for="locationDistrict">Location / District *</label>
-              <input type="text" id="locationDistrict" name="locationDistrict" required class="form-input" placeholder="e.g. West End, Anguilla">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="email">Work Email *</label>
-              <input type="email" id="email" name="email" required class="form-input" placeholder="contact@school.edu">
-            </div>
-            <div class="form-group">
-              <label for="phone">Phone Number *</label>
-              <input type="tel" id="phone" name="phone" required class="form-input" placeholder="+1 (264) ...">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="studentAgeGroup">Student Age Group *</label>
-              <select id="studentAgeGroup" name="studentAgeGroup" required class="form-select">
-                <option value="8-10">Ages 8–10 (Lower Key Stage / Primary)</option>
-                <option value="11-13">Ages 11–13 (Upper Primary / Middle)</option>
-                <option value="Mixed">Mixed Age Groups</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="estimatedStudentCount">Estimated Student Count (10 to 500) *</label>
-              <input type="number" id="estimatedStudentCount" name="estimatedStudentCount" required min="10" max="500" class="form-input" placeholder="e.g. 45">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="programmeType">Programme Type *</label>
-              <select id="programmeType" name="programmeType" required class="form-select">
-                <option value="Workshop">In-School Workshop</option>
-                <option value="After-school club">After-School Club</option>
-                <option value="Event">Special Mathematics Event</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="targetDate">Target / Preferred Date (Optional)</label>
-              <input type="text" id="targetDate" name="targetDate" class="form-input" placeholder="e.g. November 2026 or Term 2">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="message">Additional Requirements or Details (Optional, max 500 characters)</label>
-            <textarea id="message" name="message" rows="4" maxlength="500" class="form-textarea" placeholder="Tell us about your school's goals or scheduling preferences..."></textarea>
-          </div>
-
-          ${renderConsentCheckbox()}
-          ${renderHoneypot()}
-
-          <button type="submit" class="btn btn-primary btn-submit">Submit School Enquiry</button>
-          ${renderFormStatus('school-enquiry')}
-        </form>
-      </section>
-    </div>
-  `;
-
-  return renderLayout({
-    title: sp.title.text,
-    description: sp.overview.text,
-    bodyHtml,
-    currentPath: '/popcorn-maths/school-partnership'
-  });
-}
-
-// 14. TT-16 Resources Page Stub (/resources)
+// 10. Educational Resources (/resources)
 function renderResourcesPage() {
   const rp = content.resourcesPage;
   const bodyHtml = `
@@ -1175,19 +852,36 @@ function renderResourcesPage() {
       <div class="container" data-canonical="Educational Resources">
         <span class="page-eyebrow">Resources</span>
         <h1>${escapeHtml(rp.headline.text)}</h1>
-        <p class="lead" data-todo="content">${escapeHtml(rp.details.text)}</p>
+        <p class="lead">${escapeHtml(rp.details.text)}</p>
       </div>
     </div>
 
     <div class="container content-container">
       <section class="content-block">
-        <div class="helper-box">
-          <p data-todo="content">${escapeHtml(rp.details.text)}</p>
+        <div class="service-grid">
+          <div class="service-card">
+            <h3>CPEA Readiness Check</h3>
+            <p>12 interactive sample multiple-choice questions across Language Arts, Mathematics, Science, and Social Studies.</p>
+            <a href="/readiness-check" class="btn btn-primary">Try Readiness Check</a>
+          </div>
+          <div class="service-card">
+            <h3>Popcorn Math Play &amp; Learn</h3>
+            <p>A short, kid-friendly math teaser game to warm up number skills.</p>
+            <a href="/popcorn-math/play" class="btn btn-secondary">Play Mini-Game</a>
+          </div>
+          <div class="service-card">
+            <h3>Smart Service Finder</h3>
+            <p>Answer three quick questions to find the best Tutor Time or Popcorn Math pathway for your child.</p>
+            <a href="/find-your-programme" class="btn btn-secondary">Find Your Programme</a>
+          </div>
+        </div>
+        <div class="helper-box mt-4" data-todo="content">
+          <p>${escapeHtml(rp.downloadablesPendingNote.text)}</p>
         </div>
         <div class="cta-box mt-4">
           <h3>Explore Our Current Programmes</h3>
           <p>Discover our core academic tutoring, concierge coaching, and interactive Popcorn Math sessions.</p>
-          <a href="/services/popcorn-maths" class="btn btn-primary">Popcorn Math</a>
+          <a href="/services/popcorn-math" class="btn btn-primary">Popcorn Math</a>
           <a href="/book" class="btn btn-secondary">Book a Consultation</a>
         </div>
       </section>
@@ -1202,19 +896,115 @@ function renderResourcesPage() {
   });
 }
 
+// 15. CPEA Readiness Check (/readiness-check)
+function renderReadinessCheckPage() {
+  const isEnabled = config.features?.readinessCheck?.enabled ?? true;
+  if (!isEnabled) {
+    return renderLayout({
+      title: 'Readiness Check Unavailable',
+      description: 'The CPEA Readiness Check is currently unavailable.',
+      bodyHtml: `
+        <div class="container py-12 text-center">
+          <h1>Readiness Check Unavailable</h1>
+          <p>This module is currently taking a break. Please check back soon or <a href="/book">book a consultation</a> with Teacher Cassie.</p>
+        </div>
+      `,
+      currentPath: '/readiness-check'
+    });
+  }
+
+  const bodyHtml = `
+    <div class="readiness-page-wrapper">
+      <header class="readiness-hero-section">
+        <div class="container text-center">
+          <div class="readiness-official-disclaimer-pill" role="note">
+            <span>⚠️ Sample questions: not an official CPEA paper.</span>
+          </div>
+          <h1 class="readiness-page-title">CPEA Exam Readiness Check</h1>
+          <p class="readiness-page-subhead">A fun, interactive practice check for Caribbean primary students (approx. age 12) across Language Arts, Mathematics, Science, and Social Studies.</p>
+
+          <div class="readiness-mascot-row">
+            <!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
+            ${renderGuideMascot({ expression: 'happy', size: 88, id: 'readiness-mascot' })}
+            ${renderSpeechBubble({ text: "Welcome! Let's try 12 sample questions together. Take your time!", id: 'readiness-speech-text' })}
+          </div>
+
+          <div class="readiness-stars-container" aria-label="Progress star trail">
+            <div id="readiness-stars-trail" class="stars-trail"></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="container readiness-main-container">
+        <div id="readiness-live-announcer" class="sr-only" aria-live="polite"></div>
+        <div id="readiness-card" class="readiness-card">
+          <noscript>
+            <div class="service-notice">
+              <p>Please enable JavaScript to enjoy the interactive CPEA Readiness Check.</p>
+            </div>
+          </noscript>
+        </div>
+      </div>
+
+      <script type="application/json" id="readiness-questions-data">
+        ${JSON.stringify(READINESS_QUESTIONS)}
+      </script>
+    </div>
+  `;
+
+  return renderLayout({
+    title: 'CPEA Readiness Check (Sample Practice)',
+    description: 'Sample practice questions for the Caribbean Primary Exit Assessment covering Language Arts, Mathematics, Science, and Social Studies.',
+    bodyHtml,
+    currentPath: '/readiness-check',
+    extraScripts: ['/js/readiness.js']
+  });
+}
+
+// 12. Branded 404 Not Found Page
+function renderNotFoundPage(requestedPath = '') {
+  const safePath = escapeHtml(requestedPath || '/');
+  const bodyHtml = `
+    <div class="page-header">
+      <div class="container text-center">
+        <span class="page-eyebrow">404 &bull; Page Not Found</span>
+        <h1>We Couldn&rsquo;t Find That Page</h1>
+        <p class="lead">The page <code>${safePath}</code> doesn&rsquo;t exist or may have moved.</p>
+      </div>
+    </div>
+
+    <div class="container content-container text-center">
+      <section class="content-block">
+        <p>Here are the best places to continue exploring Tutor Time with Teacher Cassie and Popcorn Math:</p>
+        <div class="hero-ctas justify-center mt-4">
+          <a href="/" class="btn btn-primary">Return Home</a>
+          <a href="/services/popcorn-math" class="btn btn-secondary">Explore Popcorn Math</a>
+          <a href="/find-your-programme" class="btn btn-secondary">Find Your Programme</a>
+          <a href="/book" class="btn btn-secondary">Book a Consultation</a>
+        </div>
+      </section>
+    </div>
+  `;
+
+  return renderLayout({
+    title: 'Page Not Found',
+    description: 'The requested page could not be found on Tutor Time with Teacher Cassie.',
+    bodyHtml,
+    currentPath: ''
+  });
+}
+
 module.exports = {
   renderHomePage,
   renderTraditionalTutoringPage,
   renderConciergePage,
-  renderPopcornMathsPage,
   renderSpecialistSupportPage,
-  renderPresenterPage,
   renderBookPage,
   renderContactPage,
   renderFaqPage,
   renderAboutPage,
-  renderPopcornGamePage,
   renderServiceFinderPage,
-  renderSchoolPartnershipPage,
-  renderResourcesPage
+  renderResourcesPage,
+  renderReadinessCheckPage,
+  renderNotFoundPage
 };

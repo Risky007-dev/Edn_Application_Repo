@@ -499,6 +499,49 @@ function validateSchoolEnquiryForm(body) {
   return errors;
 }
 
+// 7. Popcorn Math Parent Registration Form
+const POPCORN_PARENT_FIELDS = [
+  'parentName',
+  'contactMethod',
+  'email',
+  'phone',
+  'childGrade',
+  'preferredSchool',
+  'message',
+  'consent',
+  '_gotcha'
+];
+
+function validatePopcornParentForm(body) {
+  const errors = [];
+  const unknown = checkUnknownFields(body, POPCORN_PARENT_FIELDS);
+  if (unknown) return [unknown];
+
+  if (!body.parentName || typeof body.parentName !== 'string' || body.parentName.trim().length < 2) {
+    errors.push('Parent or guardian name is required (minimum 2 characters).');
+  } else if (body.parentName.length > 100) {
+    errors.push('Parent or guardian name exceeds maximum length of 100 characters.');
+  }
+
+  const hasEmail = body.email && isValidEmail(body.email);
+  const hasPhone = body.phone && isValidPhone(body.phone);
+  if (!hasEmail && !hasPhone) {
+    errors.push('A valid contact email or phone number is required.');
+  }
+
+  if (!body.childGrade || typeof body.childGrade !== 'string' || !body.childGrade.trim()) {
+    errors.push('Child primary grade level must be specified (e.g. Grades 1 to 5).');
+  }
+
+  if (body.message !== undefined && body.message !== null && typeof body.message === 'string') {
+    if (body.message.length > 500) {
+      errors.push('Message exceeds maximum length of 500 characters.');
+    }
+  }
+
+  return errors;
+}
+
 module.exports = {
   isValidEmail,
   isValidPhone,
@@ -510,5 +553,6 @@ module.exports = {
   validatePresenterForm,
   validateLearningNeedsForm,
   validateContactForm,
-  validateSchoolEnquiryForm
+  validateSchoolEnquiryForm,
+  validatePopcornParentForm
 };

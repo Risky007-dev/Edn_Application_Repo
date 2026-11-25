@@ -3,6 +3,7 @@
  * Integrates helmet and express-rate-limit.
  */
 
+const crypto = require('crypto');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
@@ -12,8 +13,8 @@ const helmetMiddleware = helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: ["'self'"]
     }
@@ -45,8 +46,21 @@ const formSubmissionLimiter = rateLimit({
   }
 });
 
+/**
+ * Constant-time string comparison safe against non-string inputs and mismatched lengths.
+ */
+function timingSafeCompare(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') {
+    return false;
+  }
+  const hashA = crypto.createHash('sha256').update(a, 'utf8').digest();
+  const hashB = crypto.createHash('sha256').update(b, 'utf8').digest();
+  return crypto.timingSafeEqual(hashA, hashB) && a.length === b.length;
+}
+
 module.exports = {
   helmetMiddleware,
   generalApiLimiter,
-  formSubmissionLimiter
+  formSubmissionLimiter,
+  timingSafeCompare
 };

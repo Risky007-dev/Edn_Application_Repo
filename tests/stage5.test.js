@@ -20,10 +20,12 @@ const {
 } = require('../src/shared/game/popcornGame');
 const {
   renderConciergePage,
-  renderPopcornMathsPage,
-  renderPopcornGamePage,
   renderBookPage
 } = require('../src/shared/templates/pages');
+const {
+  renderPopcornHubPage,
+  renderPopcornPlayPage
+} = require('../src/popcorn/popcornRebuild');
 
 const TEST_PORT = 5007;
 const FAULT_PORT = 5008;
@@ -125,6 +127,8 @@ async function runStage5Suite() {
       PORT: String(TEST_PORT),
       DATA_DIR: TEST_DATA_DIR,
       SUBSCRIBERS_DB_FILE: TEST_SUBSCRIBERS_FILE,
+      SITE_URL: 'https://popcornmaths.com',
+      PUBLIC_SITE_URL: 'https://popcornmaths.com',
       STORAGE_DRIVER: 'local',
       FAULT_INJECTION_ENABLED: 'false'
     },
@@ -211,11 +215,12 @@ async function runStage5Suite() {
 
     const expectedRoutes = [
       '/', '/about', '/services/traditional-tutoring', '/services/concierge',
-      '/services/popcorn-maths', '/services/specialist-support', '/popcorn-maths/presenter',
-      '/popcorn-maths/game', '/find-your-programme', '/popcorn-maths/school-partnership',
-      '/resources', '/book', '/contact', '/faq'
+      '/services/popcorn-math', '/services/specialist-support', '/popcorn-math/presenters',
+      '/popcorn-math/play', '/popcorn-math/schools', '/popcorn-math/parents',
+      '/popcorn-math/locations', '/popcorn-math/faq',
+      '/find-your-programme', '/resources', '/book', '/contact', '/faq', '/readiness-check'
     ];
-    assert('sitemap.xml lists all 14 canonical public routes', expectedRoutes.every((r) => resSitemap.body.includes(`<loc>https://popcornmaths.com${r}</loc>`)));
+    assert('sitemap.xml lists all canonical public routes', expectedRoutes.every((r) => resSitemap.body.includes(`<loc>https://popcornmaths.com${r}</loc>`)));
 
     const resPom = await request(TEST_PORT, { path: '/pom.xml' });
     assert('GET /pom.xml remains blocked with HTTP 404', resPom.statusCode === 404);
@@ -231,14 +236,20 @@ async function runStage5Suite() {
     console.log('\n--- GROUP 4: Service Functions (P1, P2, C1, T3, X2) ---');
     assert('content.popcornLocations defines 5 community/virtual cohorts', Array.isArray(content.popcornLocations) && content.popcornLocations.length === 5);
 
-    const resPopcorn = await request(TEST_PORT, { path: '/services/popcorn-maths' });
-    assert('/services/popcorn-maths renders #popcorn-location-select', resPopcorn.body.includes('id="popcorn-location-select"'));
-    assert('/services/popcorn-maths embeds data-locations and #location-details live region', resPopcorn.body.includes('data-locations=') && resPopcorn.body.includes('id="location-details"'));
+    const resPopcorn = await request(TEST_PORT, { path: '/services/popcorn-math' });
+    assert('/services/popcorn-math renders #popcorn-location-select', resPopcorn.body.includes('id="popcorn-location-select"'));
+    assert('/services/popcorn-math embeds data-locations and #location-details live region', resPopcorn.body.includes('data-locations=') && resPopcorn.body.includes('id="location-details"'));
 
-    const resGame = await request(TEST_PORT, { path: '/popcorn-maths/game' });
-    assert('/popcorn-maths/game renders #game-level-select difficulty dropdown', resGame.body.includes('id="game-level-select"'));
-    assert('/popcorn-maths/game includes Little Kernels, Popping Poppers, and Mega Crunch bands',
+    const resLegacyPopcorn = await request(TEST_PORT, { path: '/services/popcorn-maths' });
+    assert('/services/popcorn-maths returns HTTP 301 redirect', resLegacyPopcorn.statusCode === 301);
+
+    const resGame = await request(TEST_PORT, { path: '/popcorn-math/play' });
+    assert('/popcorn-math/play renders #game-level-select difficulty dropdown', resGame.body.includes('id="game-level-select"'));
+    assert('/popcorn-math/play includes Little Kernels, Popping Poppers, and Mega Crunch bands',
       resGame.body.includes('Little Kernels') && resGame.body.includes('Popping Poppers') && resGame.body.includes('Mega Crunch'));
+
+    const resLegacyGame = await request(TEST_PORT, { path: '/popcorn-maths/game' });
+    assert('/popcorn-maths/game returns HTTP 301 redirect', resLegacyGame.statusCode === 301);
 
     assert('QUESTION_BANKS.kernels provides addition problems for ages 4-6', Array.isArray(QUESTION_BANKS.kernels) && QUESTION_BANKS.kernels.length >= 5);
     assert('QUESTION_BANKS.crunch provides mental arithmetic problems for ages 10-12', Array.isArray(QUESTION_BANKS.crunch) && QUESTION_BANKS.crunch.length >= 5);
@@ -265,7 +276,7 @@ async function runStage5Suite() {
     assert('main.js wires location directory, readiness survey, and print checklist',
       mainJs.includes('popcorn-location-select') && mainJs.includes('readiness-survey') && mainJs.includes('btn-print-checklist'));
 
-    const formPages = ['/book', '/services/concierge', '/services/specialist-support', '/popcorn-maths/presenter', '/contact'];
+    const formPages = ['/book', '/services/concierge', '/services/specialist-support', '/popcorn-math/presenters', '/contact'];
     let allFormAriaLive = true;
     for (const fp of formPages) {
       const r = await request(TEST_PORT, { path: fp });
@@ -277,7 +288,8 @@ async function runStage5Suite() {
     const hasUnsafeInlineOrExternal = enhancedBodies.some((html) => {
       const scripts = html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/gi) || [];
       const badScript = scripts.some((tag) => !/src\s*=/i.test(tag) && tag.replace(/<\/?script[^>]*>/gi, '').trim().length > 0);
-      const extAsset = /(?:src|href)=["']https?:\/\/[^"'>]+/i.test(html);
+      // wa.me outbound link is permitted when WHATSAPP_PHONE_NUMBER is configured
+      const extAsset = /(?:src|href)=["']https?:\/\/(?!wa\.me)[^"'>]+/i.test(html);
       return badScript || extAsset;
     });
     assert('Enhanced service pages introduce zero inline scripts or external asset hosts', !hasUnsafeInlineOrExternal);
@@ -285,14 +297,14 @@ async function runStage5Suite() {
     // --- GROUP 5: Feature Flag Toggle-Off & Graceful SIGTERM Shutdown (10) ---
     console.log('\n--- GROUP 5: Operator Feature Flags & Graceful SIGTERM Shutdown ---');
     config.popcornLocationDirectory = false;
-    assert('Disabling popcornLocationDirectory hides location selector cleanly', !renderPopcornMathsPage().includes('id="popcorn-location-select"'));
+    assert('Disabling popcornLocationDirectory hides location selector cleanly', !renderPopcornHubPage().includes('id="popcorn-location-select"'));
     config.popcornLocationDirectory = true;
-    assert('Re-enabling popcornLocationDirectory restores location selector', renderPopcornMathsPage().includes('id="popcorn-location-select"'));
+    assert('Re-enabling popcornLocationDirectory restores location selector', renderPopcornHubPage().includes('id="popcorn-location-select"'));
 
     config.popcornGameMultiLevel = false;
-    assert('Disabling popcornGameMultiLevel hides difficulty selector cleanly', !renderPopcornGamePage().includes('id="game-level-select"'));
+    assert('Disabling popcornGameMultiLevel hides difficulty selector cleanly', !renderPopcornPlayPage().includes('id="game-level-select"'));
     config.popcornGameMultiLevel = true;
-    assert('Re-enabling popcornGameMultiLevel restores difficulty selector', renderPopcornGamePage().includes('id="game-level-select"'));
+    assert('Re-enabling popcornGameMultiLevel restores difficulty selector', renderPopcornPlayPage().includes('id="game-level-select"'));
 
     config.conciergeReadinessSurvey = false;
     assert('Disabling conciergeReadinessSurvey hides readiness questionnaire cleanly', !renderConciergePage().includes('id="readiness-survey"'));
@@ -308,8 +320,12 @@ async function runStage5Suite() {
       serverProc.once('exit', (code) => resolve(code));
       serverProc.kill('SIGTERM');
     });
-    assert('SIGTERM logs structured graceful_shutdown JSON event', serverLogs.includes('"event":"graceful_shutdown"') && serverLogs.includes('"signal":"SIGTERM"'));
-    assert('Server drains sockets and exits with code 0 on SIGTERM', exitCode === 0);
+    if (process.platform === 'win32') {
+      console.log('  [SKIP] POSIX SIGTERM graceful shutdown check skipped on Windows (win32 terminates child processes without signal delivery)');
+    } else {
+      assert('SIGTERM logs structured graceful_shutdown JSON event', serverLogs.includes('"event":"graceful_shutdown"') && serverLogs.includes('"signal":"SIGTERM"'));
+      assert('Server drains sockets and exits with code 0 on SIGTERM', exitCode === 0);
+    }
 
     console.log('\n================================================================');
     console.log(`STAGE 5 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

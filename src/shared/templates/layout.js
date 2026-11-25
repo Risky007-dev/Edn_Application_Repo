@@ -4,6 +4,9 @@
  * strict CSP compliance (no inline scripts/events), and Chatbot placeholder.
  */
 
+const config = require('../config');
+const { renderChatWidget } = require('../chatbot/widget');
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -14,20 +17,25 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function renderLayout({ title, description, bodyHtml, currentPath = '/', extraScripts = [] }) {
+function renderLayout({ title, description, bodyHtml, currentPath = '/', extraScripts = [], pageType = 'service', siteKind = 'other', photoCredit = '' }) {
   const whatsappNum = (process.env.WHATSAPP_PHONE_NUMBER || '').trim();
   const whatsappLink = whatsappNum ? `https://wa.me/${whatsappNum.replace(/[^0-9]/g, '')}` : '';
 
   const fullTitle = `${escapeHtml(title)} | Tutor Time with Teacher Cassie`;
   const metaDesc = escapeHtml(description || 'Tutor Time with Teacher Cassie - Personalised Tutoring, Concierge Academic Coaching, and Popcorn Math.');
-  const siteOrigin = (process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
+  const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
   const canonicalUrl = `${escapeHtml(siteOrigin)}${escapeHtml(currentPath)}`;
+  const showPreviewBanner = config.features?.localPreviewBanner && process.env.NODE_ENV !== 'production';
+  const showChatbot = config.features?.chatbot?.enabled ?? true;
+  const chatbotAvailable = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ENABLE_MOCK_CHATBOT_FRONTEND === 'true');
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-type="${escapeHtml(pageType)}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page-type" content="${escapeHtml(pageType)}">
+  <meta name="site-kind" content="${escapeHtml(siteKind)}">
   <title>${fullTitle}</title>
   <meta name="description" content="${metaDesc}">
   <meta property="og:title" content="${fullTitle}">
@@ -44,6 +52,13 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+  ${showPreviewBanner ? `
+  <aside class="local-preview-banner" role="status" aria-label="Local Preview Environment">
+    <div class="local-preview-content">
+      <span class="preview-badge">LOCAL PREVIEW</span>
+      <span class="preview-text">Local preview environment &mdash; flat-file storage active; live cloud services and emails disabled.</span>
+    </div>
+  </aside>` : ''}
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
   <header class="site-header">
@@ -66,6 +81,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
               <li><a href="/services/traditional-tutoring" class="dropdown-link">Personalised Tutoring</a></li>
               <li><a href="/services/concierge" class="dropdown-link">Concierge Academic Coaching</a></li>
               <li><a href="/services/specialist-support" class="dropdown-link">Individualised Learning Support</a></li>
+              <li><a href="/readiness-check" class="dropdown-link">CPEA Readiness Check</a></li>
             </ul>
           </li>
 
@@ -74,10 +90,13 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
               Popcorn Math <span class="arrow" aria-hidden="true">▾</span>
             </button>
             <ul class="dropdown-menu">
-              <li><a href="/services/popcorn-maths" class="dropdown-link">About Popcorn Math</a></li>
-              <li><a href="/popcorn-maths/game" class="dropdown-link">Play &amp; Learn</a></li>
-              <li><a href="/popcorn-maths/school-partnership" class="dropdown-link">School Partnerships</a></li>
-              <li><a href="/popcorn-maths/presenter" class="dropdown-link">Become a Presenter</a></li>
+              <li><a href="/services/popcorn-math" class="dropdown-link">About Popcorn Math</a></li>
+              <li><a href="/popcorn-math/parents" class="dropdown-link">For Parents</a></li>
+              <li><a href="/popcorn-math/schools" class="dropdown-link">For Schools</a></li>
+              <li><a href="/popcorn-math/presenters" class="dropdown-link">Become a Presenter</a></li>
+              <li><a href="/popcorn-math/locations" class="dropdown-link">School Locations</a></li>
+              <li><a href="/popcorn-math/play" class="dropdown-link">Play &amp; Learn</a></li>
+              <li><a href="/popcorn-math/faq" class="dropdown-link">Popcorn Math FAQ</a></li>
             </ul>
           </li>
 
@@ -108,7 +127,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
     ${bodyHtml}
   </main>
 
-  <!-- TODO: AI Chatbot placeholder - Phase 3 evaluation per Cassie advisory -->
+  ${showChatbot ? `${renderChatWidget({ available: chatbotAvailable })}\n  <script src="/js/chatbot.js"></script>` : '<!-- TODO: AI Chatbot disabled via FEATURES_CHATBOT_ENABLED=false -->'}
 
   <footer class="site-footer">
     <div class="footer-container">
@@ -118,7 +137,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
           <h3>Tutor Time</h3>
         </div>
         <p class="footer-tagline">Where Learning Pops, Confidence Grows &amp; Students Succeed!</p>
-        <p class="footer-legal-notice" data-todo="legal">Details coming soon.</p>
+        <p class="footer-legal-notice" data-todo="legal">Operating on Anguilla &bull; Personalised Tutoring &amp; Hands-On Primary Maths.</p>
       </div>
 
       <div class="footer-column">
@@ -126,9 +145,10 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
         <ul class="footer-links">
           <li><a href="/services/traditional-tutoring">Personalised Tutoring</a></li>
           <li><a href="/services/concierge">Concierge Academic Coaching</a></li>
-          <li><a href="/services/popcorn-maths">Popcorn Math</a></li>
+          <li><a href="/services/popcorn-math">Popcorn Math</a></li>
           <li><a href="/services/specialist-support">Individualised Learning Support</a></li>
           <li><a href="/find-your-programme">Find Your Programme</a></li>
+          <li><a href="/readiness-check">CPEA Readiness Check</a></li>
           <li><a href="/resources">Resources</a></li>
         </ul>
       </div>
@@ -136,9 +156,9 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
       <div class="footer-column">
         <h4>Join Our Team</h4>
         <ul class="footer-links">
-          <li><a href="/popcorn-maths/presenter">Become a Popcorn Math Presenter</a></li>
-          <li><a href="/popcorn-maths/school-partnership">School Partnerships</a></li>
-          <li><a href="/popcorn-maths/game">Play &amp; Learn</a></li>
+          <li><a href="/popcorn-math/presenters">Become a Popcorn Math Presenter</a></li>
+          <li><a href="/popcorn-math/schools">School Partnerships</a></li>
+          <li><a href="/popcorn-math/play">Play &amp; Learn</a></li>
           <li><a href="/contact?subject=tutor-application">Become a Tutor</a></li>
         </ul>
       </div>
@@ -157,11 +177,12 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
     <div class="footer-bottom">
       <div class="footer-bottom-container">
         <p class="copyright">&copy; ${new Date().getFullYear()} Tutor Time with Teacher Cassie. All rights reserved.</p>
+        ${photoCredit ? `<p class="footer-photo-credit">${escapeHtml(photoCredit)}</p>` : ''}
         <div class="footer-meta-links" data-todo="legal">
           <a href="/privacy">Privacy Policy</a>
           <span class="sep" aria-hidden="true">&bull;</span>
           <a href="/terms">Terms of Service</a>
-          <span class="todo-badge">Details coming soon.</span>
+          <span class="todo-badge">Draft policies under review</span>
         </div>
       </div>
     </div>

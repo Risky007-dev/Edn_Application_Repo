@@ -12,7 +12,7 @@
       title: 'We Recommend Popcorn Math!',
       canonicalName: 'Popcorn Math',
       reason: 'Your child may benefit from our engaging mathematics programme designed to develop confidence, fluency, and problem-solving skills.',
-      url: '/services/popcorn-maths',
+      url: '/services/popcorn-math',
       ctaText: 'Explore Popcorn Math'
     },
     'concierge': {
@@ -75,7 +75,7 @@
     // Check optional hint allowlist
     var hint = container.getAttribute('data-initial-hint');
     if (hint) {
-      if (hint === 'popcorn-maths') {
+      if (hint === 'popcorn-maths' || hint === 'popcorn-math') {
         var mathRadio = document.querySelector('input[name="supportWanted"][value="maths"]');
         if (mathRadio) mathRadio.checked = true;
       } else if (hint === 'concierge') {

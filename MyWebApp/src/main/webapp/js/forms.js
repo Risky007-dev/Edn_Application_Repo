@@ -5,6 +5,62 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 0. Query-Parameter Form Pre-Fill (/book, /contact, /popcorn-math/parents)
+  try {
+    const params = new URLSearchParams(window.location.search);
+
+    const serviceSelect = document.getElementById('serviceInterest');
+    const rawService = (params.get('service') || params.get('interest') || '').trim();
+    if (serviceSelect && rawService) {
+      const slugMap = {
+        'traditional-tutoring': 'One-on-One Tutoring',
+        'one-on-one-tutoring': 'One-on-One Tutoring',
+        'group-tutoring': 'Small Group Tutoring',
+        'concierge': 'Concierge Academic Coaching',
+        'popcorn-math': 'Popcorn Math',
+        'popcorn-maths': 'Popcorn Math',
+        'specialist-support': 'Specialist Learning Support',
+        'school-partnership': 'School Partnership'
+      };
+      const targetVal = slugMap[rawService.toLowerCase()] || rawService;
+      for (const opt of serviceSelect.options) {
+        if (opt.value.toLowerCase() === targetVal.toLowerCase()) {
+          serviceSelect.value = opt.value;
+          break;
+        }
+      }
+    }
+
+    const rawLocation = (params.get('location') || '').trim();
+    const notesEl = document.getElementById('additionalNotes');
+    if (notesEl && rawLocation && !notesEl.value) {
+      notesEl.value = `Preferred location / cohort: ${rawLocation}`;
+    }
+
+    const subjectInput = document.getElementById('subject');
+    const rawSubject = (params.get('subject') || '').trim();
+    if (subjectInput && rawSubject && !subjectInput.value) {
+      const subjectMap = {
+        'tutor-application': 'Become a Tutor Application',
+        'tutor-enquiry': 'Become a Tutor Application',
+        'popcorn-session': 'Popcorn Math Session Enquiry',
+        'school-partnership': 'School Partnership Enquiry'
+      };
+      subjectInput.value = subjectMap[rawSubject.toLowerCase()] || rawSubject;
+    }
+
+    const schoolSelect = document.getElementById('preferredSchool');
+    const rawSchool = (params.get('school') || '').trim();
+    if (schoolSelect && rawSchool) {
+      for (const opt of schoolSelect.options) {
+        if (opt.value.toLowerCase() === rawSchool.toLowerCase()) {
+          schoolSelect.value = opt.value;
+          break;
+        }
+      }
+    }
+  } catch (_) {}
+
   // 1. Presenter CV File Upload Pre-flight
   const cvFileInput = document.getElementById('cvFile');
   const cvUploadStatus = document.getElementById('cv-upload-status');

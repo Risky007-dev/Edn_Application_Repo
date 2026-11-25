@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
           statusEl.className = 'badge ' + (found.status === 'Active Cohort' ? 'bg-success text-white' : 'bg-primary text-white');
         }
         if (ctaEl) {
-          ctaEl.href = '/book?service=popcorn-maths&location=' + encodeURIComponent(found.name);
+          ctaEl.href = '/book?service=Popcorn%20Math&location=' + encodeURIComponent(found.name);
         }
         locDetails.style.display = 'block';
       }
@@ -241,6 +241,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const printChecklistBtn = document.getElementById('btn-print-checklist');
   if (printChecklistBtn) {
     printChecklistBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  // 7. Printable Presenter Handout
+  const printPresenterBtn = document.getElementById('btn-print-presenter');
+  if (printPresenterBtn) {
+    printPresenterBtn.addEventListener('click', () => {
       window.print();
     });
   }
