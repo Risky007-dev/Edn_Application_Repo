@@ -23,18 +23,15 @@ const {
   renderHomePage,
   renderTraditionalTutoringPage,
   renderConciergePage,
-  renderPopcornMathsPage,
   renderSpecialistSupportPage,
-  renderPresenterPage,
   renderBookPage,
   renderContactPage,
   renderFaqPage,
   renderAboutPage,
-  renderPopcornGamePage,
   renderServiceFinderPage,
-  renderSchoolPartnershipPage,
   renderResourcesPage,
-  renderReadinessCheckPage
+  renderReadinessCheckPage,
+  renderNotFoundPage
 } = require('./src/shared/templates/pages');
 const { renderPrivacyPage, renderTermsPage } = require('./src/shared/templates/legalPages');
 const {
@@ -269,11 +266,7 @@ app.get('/services/:slug', (req, res) => {
   }
 });
 
-// Rebuilt Popcorn Math Canonical Routes (Task 5 Rebuild)
-app.get('/services/popcorn-math', (req, res) => {
-  res.send(renderPopcornHubPage());
-});
-
+// Rebuilt Popcorn Math Canonical Sub-Routes (Task 5 Rebuild)
 app.get('/popcorn-math/parents', (req, res) => {
   res.send(renderPopcornParentsPage());
 });
@@ -304,10 +297,7 @@ app.get('/join', (req, res) => {
 });
 
 // 301 Permanent Redirects from legacy Popcorn Maths URLs
-app.get('/services/popcorn-maths', (req, res) => {
-  res.redirect(301, '/services/popcorn-math');
-});
-
+// (/services/popcorn-maths is redirected above via /services/:slug)
 app.get('/popcorn-maths/presenter', (req, res) => {
   res.redirect(301, '/popcorn-math/presenters');
 });
@@ -455,6 +445,15 @@ app.get('/subscribers', generalApiLimiter, (req, res) => {
       message: 'Error fetching subscribers'
     });
   }
+});
+
+// Catch-all 404 handler (branded HTML for pages; plain 404 for API and missing assets)
+app.use((req, res) => {
+  const reqPath = (req.path || '').toLowerCase();
+  if (reqPath.startsWith('/api/') || /\.(?:js|css|png|jpg|jpeg|webp|svg|ico|woff2?|json|xml|pdf|map)$/.test(reqPath)) {
+    return res.status(404).send('Not Found');
+  }
+  return res.status(404).send(renderNotFoundPage(req.path));
 });
 
 // Start server

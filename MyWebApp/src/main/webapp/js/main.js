@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
           statusEl.className = 'badge ' + (found.status === 'Active Cohort' ? 'bg-success text-white' : 'bg-primary text-white');
         }
         if (ctaEl) {
-          ctaEl.href = '/book?service=popcorn-maths&location=' + encodeURIComponent(found.name);
+          ctaEl.href = '/book?service=Popcorn%20Math&location=' + encodeURIComponent(found.name);
         }
         locDetails.style.display = 'block';
       }

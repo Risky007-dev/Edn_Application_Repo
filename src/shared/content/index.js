@@ -17,7 +17,7 @@ const CONTENT = {
     parentBrand: { text: 'Tutor Time', status: 'APPROVED' },
     tagline: { text: 'Where Learning Pops, Confidence Grows & Students Succeed!', status: 'APPROVED' },
     subhead: { text: 'Personalised Academic Support. Innovative Learning. Real Results.', status: 'APPROVED' },
-    privacyNote: { text: 'I agree to the processing of my details in accordance with the Privacy Policy. Details coming soon.', status: 'APPROVED' },
+    privacyNote: { text: 'I agree to the processing of my details in accordance with the Privacy Policy.', status: 'APPROVED' },
     detailsComingSoon: { text: 'Details coming soon.', status: 'STUB', todo: 'content' }
   },
 
@@ -92,6 +92,15 @@ const CONTENT = {
           cta: { text: 'Discover Popcorn Math', status: 'APPROVED' },
           href: '/services/popcorn-math',
           icon: '🍿'
+        },
+        {
+          key: 'specialist',
+          title: { text: 'Learning Support', status: 'APPROVED' },
+          name: { text: 'Individualised Learning Support', status: 'APPROVED' },
+          desc: { text: 'Structured routines, executive functioning strategies, and differentiated pacing for unique learning profiles.', status: 'APPROVED' },
+          cta: { text: 'Explore Learning Support', status: 'APPROVED' },
+          href: '/services/specialist-support',
+          icon: '🌱'
         }
       ]
     },
@@ -148,7 +157,7 @@ const CONTENT = {
       overview: { text: 'Popcorn Math transforms mathematics into an exciting learning experience through games, challenges, movement, and hands-on activities.', status: 'APPROVED' },
       ctaSession: { text: 'Join a Popcorn Math Session', href: '/contact?subject=popcorn-session', status: 'APPROVED' },
       ctaSchool: { text: 'Bring Popcorn Math to Your School', href: '/contact?subject=school-partnership', status: 'APPROVED' },
-      ctaPresenter: { text: 'Become a Popcorn Math Presenter', href: '/popcorn-maths/presenter', status: 'APPROVED' }
+      ctaPresenter: { text: 'Become a Popcorn Math Presenter', href: '/popcorn-math/presenters', status: 'APPROVED' }
     },
 
     'specialist-support': {

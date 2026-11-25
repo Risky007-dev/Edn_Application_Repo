@@ -10,6 +10,7 @@ const ALLOWED_INTEREST_HINTS = [
   'traditional-tutoring',
   'group-tutoring',
   'concierge',
+  'popcorn-math',
   'popcorn-maths',
   'specialist-support',
   'school-partnership'
@@ -97,7 +98,7 @@ function recommendService(answers = {}) {
       canonicalName: services['popcorn-maths'].name,
       headline: 'We Recommend Popcorn Math!',
       reason: 'Your child may benefit from our engaging mathematics programme designed to develop confidence, fluency, and problem-solving skills.',
-      ctaUrl: '/services/popcorn-maths',
+      ctaUrl: '/services/popcorn-math',
       ctaText: 'Explore Popcorn Math'
     };
   }

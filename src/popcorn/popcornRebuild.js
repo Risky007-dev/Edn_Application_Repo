@@ -9,6 +9,17 @@ const { escapeHtml, renderLayout } = require('../shared/templates/layout');
 const { renderBucketMascot } = require('../shared/components/mascotBucket');
 const { POPCORN_SCHOOLS } = require('../shared/content/popcornSchools');
 const CONTENT = require('../shared/content');
+const config = require('../shared/config');
+
+function getWhatsAppHref() {
+  const num = (process.env.WHATSAPP_PHONE_NUMBER || '+12647295791').trim();
+  const digits = num.replace(/[^0-9]/g, '');
+  return digits ? `https://wa.me/${digits}` : 'https://wa.me/12647295791';
+}
+
+function getContactEmail() {
+  return (process.env.CONTACT_EMAIL || 'hello@popcornmaths.com').trim();
+}
 
 function renderConsentBox() {
   return `
@@ -166,6 +177,7 @@ function renderPopcornHubPage() {
         </div>
       </section>
 
+      ${config.popcornLocationDirectory ? `
       <!-- Locations & Cohort Lookup -->
       <section class="popcorn-locations-lookup py-8 text-center" id="locations">
         <div class="container">
@@ -177,13 +189,21 @@ function renderPopcornHubPage() {
               <option value="">-- Choose a Community / Cohort --</option>
               ${(CONTENT.popcornLocations || []).map(loc => `<option value="${escapeHtml(loc.id)}">${escapeHtml(loc.name)}</option>`).join('')}
             </select>
-            <div id="location-details" class="mt-4" style="display:none;" aria-live="polite" role="region" aria-label="Selected location details"></div>
+            <div id="location-details" class="location-card mt-4 text-left" style="display:none;" aria-live="polite" role="region" aria-label="Selected location details">
+              <h3 id="loc-title"></h3>
+              <p><strong>Venue:</strong> <span id="loc-venue"></span></p>
+              <p><strong>Schedule:</strong> <span id="loc-schedule"></span></p>
+              <p><strong>Ages:</strong> <span id="loc-ages"></span></p>
+              <p><strong>Status:</strong> <span id="loc-status" class="badge"></span></p>
+              <a id="loc-cta" href="/book?service=Popcorn%20Math" class="btn btn-primary btn-sm mt-2">Enquire for This Location</a>
+            </div>
           </div>
           <div class="mt-4">
             <a href="/popcorn-math/locations" class="btn btn-secondary btn-small">View Full School Locations Directory &rarr;</a>
           </div>
         </div>
       </section>
+      ` : ''}
 
       <!-- Mini-Game Teaser & Contact -->
       <section class="popcorn-play-cta py-8 text-center">
@@ -248,7 +268,7 @@ function renderPopcornParentsPage() {
             <p class="privacy-note-pill">🔒 We respect child privacy: we do not collect child names on this form. We only ask for their grade level.</p>
           </div>
 
-          <form id="popcorn-parent-form" class="service-form" method="POST" action="/api/forms/popcorn-parent-interest" novalidate>
+          <form id="popcorn-parent-form" class="app-form form-card" data-form-type="popcorn-parent-interest" method="POST" action="/api/forms/popcorn-parent-interest" novalidate>
             ${renderHoneypot()}
 
             <div class="form-group">
@@ -354,50 +374,80 @@ function renderPopcornSchoolsPage() {
             <p>Principals, coordinators, and teachers: request a Popcorn Math partnership for your primary school.</p>
           </div>
 
-          <form id="school-enquiry-form" class="service-form" method="POST" action="/api/forms/school-enquiry" novalidate>
+          <form id="school-enquiry-form" class="app-form form-card" data-form-type="school-enquiry" method="POST" action="/api/forms/school-enquiry" novalidate>
             ${renderHoneypot()}
 
-            <div class="form-group">
-              <label for="institutionName" class="form-label">School / Institution Name <span class="required">*</span></label>
-              <input type="text" id="institutionName" name="institutionName" required class="form-input" placeholder="e.g. Island Primary School">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="schoolName" class="form-label">School / Institution Name <span class="required">*</span></label>
+                <input type="text" id="schoolName" name="schoolName" required maxlength="100" class="form-input" placeholder="e.g. Valley Primary School">
+              </div>
+
+              <div class="form-group">
+                <label for="contactPerson" class="form-label">Contact Person <span class="required">*</span></label>
+                <input type="text" id="contactPerson" name="contactPerson" required maxlength="100" class="form-input" placeholder="e.g. Jane Doe">
+              </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label for="contactName" class="form-label">Contact Person &amp; Role <span class="required">*</span></label>
-                <input type="text" id="contactName" name="contactName" required class="form-input" placeholder="e.g. Principal Jane Doe">
+                <label for="roleTitle" class="form-label">Role Title <span class="required">*</span></label>
+                <input type="text" id="roleTitle" name="roleTitle" required maxlength="100" class="form-input" placeholder="e.g. Principal, Head of Mathematics">
               </div>
 
+              <div class="form-group">
+                <label for="locationDistrict" class="form-label">Location / District <span class="required">*</span></label>
+                <input type="text" id="locationDistrict" name="locationDistrict" required maxlength="100" class="form-input" placeholder="e.g. The Valley, Anguilla">
+              </div>
+            </div>
+
+            <div class="form-row">
               <div class="form-group">
                 <label for="email" class="form-label">Contact Email Address <span class="required">*</span></label>
-                <input type="email" id="email" name="email" required class="form-input" placeholder="e.g. office@school.ai">
+                <input type="email" id="email" name="email" required maxlength="150" class="form-input" placeholder="e.g. office@school.ai">
+              </div>
+
+              <div class="form-group">
+                <label for="phone" class="form-label">Contact Phone / WhatsApp <span class="required">*</span></label>
+                <input type="tel" id="phone" name="phone" required maxlength="25" class="form-input" placeholder="+1 264 555 0123">
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label for="phone" class="form-label">Contact Phone / WhatsApp <span class="required">*</span></label>
-                <input type="tel" id="phone" name="phone" required class="form-input" placeholder="+1 264 555 0123">
+                <label for="studentAgeGroup" class="form-label">Student Age Group <span class="required">*</span></label>
+                <select id="studentAgeGroup" name="studentAgeGroup" required class="form-select">
+                  <option value="8-10">Ages 8–10 (Lower Primary)</option>
+                  <option value="11-13">Ages 11–13 (Upper Primary)</option>
+                  <option value="Mixed" selected>Mixed Primary Grades (Grades 1–5)</option>
+                </select>
               </div>
 
               <div class="form-group">
-                <label for="estimatedStudents" class="form-label">Estimated Interested Students (10–500) <span class="required">*</span></label>
-                <input type="number" id="estimatedStudents" name="estimatedStudents" min="10" max="500" value="25" required class="form-input">
+                <label for="estimatedStudentCount" class="form-label">Estimated Interested Students (10–500) <span class="required">*</span></label>
+                <input type="number" id="estimatedStudentCount" name="estimatedStudentCount" min="10" max="500" value="25" required class="form-input">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="programmeType" class="form-label">Preferred Collaboration Format <span class="required">*</span></label>
+                <select id="programmeType" name="programmeType" required class="form-select">
+                  <option value="After-school club">Weekly After-School Club (8–10 weeks)</option>
+                  <option value="Workshop">Single Introductory Workshop</option>
+                  <option value="Event">School Mathematics Day Event</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="targetDate" class="form-label">Target Term / Date (Optional)</label>
+                <input type="text" id="targetDate" name="targetDate" maxlength="50" class="form-input" placeholder="e.g. January Pilot or Term 2">
               </div>
             </div>
 
             <div class="form-group">
-              <label for="programmeType" class="form-label">Preferred Collaboration Format <span class="required">*</span></label>
-              <select id="programmeType" name="programmeType" required class="form-select">
-                <option value="After-school club">Weekly After-School Club (8–10 weeks)</option>
-                <option value="Workshop">Single Introductory Workshop</option>
-                <option value="Event">School Mathematics Day Event</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="message" class="form-label">Additional Partnership Notes</label>
-              <textarea id="message" name="message" rows="3" class="form-textarea" placeholder="Tell us about your school's schedule or preferred term start..."></textarea>
+              <label for="message" class="form-label">Additional Partnership Notes (Optional, max 500 characters)</label>
+              <textarea id="message" name="message" rows="3" maxlength="500" class="form-textarea" placeholder="Tell us about your school's schedule or preferred term start..."></textarea>
             </div>
 
             ${renderConsentBox()}
@@ -478,57 +528,87 @@ function renderPopcornPresentersPage() {
             <p>Applicants must be 18 years of age or older.</p>
           </div>
 
-          <form id="presenter-application-form" class="service-form" method="POST" action="/api/forms/presenter-application" novalidate>
+          <form id="presenter-application-form" class="app-form form-card" data-form-type="presenter-application" method="POST" action="/api/forms/presenter-application" novalidate>
             ${renderHoneypot()}
 
             <div class="form-group">
               <label for="fullName" class="form-label">Full Legal Name <span class="required">*</span></label>
-              <input type="text" id="fullName" name="fullName" required class="form-input" placeholder="e.g. Johnathan Smith">
+              <input type="text" id="fullName" name="fullName" required maxlength="100" class="form-input" placeholder="e.g. Johnathan Smith">
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label for="email" class="form-label">Email Address <span class="required">*</span></label>
-                <input type="email" id="email" name="email" required class="form-input" placeholder="e.g. john@example.com">
+                <input type="email" id="email" name="email" required maxlength="150" class="form-input" placeholder="e.g. john@example.com">
               </div>
 
               <div class="form-group">
                 <label for="phone" class="form-label">WhatsApp or Phone Number <span class="required">*</span></label>
-                <input type="tel" id="phone" name="phone" required class="form-input" placeholder="+1 264 555 0188">
+                <input type="tel" id="phone" name="phone" required maxlength="25" class="form-input" placeholder="+1 264 555 0188">
               </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="location" class="form-label">Location (Island / District) <span class="required">*</span></label>
+                <input type="text" id="location" name="location" required maxlength="100" class="form-input" placeholder="e.g. The Valley, Anguilla">
+              </div>
+
+              <div class="form-group">
+                <label for="preferredRole" class="form-label">Preferred Role</label>
+                <select id="preferredRole" name="preferredRole" class="form-select">
+                  <option value="Presenter">Presenter</option>
+                  <option value="Assistant Presenter">Assistant Presenter</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="educationalBackground" class="form-label">Educational Background <span class="required">*</span></label>
+              <textarea id="educationalBackground" name="educationalBackground" rows="3" required maxlength="500" class="form-textarea" placeholder="Qualifications, primary/secondary teaching role, or recent study..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="experienceWithChildren" class="form-label">Experience Working With Children <span class="required">*</span></label>
+              <textarea id="experienceWithChildren" name="experienceWithChildren" rows="3" required maxlength="500" class="form-textarea" placeholder="Describe classroom teaching, youth leadership, or tutoring experience..."></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="mathConfidence" class="form-label">Mathematics Confidence</label>
+                <select id="mathConfidence" name="mathConfidence" class="form-select">
+                  <option value="High">High - Very confident across curriculum</option>
+                  <option value="Moderate">Moderate - Strong primary/foundational skills</option>
+                  <option value="Foundational">Foundational</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="availability" class="form-label">Availability <span class="required">*</span></label>
+                <input type="text" id="availability" name="availability" required maxlength="250" class="form-input" placeholder="e.g. Weekday afternoons after 3:00 PM">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="whyPopcornMath" class="form-label">Why would you like to lead Popcorn Math sessions? <span class="required">*</span></label>
+              <textarea id="whyPopcornMath" name="whyPopcornMath" rows="3" required maxlength="1000" class="form-textarea" placeholder="Tell us about your enthusiasm for hands-on maths and working with primary learners..."></textarea>
+            </div>
+
+            <!-- PDF CV Upload with Presigned S3 -->
+            <div class="form-group cv-upload-group">
+              <label for="cvFile" class="form-label">Upload CV / Resume (PDF only, max 5 MB)</label>
+              <input type="file" id="cvFile" accept=".pdf,application/pdf" class="form-file-input">
+              <input type="hidden" id="cvUploadKey" name="cvUploadKey">
+              <p class="file-helper-text">Select your CV in PDF format. It will be uploaded securely before you submit.</p>
+              <div id="cv-upload-status" class="upload-status" aria-live="polite"></div>
             </div>
 
             <!-- 18+ Verification Gate -->
             <div class="form-group form-checkbox-group age-verification-box">
-              <input type="checkbox" id="ageConfirmed" name="ageConfirmed" required class="form-checkbox">
-              <label for="ageConfirmed" class="checkbox-label">
+              <input type="checkbox" id="ageConfirmation" name="ageConfirmation" required class="form-checkbox">
+              <label for="ageConfirmation" class="checkbox-label">
                 <strong>I confirm that I am 18 years of age or older. <span class="required">*</span></strong>
               </label>
-            </div>
-
-            <div class="form-group">
-              <label for="educationLevel" class="form-label">Background / Experience <span class="required">*</span></label>
-              <select id="educationLevel" name="educationLevel" required class="form-select">
-                <option value="">-- Select Background --</option>
-                <option value="Primary School Teacher">Primary School Teacher</option>
-                <option value="Secondary Educator">Secondary Educator / Teaching Assistant</option>
-                <option value="Recent Graduate / Student (18-19)">Recent Graduate / Secondary Leaver (Age 18-19)</option>
-                <option value="Community Educator">Community Educator / Youth Leader</option>
-                <option value="Other">Other Adult Professional</option>
-              </select>
-            </div>
-
-            <!-- PDF CV Upload with Presigned S3 -->
-            <div class="form-group">
-              <label for="cvFile" class="form-label">Upload CV / Resume (PDF only, max 5MB) <span class="required">*</span></label>
-              <input type="file" id="cvFile" name="cvFile" accept="application/pdf" required class="form-input-file">
-              <input type="hidden" id="cvS3Key" name="cvS3Key">
-              <div id="cv-upload-status" class="file-upload-status" aria-live="polite"></div>
-            </div>
-
-            <div class="form-group">
-              <label for="message" class="form-label">Why would you like to lead Popcorn Math sessions?</label>
-              <textarea id="message" name="message" rows="3" class="form-textarea" placeholder="Tell us a little about your enthusiasm for working with children..."></textarea>
             </div>
 
             ${renderConsentBox()}
@@ -553,7 +633,7 @@ function renderPopcornPresentersPage() {
       <div class="contact-card text-center mt-8">
         <h3>Questions About Presenting?</h3>
         <p>Contact Teacher Cassie directly by email or WhatsApp:</p>
-        <p>📧 <a href="mailto:hello@popcornmaths.com">hello@popcornmaths.com</a> &bull; 💬 <a href="https://wa.me/12647295791" target="_blank" rel="noopener">WhatsApp +1 (264) 729-5791</a></p>
+        <p>📧 <a href="mailto:${escapeHtml(getContactEmail())}">${escapeHtml(getContactEmail())}</a> &bull; 💬 <a href="${escapeHtml(getWhatsAppHref())}" target="_blank" rel="noopener noreferrer">WhatsApp Teacher Cassie</a></p>
       </div>
     </div>
   `;
@@ -585,7 +665,7 @@ function renderPopcornLocationsPage() {
             </div>
             <p class="location-notes">${escapeHtml(school.notes)}</p>
             <div class="location-card-footer">
-              <a href="/popcorn-math/parents" class="btn btn-primary btn-small">Register for this Cohort &rarr;</a>
+              <a href="/popcorn-math/parents?school=${encodeURIComponent(school.name)}" class="btn btn-primary btn-small">Register for this Cohort &rarr;</a>
             </div>
           </div>
         `).join('\n')}
@@ -617,14 +697,20 @@ function renderPopcornPlayPage() {
         <p class="lead">A fun, interactive teaser game where quick mental math pops kernels into the bucket!</p>
       </div>
 
-      <div class="game-arena-card mt-6">
-        <div class="game-bucket-display text-center">
-          <!-- Mascot placeholder with dynamic expression -->
+      <div class="game-container mt-6">
+        <div class="bucket-stage text-center" aria-label="Popcorn bucket tracker">
+          <!-- TODO(mascot): Artist final version will be swapped in here -->
           ${bucketSvg}
-          <div class="game-bucket-counter" id="game-score-counter">Kernels Popped: <strong>0</strong></div>
+          <div class="bucket-slots" id="bucket-slots" aria-hidden="true">
+            <span class="kernel-item" id="kernel-1">🍿</span>
+            <span class="kernel-item" id="kernel-2">🍿</span>
+            <span class="kernel-item" id="kernel-3">🍿</span>
+          </div>
+          <div class="game-bucket-counter" id="game-score-counter">Kernels Popped: <strong>0</strong> / 3</div>
         </div>
 
-        <div class="game-level-selector text-center mt-4">
+        ${config.popcornGameMultiLevel ? `
+        <div class="game-level-selector text-center mt-4 mb-3">
           <label for="game-level-select" class="form-label"><strong>Difficulty Level:</strong></label>
           <select id="game-level-select" class="form-select" style="display:inline-block; width:auto; max-width:100%;">
             <option value="kernels">Little Kernels (Ages 4–6: Addition)</option>
@@ -632,17 +718,28 @@ function renderPopcornPlayPage() {
             <option value="crunch">Mega Crunch (Ages 10–12: Mental Arithmetic)</option>
           </select>
         </div>
+        ` : ''}
 
-        <div id="game-stage" class="game-stage mt-6">
-          <div class="game-question-box text-center">
-            <h2 id="game-prompt">Loading puzzle...</h2>
+        <div id="game-feedback" class="game-feedback mt-4 text-center" aria-live="polite" role="status"></div>
+
+        <div id="game-arena" class="game-arena mt-4">
+          <div class="game-card">
+            <div class="question-tracker" id="question-tracker">Question 1 of 3</div>
+            <h2 class="question-prompt" id="question-prompt">What is 8 &times; 7?</h2>
+            <div class="answers-grid mt-4" id="answers-grid" role="group" aria-label="Answer options">
+              <!-- Buttons injected by /js/game.js -->
+            </div>
           </div>
+        </div>
 
-          <div class="game-options-grid mt-4" id="game-options">
-            <!-- Buttons injected by /js/game.js -->
+        <div id="game-star-screen" class="game-star-screen mt-4" style="display:none;" role="region" aria-label="Game completion">
+          <div class="star-badge" aria-hidden="true">🎉</div>
+          <h2>YOU&apos;RE A POPCORN MATH STAR!</h2>
+          <p class="lead">All 3 kernels popped! Want more hands-on mathematics fun in person?</p>
+          <div class="star-actions">
+            <a href="/popcorn-math/parents" class="btn btn-primary btn-large">Join an In-Person Series &rarr;</a>
+            <button type="button" id="btn-play-again" class="btn btn-secondary btn-large">Play Again</button>
           </div>
-
-          <div id="game-feedback" class="game-feedback mt-4 text-center" aria-live="polite"></div>
         </div>
       </div>
 
@@ -761,7 +858,7 @@ function renderPopcornFaqPage() {
       <div class="contact-card text-center mt-12">
         <h3>Still Have Questions?</h3>
         <p>Our team is always happy to help parents, schools, and candidates.</p>
-        <p>💬 <a href="https://wa.me/12647295791" class="btn btn-primary btn-large" target="_blank" rel="noopener">Chat with Teacher Cassie on WhatsApp</a></p>
+        <p>💬 <a href="${escapeHtml(getWhatsAppHref())}" class="btn btn-primary btn-large" target="_blank" rel="noopener noreferrer">Chat with Teacher Cassie on WhatsApp</a></p>
       </div>
     </div>
   `;

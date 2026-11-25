@@ -254,6 +254,53 @@ async function runTests() {
     const cssContent = fs.readFileSync(path.join(__dirname, '../MyWebApp/src/main/webapp/css/components.css'), 'utf8');
     assert('components.css contains @media print rules for clean printouts', cssContent.includes('@media print'));
 
+    // -------------------------------------------------------------------------
+    // TEST GROUP 6: Interactive Wiring, Form Schema Alignment & Branded 404
+    // -------------------------------------------------------------------------
+    console.log('\n--- TEST GROUP 6: Interactive Wiring, Form Alignment & Branded 404 ---');
+    assert('Play page renders #question-tracker, #question-prompt, and #answers-grid for game.js',
+      playRes.body.includes('id="question-tracker"') && playRes.body.includes('id="question-prompt"') && playRes.body.includes('id="answers-grid"'));
+    assert('Play page renders #game-star-screen and #btn-play-again',
+      playRes.body.includes('id="game-star-screen"') && playRes.body.includes('id="btn-play-again"'));
+    assert('Hub location details renders #loc-title, #loc-venue, #loc-schedule, #loc-cta',
+      hubRes.body.includes('id="loc-title"') && hubRes.body.includes('id="loc-venue"') && hubRes.body.includes('id="loc-schedule"') && hubRes.body.includes('id="loc-cta"'));
+
+    assert('Parents form wires data-form-type="popcorn-parent-interest"',
+      parentsRes.body.includes('data-form-type="popcorn-parent-interest"'));
+
+    const schoolsRes = await request({ path: '/popcorn-math/schools', method: 'GET' });
+    assert('Schools form wires data-form-type="school-enquiry"',
+      schoolsRes.body.includes('data-form-type="school-enquiry"'));
+    assert('Schools form uses validator-aligned field names',
+      schoolsRes.body.includes('name="schoolName"') &&
+      schoolsRes.body.includes('name="contactPerson"') &&
+      schoolsRes.body.includes('name="roleTitle"') &&
+      schoolsRes.body.includes('name="locationDistrict"') &&
+      schoolsRes.body.includes('name="studentAgeGroup"') &&
+      schoolsRes.body.includes('name="estimatedStudentCount"'));
+
+    assert('Presenters form wires data-form-type="presenter-application"',
+      presenterRes.body.includes('data-form-type="presenter-application"'));
+    assert('Presenters form uses validator-aligned fields and #cvUploadKey without raw cvFile name',
+      presenterRes.body.includes('name="ageConfirmation"') &&
+      presenterRes.body.includes('id="cvUploadKey"') &&
+      presenterRes.body.includes('name="educationalBackground"') &&
+      presenterRes.body.includes('name="experienceWithChildren"') &&
+      presenterRes.body.includes('name="availability"') &&
+      presenterRes.body.includes('name="whyPopcornMath"') &&
+      !presenterRes.body.includes('name="cvFile"'));
+
+    const homeRes = await request({ path: '/', method: 'GET' });
+    assert('Homepage renders all 4 core pathways including Individualised Learning Support',
+      homeRes.body.includes('pathway-tutoring') &&
+      homeRes.body.includes('pathway-concierge') &&
+      homeRes.body.includes('pathway-popcorn') &&
+      homeRes.body.includes('pathway-specialist'));
+
+    const notFoundRes = await request({ path: '/nonexistent-streamline-check', method: 'GET' });
+    assert('Unknown route returns HTTP 404 with branded Not Found page',
+      notFoundRes.statusCode === 404 && notFoundRes.body.includes('Page Not Found') && notFoundRes.body.includes('Return Home'));
+
   } catch (err) {
     console.error('Fatal error during Popcorn Math test execution:', err);
     failed++;

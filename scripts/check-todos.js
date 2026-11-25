@@ -23,16 +23,22 @@ const PAGE_ROUTES = [
   '/about',
   '/services/traditional-tutoring',
   '/services/concierge',
-  '/services/popcorn-maths',
+  '/services/popcorn-math',
   '/services/specialist-support',
-  '/popcorn-maths/presenter',
-  '/popcorn-maths/game',
+  '/popcorn-math/parents',
+  '/popcorn-math/schools',
+  '/popcorn-math/presenters',
+  '/popcorn-math/locations',
+  '/popcorn-math/play',
+  '/popcorn-math/faq',
   '/find-your-programme',
-  '/popcorn-maths/school-partnership',
+  '/readiness-check',
   '/resources',
   '/book',
   '/contact',
-  '/faq'
+  '/faq',
+  '/privacy',
+  '/terms'
 ];
 
 function fetchRoute(route) {

@@ -20,10 +20,12 @@ const {
 } = require('../src/shared/game/popcornGame');
 const {
   renderConciergePage,
-  renderPopcornMathsPage,
-  renderPopcornGamePage,
   renderBookPage
 } = require('../src/shared/templates/pages');
+const {
+  renderPopcornHubPage,
+  renderPopcornPlayPage
+} = require('../src/popcorn/popcornRebuild');
 
 const TEST_PORT = 5007;
 const FAULT_PORT = 5008;
@@ -295,14 +297,14 @@ async function runStage5Suite() {
     // --- GROUP 5: Feature Flag Toggle-Off & Graceful SIGTERM Shutdown (10) ---
     console.log('\n--- GROUP 5: Operator Feature Flags & Graceful SIGTERM Shutdown ---');
     config.popcornLocationDirectory = false;
-    assert('Disabling popcornLocationDirectory hides location selector cleanly', !renderPopcornMathsPage().includes('id="popcorn-location-select"'));
+    assert('Disabling popcornLocationDirectory hides location selector cleanly', !renderPopcornHubPage().includes('id="popcorn-location-select"'));
     config.popcornLocationDirectory = true;
-    assert('Re-enabling popcornLocationDirectory restores location selector', renderPopcornMathsPage().includes('id="popcorn-location-select"'));
+    assert('Re-enabling popcornLocationDirectory restores location selector', renderPopcornHubPage().includes('id="popcorn-location-select"'));
 
     config.popcornGameMultiLevel = false;
-    assert('Disabling popcornGameMultiLevel hides difficulty selector cleanly', !renderPopcornGamePage().includes('id="game-level-select"'));
+    assert('Disabling popcornGameMultiLevel hides difficulty selector cleanly', !renderPopcornPlayPage().includes('id="game-level-select"'));
     config.popcornGameMultiLevel = true;
-    assert('Re-enabling popcornGameMultiLevel restores difficulty selector', renderPopcornGamePage().includes('id="game-level-select"'));
+    assert('Re-enabling popcornGameMultiLevel restores difficulty selector', renderPopcornPlayPage().includes('id="game-level-select"'));
 
     config.conciergeReadinessSurvey = false;
     assert('Disabling conciergeReadinessSurvey hides readiness questionnaire cleanly', !renderConciergePage().includes('id="readiness-survey"'));

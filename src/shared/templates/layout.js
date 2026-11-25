@@ -137,7 +137,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
           <h3>Tutor Time</h3>
         </div>
         <p class="footer-tagline">Where Learning Pops, Confidence Grows &amp; Students Succeed!</p>
-        <p class="footer-legal-notice" data-todo="legal">Details coming soon.</p>
+        <p class="footer-legal-notice" data-todo="legal">Operating on Anguilla &bull; Personalised Tutoring &amp; Hands-On Primary Maths.</p>
       </div>
 
       <div class="footer-column">
@@ -182,7 +182,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
           <a href="/privacy">Privacy Policy</a>
           <span class="sep" aria-hidden="true">&bull;</span>
           <a href="/terms">Terms of Service</a>
-          <span class="todo-badge">Details coming soon.</span>
+          <span class="todo-badge">Draft policies under review</span>
         </div>
       </div>
     </div>
