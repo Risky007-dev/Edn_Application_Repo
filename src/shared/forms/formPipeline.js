@@ -11,7 +11,7 @@
 const express = require('express');
 const router = express.Router();
 const storage = require('../storage');
-const { formSubmissionLimiter } = require('../middleware/security');
+const { formSubmissionLimiter, timingSafeCompare } = require('../middleware/security');
 const {
   validateHoneypot,
   validateConsent,
@@ -193,7 +193,7 @@ router.get('/metrics', (req, res) => {
   }
 
   const providedKey = req.headers['x-admin-key'];
-  if (!providedKey || providedKey !== expectedKey) {
+  if (!timingSafeCompare(providedKey, expectedKey)) {
     return res.status(404).send('Not Found');
   }
 

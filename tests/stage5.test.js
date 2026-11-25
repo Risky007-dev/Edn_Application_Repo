@@ -125,6 +125,8 @@ async function runStage5Suite() {
       PORT: String(TEST_PORT),
       DATA_DIR: TEST_DATA_DIR,
       SUBSCRIBERS_DB_FILE: TEST_SUBSCRIBERS_FILE,
+      SITE_URL: 'https://popcornmaths.com',
+      PUBLIC_SITE_URL: 'https://popcornmaths.com',
       STORAGE_DRIVER: 'local',
       FAULT_INJECTION_ENABLED: 'false'
     },
@@ -316,8 +318,12 @@ async function runStage5Suite() {
       serverProc.once('exit', (code) => resolve(code));
       serverProc.kill('SIGTERM');
     });
-    assert('SIGTERM logs structured graceful_shutdown JSON event', serverLogs.includes('"event":"graceful_shutdown"') && serverLogs.includes('"signal":"SIGTERM"'));
-    assert('Server drains sockets and exits with code 0 on SIGTERM', exitCode === 0);
+    if (process.platform === 'win32') {
+      console.log('  [SKIP] POSIX SIGTERM graceful shutdown check skipped on Windows (win32 terminates child processes without signal delivery)');
+    } else {
+      assert('SIGTERM logs structured graceful_shutdown JSON event', serverLogs.includes('"event":"graceful_shutdown"') && serverLogs.includes('"signal":"SIGTERM"'));
+      assert('Server drains sockets and exits with code 0 on SIGTERM', exitCode === 0);
+    }
 
     console.log('\n================================================================');
     console.log(`STAGE 5 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

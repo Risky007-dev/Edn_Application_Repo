@@ -416,13 +416,22 @@ async function runTestSuite() {
     const savedSubscribers = JSON.parse(fs.readFileSync(TEST_SUBSCRIBERS_FILE, 'utf8'));
     assert(savedSubscribers.subscribers.some(s => s.email === testSubscribeEmail), 'Subscriber written to isolated test file (real file untouched)');
 
-    const resSubscribers = await request({
+    const resSubscribersNoKey = await request({
       hostname: 'localhost',
       port: TEST_PORT,
       path: '/subscribers',
       method: 'GET'
     });
-    assert(resSubscribers.statusCode === 200, 'GET /subscribers returns HTTP 200');
+    assert(resSubscribersNoKey.statusCode === 404, 'GET /subscribers WITHOUT key returns HTTP 404');
+
+    const resSubscribers = await request({
+      hostname: 'localhost',
+      port: TEST_PORT,
+      path: '/subscribers',
+      method: 'GET',
+      headers: { 'x-admin-key': TEST_ADMIN_KEY }
+    });
+    assert(resSubscribers.statusCode === 200, 'GET /subscribers with VALID X-Admin-Key returns HTTP 200');
     assert(resSubscribers.json && typeof resSubscribers.json.total === 'number', 'GET /subscribers reports total count');
 
     console.log('\n================================================================');
