@@ -2132,11 +2132,30 @@ body {
   }
 }
 
-/* Swappable Guide Mascot Image & Expression States */
+/* Swappable Guide & Bucket Mascot Image & Expression States */
 .mascot-guide-img {
-  object-fit: contain;
+  object-fit: cover;
+  object-position: center 20%;
   border-radius: 50%;
   transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.mascot-bucket-img {
+  object-fit: contain;
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.mascot-bucket[data-expression="happy"] {
+  transform: scale(1.03);
+}
+
+.mascot-bucket[data-expression="thinking"] {
+  transform: rotate(-3deg);
+}
+
+.mascot-bucket[data-expression="celebrating"] {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 8px rgba(245, 166, 35, 0.55));
 }
 
 .mascot-guide[data-expression="happy"] {

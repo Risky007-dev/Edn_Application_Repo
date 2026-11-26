@@ -1,43 +1,31 @@
-# Swapping the Guide Mascot Artwork
+# Swapping the Guide & Bucket Mascot Artwork
 
-The Tutor Time Guide mascot (used on the homepage hero, the CPEA Readiness Check, and the AI Chatbot widget) is currently an inline SVG placeholder rendered by `renderGuideMascot()` in `src/shared/components/mascotGuide.js`.
+Both site mascots default to original inline SVG placeholders and can be swapped via configuration without editing templates:
 
-It is driven by a single config object: `mascots.guide` in `src/shared/config.js`.
+1. **Tutor Time Guide Mascot** (`src/shared/components/mascotGuide.js`, configured via `config.mascots.guide`): used on the homepage hero, Readiness Check, and AI Chatbot widget.
+2. **Popcorn Math Bucket Mascot** (`src/shared/components/mascotBucket.js`, configured via `config.mascots.bucket`): used on the Popcorn Math hub and mini-game.
 
-## Option 1: Single Image Asset (Quickest)
+> **Important Approval & Privacy Rule:** Real photographs of Teacher Cassie (Kashamar Lewis) must **not** be committed to git or bundled into Docker builds without Cassie's explicit approval, and must **never** be used for the Popcorn Bucket mascot.
 
-1. Place Cassie's approved artwork in `MyWebApp/src/main/webapp/assets/mascots/` (e.g. `kashamar.png` or `kashamar.svg`).
-2. Either:
-   - Set the environment variable `GUIDE_MASCOT_IMAGE_PATH=/assets/mascots/kashamar.png`, **or**
-   - Update `mascots.guide.imagePath` in `src/shared/config.js`:
-     ```js
-     mascots: {
-       guide: {
-         imagePath: '/assets/mascots/kashamar.png',
-         expressions: null,
-         alt: 'Tutor Time Guide avatar'
-       }
-     }
-     ```
-3. In this mode, `renderGuideMascot()` renders an `<img>` tag with `data-expression="..."`, and `MyWebApp/src/main/webapp/js/readiness.js` updates `data-expression` during the quiz so CSS state transitions (`.mascot-guide[data-expression="celebrating"]`, etc.) still animate reactions.
+## Option 1: Single Image Override via Environment Variables
 
-## Option 2: Expression-Specific Image Set
+Place approved artwork under `MyWebApp/src/main/webapp/assets/mascots/` and set:
 
-If Cassie provides separate images for each mood (`neutral`, `happy`, `thinking`, `celebrating`), set `mascots.guide.expressions` in `src/shared/config.js`:
-
-```js
-mascots: {
-  guide: {
-    imagePath: '/assets/mascots/kashamar-neutral.png',
-    expressions: {
-      neutral: '/assets/mascots/kashamar-neutral.png',
-      happy: '/assets/mascots/kashamar-happy.png',
-      thinking: '/assets/mascots/kashamar-thinking.png',
-      celebrating: '/assets/mascots/kashamar-celebrating.png'
-    },
-    alt: 'Tutor Time Guide avatar'
-  }
-}
+```env
+GUIDE_MASCOT_IMAGE_PATH=/assets/mascots/kashamar.png
+BUCKET_MASCOT_IMAGE_PATH=/assets/mascots/popcorn-bucket.png
 ```
 
-`readiness.js` automatically reads `data-expressions` and swaps the `<img>` `src` as the student answers questions.
+Leaving either variable unset (or `null` in `src/shared/config.js`) falls back cleanly to the built-in inline SVG.
+
+## Option 2: Expression-Specific Image Set (Guide Mascot)
+
+To preview or serve distinct images per expression (`neutral`, `happy`, `thinking`, `celebrating`):
+
+- **Local preview (gitignored & Docker-ignored):**
+  Place `guide-neutral.jpg`, `guide-happy.jpg`, `guide-thinking.jpg`, and `guide-celebrating.jpg` in `MyWebApp/src/main/webapp/assets/mascots-local-preview/` and start the server with:
+  ```env
+  GUIDE_MASCOT_EXPRESSIONS_DIR=/assets/mascots-local-preview
+  ```
+- **Production (after approval):**
+  Configure `mascots.guide.expressions` (or `mascots.bucket.expressions`) in `src/shared/config.js`. `MyWebApp/src/main/webapp/js/readiness.js` automatically reads `data-expressions` and swaps the `<img>` `src` on each quiz reaction.

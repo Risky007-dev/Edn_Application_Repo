@@ -86,6 +86,52 @@ const swappedExpr = renderGuideMascot({
 assert('Swapped expression map selects expression-specific image', swappedExpr.includes('src="/assets/mascots/kashamar-thinking.png"'));
 assert('Swapped expression map embeds data-expressions JSON for client reaction updates', swappedExpr.includes('data-expressions='));
 
+console.log('\n--- 6. Bucket Mascot Swappable Config & Safe Local Preview Exclusions ---');
+const config = require('../src/shared/config');
+assert('Default config keeps Guide and Bucket mascots on SVG fallback (null imagePath)',
+  config.mascots && config.mascots.guide && config.mascots.bucket &&
+  (process.env.GUIDE_MASCOT_IMAGE_PATH || process.env.GUIDE_MASCOT_EXPRESSIONS_DIR ? true : config.mascots.guide.imagePath === null) &&
+  (process.env.BUCKET_MASCOT_IMAGE_PATH ? true : config.mascots.bucket.imagePath === null));
+
+const bucketSwappedSingle = renderBucketMascot({
+  expression: 'happy',
+  size: 120,
+  assetConfig: { imagePath: '/assets/mascots/popcorn-bucket.png', alt: 'Popcorn Bucket' }
+});
+assert('Bucket mascot single image renders <img> with configured src and mascot-bucket-img class',
+  bucketSwappedSingle.includes('<img') &&
+  bucketSwappedSingle.includes('src="/assets/mascots/popcorn-bucket.png"') &&
+  bucketSwappedSingle.includes('mascot-bucket-img') &&
+  bucketSwappedSingle.includes('data-expression="happy"'));
+
+const bucketSwappedExpr = renderBucketMascot({
+  expression: 'celebrating',
+  assetConfig: {
+    imagePath: '/assets/mascots/bucket-neutral.png',
+    expressions: {
+      neutral: '/assets/mascots/bucket-neutral.png',
+      celebrating: '/assets/mascots/bucket-celebrating.png'
+    }
+  }
+});
+assert('Bucket mascot expression map selects expression-specific image and embeds data-expressions',
+  bucketSwappedExpr.includes('src="/assets/mascots/bucket-celebrating.png"') &&
+  bucketSwappedExpr.includes('data-expressions='));
+
+const bucketSvgFallback = renderBucketMascot({
+  expression: 'thinking',
+  assetConfig: { imagePath: null, expressions: null }
+});
+assert('Bucket mascot falls back to inline SVG when config imagePath is null',
+  bucketSvgFallback.includes('<svg') && bucketSvgFallback.includes('</svg>'));
+
+const gitignoreText = fs.readFileSync(path.join(__dirname, '../.gitignore'), 'utf8');
+const dockerignoreText = fs.readFileSync(path.join(__dirname, '../.dockerignore'), 'utf8');
+assert('.gitignore excludes local mascot preview photos folder',
+  gitignoreText.includes('MyWebApp/src/main/webapp/assets/mascots-local-preview/'));
+assert('.dockerignore excludes local mascot preview photos folder from Docker builds',
+  dockerignoreText.includes('MyWebApp/src/main/webapp/assets/mascots-local-preview/'));
+
 console.log('\n================================================================');
 console.log(`TASK 2 TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);
 console.log('================================================================\n');
