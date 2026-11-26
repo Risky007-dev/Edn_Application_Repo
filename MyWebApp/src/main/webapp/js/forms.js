@@ -5,6 +5,9 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // In-memory readiness summary candidate parsed from URL query params (zero storage)
+  let pendingReadinessSummary = null;
+
   // 0. Query-Parameter Form Pre-Fill (/book, /contact, /popcorn-math/parents)
   try {
     const params = new URLSearchParams(window.location.search);
@@ -16,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'traditional-tutoring': 'One-on-One Tutoring',
         'one-on-one-tutoring': 'One-on-One Tutoring',
         'group-tutoring': 'Small Group Tutoring',
+        'sunday-workshops': 'Small Group Tutoring',
         'concierge': 'Concierge Academic Coaching',
         'popcorn-math': 'Popcorn Math',
         'popcorn-maths': 'Popcorn Math',
@@ -28,6 +32,45 @@ document.addEventListener('DOMContentLoaded', () => {
           serviceSelect.value = opt.value;
           break;
         }
+      }
+    }
+
+    // Optional Readiness Check Summary pre-load on /book (strictly in-memory, opt-in checkbox)
+    const attachCard = document.getElementById('book-readiness-attachment');
+    const attachPreview = document.getElementById('book-readiness-summary-preview');
+    if (attachCard && attachPreview) {
+      const rcSubject = (params.get('rcSubject') || '').trim();
+      const rcScoreRaw = params.get('rcScore');
+      const rcTotalRaw = params.get('rcTotal') || '10';
+      const rcBand = (params.get('rcBand') || '').trim();
+      const rcRec = (params.get('rcRec') || '').trim();
+
+      const validSubjects = ['Mathematics', 'Language Arts'];
+      const validBands = ['Just Starting', 'Getting There', 'Looking Good', 'Exam Star'];
+      const validRecs = ['One-on-One Tutoring', 'Sunday Workshops', 'Seasonal Pop-Ups'];
+      const rcScore = rcScoreRaw !== null && rcScoreRaw !== '' ? Number(rcScoreRaw) : NaN;
+      const rcTotal = Number(rcTotalRaw);
+
+      if (
+        validSubjects.includes(rcSubject) &&
+        Number.isInteger(rcTotal) && rcTotal === 10 &&
+        Number.isInteger(rcScore) && rcScore >= 0 && rcScore <= rcTotal &&
+        validBands.includes(rcBand)
+      ) {
+        pendingReadinessSummary = {
+          subject: rcSubject,
+          score: rcScore,
+          total: rcTotal,
+          band: rcBand
+        };
+        if (validRecs.includes(rcRec)) {
+          pendingReadinessSummary.recommendedService = rcRec;
+        }
+        const recSuffix = pendingReadinessSummary.recommendedService
+          ? ` — Suggested: ${pendingReadinessSummary.recommendedService}`
+          : '';
+        attachPreview.textContent = `${rcSubject}: ${rcScore} / ${rcTotal} (${rcBand})${recSuffix}`;
+        attachCard.removeAttribute('hidden');
       }
     }
 
@@ -167,6 +210,14 @@ document.addEventListener('DOMContentLoaded', () => {
           payload[key] = typeof value === 'string' ? value.trim() : value;
         }
       });
+
+      // Attach optional Readiness Check summary ONLY if parent explicitly ticked the opt-in checkbox
+      if (formType === 'book-consultation' && pendingReadinessSummary) {
+        const attachCheckbox = document.getElementById('attachReadinessResult');
+        if (attachCheckbox && attachCheckbox.checked) {
+          payload.readinessSummary = { ...pendingReadinessSummary };
+        }
+      }
 
       // Handle unchecked consent
       if (!payload.consent) {

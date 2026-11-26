@@ -54,9 +54,62 @@ const BOOK_CONSULTATION_FIELDS = [
   'serviceInterest',
   'additionalNotes',
   'message',
+  'readinessSummary',
   'consent',
   '_gotcha'
 ];
+
+const ALLOWED_READINESS_SUBJECTS = ['Mathematics', 'Language Arts'];
+const ALLOWED_READINESS_BANDS = ['Just Starting', 'Getting There', 'Looking Good', 'Exam Star'];
+const ALLOWED_RECOMMENDED_SERVICES = ['One-on-One Tutoring', 'Sunday Workshops', 'Seasonal Pop-Ups'];
+const READINESS_SUMMARY_FIELDS = ['subject', 'score', 'total', 'band', 'recommendedService'];
+
+function getExpectedReadinessBand(score, total = 10) {
+  if (!Number.isInteger(score) || !Number.isInteger(total) || total !== 10 || score < 0 || score > total) {
+    return null;
+  }
+  if (score >= 9) return 'Exam Star';
+  if (score >= 7) return 'Looking Good';
+  if (score >= 5) return 'Getting There';
+  return 'Just Starting';
+}
+
+function validateReadinessSummary(summary) {
+  const errors = [];
+  if (summary === undefined || summary === null) {
+    return errors;
+  }
+  if (typeof summary !== 'object' || Array.isArray(summary)) {
+    return ['Readiness summary must be an object.'];
+  }
+  const unknown = checkUnknownFields(summary, READINESS_SUMMARY_FIELDS);
+  if (unknown) {
+    return [`Readiness summary contains ${unknown}`];
+  }
+  if (!ALLOWED_READINESS_SUBJECTS.includes(summary.subject)) {
+    errors.push('Readiness summary subject must be Mathematics or Language Arts.');
+  }
+  if (!Number.isInteger(summary.total) || summary.total !== 10) {
+    errors.push('Readiness summary total must be 10.');
+  }
+  if (!Number.isInteger(summary.score) || summary.score < 0 || summary.score > 10) {
+    errors.push('Readiness summary score must be an integer between 0 and 10.');
+  }
+  if (!ALLOWED_READINESS_BANDS.includes(summary.band)) {
+    errors.push('Readiness summary band is invalid.');
+  } else if (Number.isInteger(summary.score) && Number.isInteger(summary.total) && summary.total === 10) {
+    const expected = getExpectedReadinessBand(summary.score, summary.total);
+    if (expected && summary.band !== expected) {
+      errors.push('Readiness summary band does not match the score.');
+    }
+  }
+  if (summary.recommendedService !== undefined && summary.recommendedService !== '') {
+    if (typeof summary.recommendedService !== 'string' || !ALLOWED_RECOMMENDED_SERVICES.includes(summary.recommendedService)) {
+      errors.push('Readiness summary recommended service is invalid.');
+    }
+  }
+  return errors;
+}
 
 const ALLOWED_SERVICE_INTERESTS = [
   'One-on-One Tutoring',
@@ -117,6 +170,10 @@ function validateConsultationForm(body) {
     } else if (body.message.length > 1000) {
       errors.push('Message exceeds maximum length of 1000 characters.');
     }
+  }
+
+  if (body.readinessSummary !== undefined && body.readinessSummary !== null) {
+    errors.push(...validateReadinessSummary(body.readinessSummary));
   }
 
   return errors;
@@ -548,6 +605,11 @@ module.exports = {
   validateHoneypot,
   validateConsent,
   checkUnknownFields,
+  ALLOWED_READINESS_SUBJECTS,
+  ALLOWED_READINESS_BANDS,
+  ALLOWED_RECOMMENDED_SERVICES,
+  getExpectedReadinessBand,
+  validateReadinessSummary,
   validateConsultationForm,
   validateConciergeForm,
   validatePresenterForm,

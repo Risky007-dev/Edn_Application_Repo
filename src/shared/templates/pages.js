@@ -527,6 +527,16 @@ function renderBookPage() {
               <textarea id="additionalNotes" name="additionalNotes" rows="4" maxlength="1000" placeholder="Tell us about specific subjects, learning objectives, or questions..." class="form-textarea"></textarea>
             </div>
 
+            <div id="book-readiness-attachment" class="readiness-attach-card" hidden>
+              <p class="readiness-attach-heading"><strong>${escapeHtml(bk.readinessAttachHeading.text)}</strong></p>
+              <p id="book-readiness-summary-preview" class="readiness-attach-preview" aria-live="polite"></p>
+              <div class="form-group form-checkbox-group">
+                <input type="checkbox" id="attachReadinessResult" class="form-checkbox">
+                <label for="attachReadinessResult" class="checkbox-label">${escapeHtml(bk.readinessAttachCheckboxLabel.text)}</label>
+              </div>
+              <p class="readiness-attach-note"><small>${escapeHtml(bk.readinessAttachPrivacyNote.text)}</small></p>
+            </div>
+
             ${renderConsentCheckbox()}
             ${renderFormStatus('book-consultation-form')}
 

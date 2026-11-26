@@ -190,6 +190,9 @@ const CONTENT = {
   bookPage: {
     title: { text: 'Book a Consultation', status: 'APPROVED' },
     subhead: { text: 'Schedule an initial discussion to find the right academic pathway for your child.', status: 'APPROVED' },
+    readinessAttachHeading: { text: 'Optional: Share Your Readiness Check Summary', status: 'PROPOSED-COPY' },
+    readinessAttachCheckboxLabel: { text: 'Attach my non-identifying Readiness Check summary (subject, score, and band — no child name) to this consultation request.', status: 'PROPOSED-COPY' },
+    readinessAttachPrivacyNote: { text: 'Unchecked by default. Only shared with Teacher Cassie if you tick the box above and submit this form.', status: 'PROPOSED-COPY' },
     serviceOptions: [
       'One-on-One Tutoring',
       'Small Group Tutoring',
