@@ -335,14 +335,6 @@ const CONTENT = {
       schedule: 'Saturdays, 1:00 PM – 2:30 PM',
       ages: 'Ages 5–11',
       status: 'Active Cohort'
-    },
-    {
-      id: 'virtual',
-      name: 'Online / Virtual Cohort',
-      venue: 'Interactive Live Video Classroom',
-      schedule: 'Tuesdays & Thursdays, 4:30 PM – 5:30 PM',
-      ages: 'Ages 7–13',
-      status: 'Active Cohort'
     }
   ]
 };

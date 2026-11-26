@@ -24,15 +24,20 @@ We adhere to strict data minimisation and child privacy standards:
 - **Do Not Share Personal Information:** Users must not input personal identifiable information (PII)—including your child's full name, date of birth, age, residential address, telephone number, email, or school name—into the chat window. The assistant is programmed to decline requests containing sensitive personal details.
 - **Zero Profiling & Zero Tracking:** Chatbot interactions are not linked to your IP address, cookies, user profiles, or intake form submissions. We do not track or profile children across visits.
 
-#### 7.3 Third-Party AI Processing (Anthropic PBC)
+#### 7.3 Readiness Check Result Sharing & Voluntary Booking Attachment (PROPOSED-COPY)
+- **Zero Automatic Storage:** Sample Readiness Check sessions (Mathematics and Language Arts) run solely in your browser's temporary memory. Scores are never saved in `localStorage`, `sessionStorage`, cookies, or Tutor Time databases automatically.
+- **Voluntary Chatbot Result Sharing:** If you choose to click **"Talk about my results"** after completing a sample check, only three non-identifying fields—**subject, score out of 10, and readiness band** (with no child name, age, or contact details)—are sent transiently with your message to the Anthropic Claude API so Tutor Time Helper can explain suggested programmes. That summary is discarded when you leave or close the page.
+- **Voluntary Consultation Booking Attachment:** If a parent chooses to tick the opt-in checkbox on our [Book a Consultation](/book) page (unchecked by default), that same non-identifying summary (subject, score, and band) is stored with the parent's consultation request and emailed to Teacher Cassie solely to help prepare for the consultation.
+
+#### 7.4 Third-Party AI Processing (Anthropic PBC)
 When you submit a message through the Tutor Time Helper:
-- Your query is transmitted securely via TLS 1.3 encryption directly to the Anthropic Claude API (`api.anthropic.com`) for the sole purpose of generating an immediate conversational response.
+- Your query (and, only if you choose "Talk about my results", your non-identifying subject, score, and band summary) is transmitted securely via TLS 1.3 encryption directly to the Anthropic Claude API (`api.anthropic.com`) for the sole purpose of generating an immediate conversational response.
 - In accordance with Anthropic’s commercial data protection and privacy terms, customer inputs and completions submitted via the commercial API are **not used to train or fine-tune foundation models**, and are discarded after transient generation.
 
-#### 7.4 Real-Time Web Search Retrieval
+#### 7.5 Real-Time Web Search Retrieval
 To provide accurate, up-to-date educational context, the assistant may perform targeted web searches via Anthropic’s search retrieval tool. When web search is utilized to formulate a reply, the specific source citations and reference links are displayed directly inside the chat window for complete transparency.
 
-#### 7.5 Scope & Disclaimers
+#### 7.6 Scope & Disclaimers
 The Tutor Time Helper is an informational guide only. It cannot schedule appointments, process payments, submit applications, or alter student records. 
 - **No Official Advice:** The assistant does not provide medical, psychological, diagnostic, safeguarding, or formal legal advice.
 - **Pricing & Policies:** Specific program fees, official school rosters, and formal admissions decisions are not quoted by the assistant. For confirmed details or consultation bookings, parents should visit our [Book a Consultation](/book) page or contact Teacher Cassie directly via WhatsApp.
