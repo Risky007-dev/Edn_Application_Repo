@@ -7,6 +7,7 @@
   'use strict';
 
   function initChatbot() {
+    var root = document.getElementById('chatbot-root');
     var toggleBtn = document.getElementById('chatbot-toggle-btn');
     var panel = document.getElementById('chatbot-panel');
     var closeBtn = document.getElementById('chatbot-close-btn');
@@ -19,14 +20,24 @@
     if (!toggleBtn || !panel || !form || !input || !messages) return;
 
     var conversationHistory = [];
+    // Strictly in-memory readiness context ({ subject, score, band } only; zero browser persistence)
+    var activeReadinessResult = null;
     var isOpen = false;
     var isSending = false;
+
+    function isChatUnavailable() {
+      return Boolean(root && root.getAttribute('data-chatbot-unavailable') === 'true');
+    }
 
     function openChat() {
       isOpen = true;
       panel.removeAttribute('hidden');
       toggleBtn.setAttribute('aria-expanded', 'true');
-      input.focus();
+      if (!isChatUnavailable()) {
+        input.focus();
+      } else {
+        closeBtn.focus();
+      }
       scrollMessagesBottom();
     }
 
@@ -144,15 +155,24 @@
       isSending = true;
 
       try {
+        var reqBody = {
+          message: text,
+          history: conversationHistory
+        };
+        if (activeReadinessResult) {
+          reqBody.readinessResult = {
+            subject: activeReadinessResult.subject,
+            score: activeReadinessResult.score,
+            band: activeReadinessResult.band
+          };
+        }
+
         var response = await fetch('/api/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            message: text,
-            history: conversationHistory
-          })
+          body: JSON.stringify(reqBody)
         });
 
         var data = await response.json();
@@ -176,7 +196,37 @@
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (isChatUnavailable()) return;
       submitMessage(input.value);
+    });
+
+    // Listen for in-memory "Talk about my results" handoff from readiness.js
+    document.addEventListener('tt:open-chat-with-results', function (e) {
+      var detail = (e && e.detail) || {};
+      var res = detail.readinessResult;
+      if (res && typeof res.subject === 'string' && typeof res.score === 'number' && typeof res.band === 'string') {
+        activeReadinessResult = {
+          subject: res.subject,
+          score: res.score,
+          band: res.band
+        };
+      }
+
+      openChat();
+
+      if (isChatUnavailable()) {
+        if (detail.offlineSummary) {
+          appendMessage('assistant', detail.offlineSummary);
+        }
+        return;
+      }
+
+      if (activeReadinessResult && !isSending) {
+        var starterPrompt = 'I just finished the ' + activeReadinessResult.subject +
+          ' sample readiness check (' + activeReadinessResult.score + '/10, ' +
+          activeReadinessResult.band + '). Which Tutor Time programme do you recommend?';
+        submitMessage(starterPrompt);
+      }
     });
   }
 

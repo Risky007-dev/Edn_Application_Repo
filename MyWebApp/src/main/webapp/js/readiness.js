@@ -10,6 +10,7 @@
   var QUESTIONS_PER_SESSION = 10;
 
   var questionsData = [];
+  var recommendationConfig = null;
   var activeSubject = null;
   var currentQuestions = [];
   var currentIndex = 0;
@@ -376,6 +377,36 @@
     };
   }
 
+  function resolveRecommendation(subject, correctCount) {
+    if (!recommendationConfig || !Array.isArray(recommendationConfig.rules)) {
+      return null;
+    }
+    var matched = null;
+    for (var i = 0; i < recommendationConfig.rules.length; i++) {
+      var r = recommendationConfig.rules[i];
+      if (correctCount >= r.minScore && correctCount <= r.maxScore) {
+        matched = r;
+        break;
+      }
+    }
+    if (!matched) return null;
+    var primary = recommendationConfig.services[matched.primaryServiceId];
+    var secondary = recommendationConfig.services[matched.secondaryServiceId];
+    if (!primary || !secondary) return null;
+
+    return {
+      subject: subject,
+      score: correctCount,
+      band: matched.band,
+      primary: primary,
+      secondary: secondary,
+      rationale: (matched.rationale && matched.rationale[subject]) || '',
+      heading: (recommendationConfig.uiCopy && recommendationConfig.uiCopy.heading) || 'Suggested Next Steps for Your Family',
+      availabilityNote: (recommendationConfig.uiCopy && recommendationConfig.uiCopy.availabilityNote) || '',
+      talkButtonLabel: (recommendationConfig.uiCopy && recommendationConfig.uiCopy.talkButtonLabel) || 'Talk about my results'
+    };
+  }
+
   function renderResultsScreen() {
     var container = document.getElementById('readiness-card');
     var liveRegion = document.getElementById('readiness-live-announcer');
@@ -386,17 +417,51 @@
     var percentage = Math.round((correctCount / totalQuestions) * 100);
     var bandInfo = computeBand(correctCount);
     var otherSubject = activeSubject === 'Mathematics' ? 'Language Arts' : 'Mathematics';
+    var rec = resolveRecommendation(activeSubject, correctCount);
 
     updateMascotReaction('celebrating', bandInfo.mascotCheer);
 
     var bookUrl = '/book?rcSubject=' + encodeURIComponent(activeSubject) +
       '&rcScore=' + encodeURIComponent(String(correctCount)) +
       '&rcTotal=' + encodeURIComponent(String(totalQuestions)) +
-      '&rcBand=' + encodeURIComponent(bandInfo.bandName);
+      '&rcBand=' + encodeURIComponent(bandInfo.bandName) +
+      (rec && rec.primary ? '&service=' + encodeURIComponent(rec.primary.bookParam) + '&rcRec=' + encodeURIComponent(rec.primary.name) : '');
 
     var subjectIcon = activeSubject === 'Mathematics' ? '🔢' : '📚';
     var streakLine = maxStreak >= 2
       ? '<p class="results-streak-note">🔥 Best Streak: <strong>' + maxStreak + ' in a row</strong></p>'
+      : '';
+
+    var recommendationHtml = '';
+    if (rec) {
+      recommendationHtml = '' +
+        '<div id="readiness-recommendation-card" class="readiness-recommendation-card" role="region" aria-label="Recommended Tutor Time programmes">' +
+          '<div class="rec-card-header">' +
+            '<span class="rec-pill">Recommended Next Steps</span>' +
+            '<h3>' + escapeHtml(rec.heading) + '</h3>' +
+          '</div>' +
+          '<p class="rec-rationale">' + escapeHtml(rec.rationale) + '</p>' +
+          '<div class="rec-options-grid">' +
+            '<div class="rec-option rec-option-primary">' +
+              '<span class="rec-option-tag">Primary Match</span>' +
+              '<h4>' + escapeHtml(rec.primary.name) + '</h4>' +
+              '<p>' + escapeHtml(rec.primary.shortDesc) + '</p>' +
+              '<a href="' + escapeHtml(rec.primary.href) + '" class="btn btn-primary btn-small">Explore ' + escapeHtml(rec.primary.name) + ' &rarr;</a>' +
+            '</div>' +
+            '<div class="rec-option rec-option-secondary">' +
+              '<span class="rec-option-tag">Also Consider</span>' +
+              '<h4>' + escapeHtml(rec.secondary.name) + '</h4>' +
+              '<p>' + escapeHtml(rec.secondary.shortDesc) + '</p>' +
+              '<a href="' + escapeHtml(rec.secondary.href) + '" class="btn btn-secondary btn-small">Explore ' + escapeHtml(rec.secondary.name) + ' &rarr;</a>' +
+            '</div>' +
+          '</div>' +
+          '<p class="rec-availability-note"><small>' + escapeHtml(rec.availabilityNote) + '</small></p>' +
+        '</div>';
+    }
+
+    var hasChatbotRoot = Boolean(document.getElementById('chatbot-root'));
+    var talkBtnHtml = hasChatbotRoot
+      ? '<button type="button" id="btn-talk-results" class="btn btn-primary">💬 ' + escapeHtml(rec ? rec.talkButtonLabel : 'Talk about my results') + '</button>'
       : '';
 
     var resultsHtml = '' +
@@ -424,11 +489,14 @@
           '</div>' +
         '</div>' +
 
+        recommendationHtml +
+
         '<div class="results-actions print-hidden">' +
-          '<button type="button" id="btn-print-results" class="btn btn-secondary">🖨️ Print My Results</button>' +
-          '<button type="button" id="btn-retry-quiz" class="btn btn-primary">🔄 Try 10 New ' + escapeHtml(activeSubject) + ' Questions</button>' +
-          '<button type="button" id="btn-switch-subject" class="btn btn-secondary">⇄ Try ' + escapeHtml(otherSubject) + '</button>' +
+          talkBtnHtml +
           '<a href="' + escapeHtml(bookUrl) + '" class="btn btn-accent">📅 Book a Consultation</a>' +
+          '<button type="button" id="btn-print-results" class="btn btn-secondary">🖨️ Print My Results</button>' +
+          '<button type="button" id="btn-retry-quiz" class="btn btn-secondary">🔄 Try 10 New ' + escapeHtml(activeSubject) + ' Questions</button>' +
+          '<button type="button" id="btn-switch-subject" class="btn btn-secondary">⇄ Try ' + escapeHtml(otherSubject) + '</button>' +
         '</div>' +
       '</div>';
 
@@ -436,6 +504,28 @@
 
     if (liveRegion) {
       liveRegion.textContent = activeSubject + ' readiness check complete! You scored ' + correctCount + ' out of ' + totalQuestions + ' (' + percentage + '%). Readiness band: ' + bandInfo.bandName;
+    }
+
+    var talkBtn = document.getElementById('btn-talk-results');
+    if (talkBtn) {
+      talkBtn.addEventListener('click', function () {
+        // Strictly pass ONLY { subject, score, band } to chatbot (+ non-AI summary for offline fallback)
+        var evt = new CustomEvent('tt:open-chat-with-results', {
+          detail: {
+            readinessResult: {
+              subject: activeSubject,
+              score: correctCount,
+              band: bandInfo.bandName
+            },
+            offlineSummary: rec ? (
+              'Here is your ' + activeSubject + ' sample summary (' + correctCount + '/10 — ' + bandInfo.bandName + '): ' +
+              'Primary match: ' + rec.primary.name + '. Also consider: ' + rec.secondary.name + '. ' +
+              rec.rationale + ' Visit /book to discuss next steps with Teacher Cassie!'
+            ) : ''
+          }
+        });
+        document.dispatchEvent(evt);
+      });
     }
 
     var printBtn = document.getElementById('btn-print-results');
@@ -486,6 +576,15 @@
     } catch (e) {
       console.error('Error parsing readiness questions data:', e);
       return;
+    }
+
+    var recDataEl = document.getElementById('readiness-recommendations-data');
+    if (recDataEl) {
+      try {
+        recommendationConfig = JSON.parse(recDataEl.textContent);
+      } catch (e) {
+        recommendationConfig = null;
+      }
     }
 
     if (!Array.isArray(questionsData) || questionsData.length === 0) return;

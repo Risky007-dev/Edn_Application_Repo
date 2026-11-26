@@ -11,6 +11,7 @@ const { escapeHtml, renderLayout } = require('./layout');
 const { renderGuideMascot, renderSpeechBubble } = require('../components/mascotGuide');
 const { renderBucketMascot } = require('../components/mascotBucket');
 const { getActiveQuestions } = require('../content/readiness-questions');
+const { getClientRuleConfig } = require('../readiness/recommendationRules');
 
 // Helper for consent checkbox
 function renderConsentCheckbox() {
@@ -982,6 +983,9 @@ function renderReadinessCheckPage() {
 
       <script type="application/json" id="readiness-questions-data">
         ${JSON.stringify(activeQuestions)}
+      </script>
+      <script type="application/json" id="readiness-recommendations-data">
+        ${JSON.stringify(getClientRuleConfig())}
       </script>
     </div>
   `;

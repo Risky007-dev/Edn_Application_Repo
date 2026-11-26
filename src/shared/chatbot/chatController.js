@@ -9,6 +9,10 @@ const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const { getSystemPrompt } = require('./systemPrompt');
 const siteKnowledge = require('./knowledge.json');
+const {
+  validateChatReadinessResult,
+  getRecommendationForResult
+} = require('../readiness/recommendationRules');
 
 // Configuration constants
 const DEFAULT_MODEL = 'claude-haiku-5-5';
@@ -113,7 +117,7 @@ async function handleChat(req, res) {
     });
   }
 
-  const { message, history = [] } = req.body || {};
+  const { message, history = [], readinessResult = null } = req.body || {};
 
   // Input validation: empty or invalid message
   if (!message || typeof message !== 'string' || !message.trim()) {
@@ -132,6 +136,19 @@ async function handleChat(req, res) {
       error: `Question is too long (maximum ${MAX_INPUT_LENGTH} characters). Please ask a shorter question.`
     });
   }
+
+  // Strict server-side validation of optional readinessResult ({ subject, score, band } only)
+  const readinessValidation = validateChatReadinessResult(readinessResult);
+  if (!readinessValidation.valid) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid readiness result context. Only subject, score (0–10), and band are permitted.'
+    });
+  }
+
+  const verifiedRecommendation = readinessValidation.value
+    ? getRecommendationForResult(readinessValidation.value)
+    : null;
 
   // Conversation history cap
   const safeHistory = Array.isArray(history) ? history.slice(-MAX_CONVERSATION_TURNS) : [];
@@ -166,11 +183,24 @@ async function handleChat(req, res) {
     }
     messages.push({ role: 'user', content: cleanMessage });
 
+    // Append server-verified recommendation context (strictly from allowlisted rule table, zero raw user strings)
+    let effectiveSystemPrompt = systemPromptFull;
+    if (verifiedRecommendation) {
+      effectiveSystemPrompt += `\n\nVERIFIED READINESS CHECK CONTEXT (NON-IDENTIFYING, IN-MEMORY ONLY):\n` +
+        `- Subject: ${verifiedRecommendation.subject}\n` +
+        `- Sample Score: ${verifiedRecommendation.score} / 10\n` +
+        `- Readiness Band: ${verifiedRecommendation.band}\n` +
+        `- Primary Recommended Service: ${verifiedRecommendation.primary.name} (${verifiedRecommendation.primary.href})\n` +
+        `- Secondary Option: ${verifiedRecommendation.secondary.name} (${verifiedRecommendation.secondary.href})\n` +
+        `- Guidance Note: ${verifiedRecommendation.rationale}\n` +
+        `- Important: Do NOT invent dates, schedules, availability, or prices. Point parents to /book or WhatsApp to confirm details.`;
+    }
+
     // Call Anthropic Messages API with web search tool enabled
     const response = await client.messages.create({
       model,
       max_tokens: 1024,
-      system: systemPromptFull,
+      system: effectiveSystemPrompt,
       messages,
       tools: [
         {
@@ -211,7 +241,7 @@ async function handleChat(req, res) {
       replyText = 'Hello! I am here to help you learn about Tutor Time with Teacher Cassie and Popcorn Math. How can I assist you today?';
     }
 
-    // Structured audit logging: count and latency ONLY, NEVER message content
+    // Structured audit logging: count and latency ONLY, NEVER message content or scores
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       event: 'chatbot_request_success',
@@ -220,13 +250,20 @@ async function handleChat(req, res) {
       dailyCount: getDailyCount(),
       inputLength: cleanMessage.length,
       replyLength: replyText.length,
-      hasSources: sources.length > 0
+      hasSources: sources.length > 0,
+      hasReadinessResult: Boolean(verifiedRecommendation)
     }));
 
     return res.status(200).json({
       success: true,
       reply: replyText,
-      sources: sources.slice(0, 5)
+      sources: sources.slice(0, 5),
+      ...(verifiedRecommendation ? {
+        recommendation: {
+          primary: verifiedRecommendation.primary.name,
+          secondary: verifiedRecommendation.secondary.name
+        }
+      } : {})
     });
 
   } catch (err) {

@@ -54,9 +54,19 @@
       "description": "Supporting students who benefit from differentiated instruction, structured routines, and personalised academic approaches",
       "url": "/services/specialist-support"
     },
+    "sundayWorkshops": {
+      "name": "Sunday Workshops",
+      "description": "Guided small-group practice sessions focused on confidence, fluency, and exam habits (specific schedules and fees confirmed upon enquiry)",
+      "url": "/book?service=Small%20Group%20Tutoring"
+    },
+    "seasonalPopUps": {
+      "name": "Seasonal Pop-Ups",
+      "description": "Short seasonal clinics and term-break refreshers to keep strong skills sharp (upcoming dates and availability confirmed upon enquiry)",
+      "url": "/#holiday-specials"
+    },
     "readinessCheck": {
       "name": "CPEA Readiness Check",
-      "description": "Gamified mock-exam sample questions for students preparing for the Caribbean Primary Exit Assessment (Language Arts, Mathematics, Science, Social Studies)",
+      "description": "Gamified 10-question sample practice tracks split into Mathematics and Language Arts for Caribbean primary students",
       "isOfficialExam": false,
       "disclaimer": "Sample questions: not an official CPEA paper.",
       "url": "/readiness-check"

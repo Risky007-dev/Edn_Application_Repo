@@ -10,6 +10,11 @@
  */
 
 const brand = require('../brand');
+const {
+  SERVICE_CATALOG,
+  RECOMMENDATION_RULE_TABLE,
+  RECOMMENDATION_UI_COPY
+} = require('../readiness/recommendationRules');
 
 const CONTENT = {
   global: {
@@ -123,7 +128,12 @@ const CONTENT = {
     pickerHeading: { text: 'Choose Your Practice Track', status: 'PROPOSED-COPY' },
     pickerSubhead: { text: 'Each track draws 10 randomized sample questions with instant explanations, stars, and a printable summary.', status: 'PROPOSED-COPY' },
     mathCardDesc: { text: '10 sample questions covering geometry, fractions, word problems, charts, time, and mental arithmetic.', status: 'PROPOSED-COPY' },
-    laCardDesc: { text: '10 sample questions covering reading passages, vocabulary, grammar, punctuation, and literary devices.', status: 'PROPOSED-COPY' }
+    laCardDesc: { text: '10 sample questions covering reading passages, vocabulary, grammar, punctuation, and literary devices.', status: 'PROPOSED-COPY' },
+    recommendations: {
+      services: SERVICE_CATALOG,
+      rules: RECOMMENDATION_RULE_TABLE,
+      uiCopy: RECOMMENDATION_UI_COPY
+    }
   },
 
   services: {
