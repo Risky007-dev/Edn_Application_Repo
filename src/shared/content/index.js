@@ -112,10 +112,18 @@ const CONTENT = {
     readinessCta: {
       tag: { text: 'Primary Exit Exam Practice', status: 'PROPOSED-COPY' },
       title: { text: 'Prepare with Our Free CPEA Readiness Check', status: 'PROPOSED-COPY' },
-      desc: { text: '12 interactive sample questions in Language Arts, Mathematics, Science, and Social Studies designed for Caribbean primary students. Fun, pressure-free practice with instant feedback and badges!', status: 'PROPOSED-COPY' },
+      desc: { text: 'Choose Mathematics or Language Arts for 10 interactive sample questions designed for Caribbean primary students. Fun, pressure-free practice with instant feedback and badges!', status: 'PROPOSED-COPY' },
       buttonText: { text: 'Take Readiness Check', status: 'PROPOSED-COPY' },
       disclaimer: { text: 'Sample questions: not an official CPEA paper.', status: 'PROPOSED-COPY' }
     }
+  },
+
+  readinessPage: {
+    subhead: { text: 'Pick Mathematics or Language Arts for a fun 10-question sample practice check designed for Caribbean primary students.', status: 'PROPOSED-COPY' },
+    pickerHeading: { text: 'Choose Your Practice Track', status: 'PROPOSED-COPY' },
+    pickerSubhead: { text: 'Each track draws 10 randomized sample questions with instant explanations, stars, and a printable summary.', status: 'PROPOSED-COPY' },
+    mathCardDesc: { text: '10 sample questions covering geometry, fractions, word problems, charts, time, and mental arithmetic.', status: 'PROPOSED-COPY' },
+    laCardDesc: { text: '10 sample questions covering reading passages, vocabulary, grammar, punctuation, and literary devices.', status: 'PROPOSED-COPY' }
   },
 
   services: {

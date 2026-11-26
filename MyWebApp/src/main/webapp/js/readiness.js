@@ -1,31 +1,29 @@
 /**
- * CPEA Readiness Check - Client-Side Interactive Engine
- * 100% client-side, zero persistence, accessible, keyboard-friendly.
+ * CPEA Readiness Check - Client-Side Interactive Engine (Mathematics & Language Arts Tracks)
+ * 100% client-side, in-memory only, zero browser persistence.
  */
 
 (function () {
   'use strict';
 
+  var ACTIVE_SUBJECTS = ['Mathematics', 'Language Arts'];
+  var QUESTIONS_PER_SESSION = 10;
+
   var questionsData = [];
+  var activeSubject = null;
   var currentQuestions = [];
   var currentIndex = 0;
   var userAnswers = []; // { questionIndex, selectedIndex, isCorrect, subject }
   var streak = 0;
   var maxStreak = 0;
+  var initialPickerHtml = '';
 
-  var mascotExpressions = {
-    neutral: 'neutral',
-    thinking: 'thinking',
-    celebrating: 'celebrating',
-    happy: 'happy'
-  };
-
-  // SVGs for dynamic mascot face updates
+  // SVGs for dynamic mascot face updates when inline SVG fallback is active
   var mascotSvgs = {
-    neutral: '<path d="M42 69 Q50 76 58 69" stroke="#1A365D" stroke-width="3" stroke-linecap="round" fill="none"/>',
-    thinking: '<path d="M43 72 Q50 68 57 72" stroke="#1A365D" stroke-width="3" stroke-linecap="round" fill="none"/>',
-    celebrating: '<path d="M38 66 Q50 84 62 66 Z" fill="#E65100" stroke="#1A365D" stroke-width="2.5"/>',
-    happy: '<path d="M40 68 Q50 82 60 68" stroke="#1A365D" stroke-width="3" stroke-linecap="round" fill="#F5A623"/>'
+    neutral: '<path d="M42 66 Q50 73 58 66" stroke="#1A365D" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
+    thinking: '<path d="M44 68 Q50 66 56 69" stroke="#1A365D" stroke-width="2.4" stroke-linecap="round" fill="none"/>',
+    celebrating: '<path d="M39 65 Q50 79 61 65 Z" fill="#D94848" stroke="#1A365D" stroke-width="2" stroke-linejoin="round"/>',
+    happy: '<path d="M41 66 Q50 76 59 66 Z" fill="#D94848" stroke="#1A365D" stroke-width="2" stroke-linejoin="round"/>'
   };
 
   function updateMascotReaction(expression, speechText) {
@@ -44,12 +42,11 @@
               mascotEl.setAttribute('src', exprMap[expression]);
             }
           } catch (e) {
-            // Fall back to CSS state change via data-expression
+            // Fall back to CSS expression state
           }
         }
         mascotEl.setAttribute('alt', 'Tutor Time Guide avatar (' + expression + ')');
       } else {
-        // Update mouth path inside inline SVG placeholder
         var mouth = mascotEl.querySelector('path[d*="Q50"], path[d*="66 Q50"]');
         if (mouth && mascotSvgs[expression]) {
           var temp = document.createElement('div');
@@ -68,23 +65,32 @@
     }
   }
 
-  function pickRandomSession(bank) {
-    var subjects = ['Language Arts', 'Mathematics', 'Science', 'Social Studies'];
-    var selected = [];
+  function shuffleArray(list) {
+    var copy = list.slice();
+    for (var i = copy.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+    }
+    return copy;
+  }
 
-    subjects.forEach(function (subj) {
-      var pool = bank.filter(function (q) { return q.subject === subj; });
-      var shuffled = pool.slice().sort(function () { return 0.5 - Math.random(); });
-      selected = selected.concat(shuffled.slice(0, 3));
-    });
+  function normalizeSubjectParam(raw) {
+    if (!raw) return null;
+    var s = String(raw).trim().toLowerCase();
+    if (s === 'math' || s === 'maths' || s === 'mathematics') return 'Mathematics';
+    if (s === 'la' || s === 'language-arts' || s === 'language arts' || s === 'english') return 'Language Arts';
+    return null;
+  }
 
-    // Shuffle the 12 questions
-    selected.sort(function () { return 0.5 - Math.random(); });
+  function pickSubjectSession(bank, subject) {
+    var pool = bank.filter(function (q) { return q.subject === subject; });
+    var selected = shuffleArray(pool).slice(0, QUESTIONS_PER_SESSION);
 
-    // Shuffle options for each question
     return selected.map(function (q, idx) {
       var correctOptText = q.options[q.correctIndex];
-      var shuffledOpts = q.options.slice().sort(function () { return 0.5 - Math.random(); });
+      var shuffledOpts = shuffleArray(q.options);
       var newCorrectIdx = shuffledOpts.indexOf(correctOptText);
 
       return {
@@ -101,6 +107,11 @@
     });
   }
 
+  function clearStarsTrail() {
+    var trail = document.getElementById('readiness-stars-trail');
+    if (trail) trail.innerHTML = '';
+  }
+
   function renderStarsTrail() {
     var trail = document.getElementById('readiness-stars-trail');
     if (!trail) return;
@@ -111,7 +122,7 @@
       star.className = 'trail-star';
       star.setAttribute('aria-hidden', 'true');
 
-      if (i < currentIndex) {
+      if (i < userAnswers.length) {
         var ans = userAnswers[i];
         if (ans && ans.isCorrect) {
           star.className += ' star-correct';
@@ -135,6 +146,38 @@
     }
   }
 
+  function renderSubjectPicker() {
+    var container = document.getElementById('readiness-card');
+    if (!container) return;
+
+    activeSubject = null;
+    currentQuestions = [];
+    currentIndex = 0;
+    userAnswers = [];
+    streak = 0;
+    maxStreak = 0;
+
+    clearStarsTrail();
+    if (initialPickerHtml) {
+      container.innerHTML = initialPickerHtml;
+    }
+
+    updateMascotReaction('happy', 'Welcome! Pick Mathematics or Language Arts to try 10 sample questions together.');
+    wirePickerButtons();
+  }
+
+  function wirePickerButtons() {
+    var buttons = document.querySelectorAll('[data-start-subject]');
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var subj = btn.getAttribute('data-start-subject');
+        if (ACTIVE_SUBJECTS.indexOf(subj) !== -1) {
+          startSubjectSession(subj);
+        }
+      });
+    });
+  }
+
   function renderCurrentQuestion() {
     var container = document.getElementById('readiness-card');
     var liveRegion = document.getElementById('readiness-live-announcer');
@@ -148,27 +191,29 @@
     var q = currentQuestions[currentIndex];
     renderStarsTrail();
 
-    // Streak indicator
     var streakBadge = '';
     if (streak >= 2) {
       streakBadge = '<div class="streak-badge" aria-label="Streak of ' + streak + ' correct answers">🔥 ' + streak + ' In a Row!</div>';
     }
 
-    var passageHtml = q.passage ? '<div class="question-passage"><p><strong>Reading Passage:</strong></p><blockquote>' + escapeHtml(q.passage) + '</blockquote></div>' : '';
+    var passageHtml = q.passage
+      ? '<div class="question-passage"><p><strong>Reading Passage:</strong></p><blockquote>' + escapeHtml(q.passage) + '</blockquote></div>'
+      : '';
     var imageHtml = q.imageSvg ? '<div class="question-diagram">' + q.imageSvg + '</div>' : '';
 
-    var subjectBadges = {
-      'Language Arts': '<span class="subject-badge badge-la">📚 Language Arts</span>',
-      'Mathematics': '<span class="subject-badge badge-math">🔢 Mathematics</span>',
-      'Science': '<span class="subject-badge badge-sci">⚡ Science</span>',
-      'Social Studies': '<span class="subject-badge badge-ss">🧭 Social Studies</span>'
-    };
+    var subjectBadge = q.subject === 'Mathematics'
+      ? '<span class="subject-badge badge-math">🔢 Mathematics</span>'
+      : '<span class="subject-badge badge-la">📚 Language Arts</span>';
 
     var html = '' +
+      '<div class="readiness-track-bar">' +
+        '<span class="readiness-track-label">Track: <strong>' + escapeHtml(activeSubject) + '</strong> (Sample Practice)</span>' +
+        '<button type="button" id="btn-change-subject" class="btn-link-subtle">← Change Subject</button>' +
+      '</div>' +
       '<div class="question-header">' +
         '<div class="question-meta">' +
           '<span class="question-step">Question ' + (currentIndex + 1) + ' of ' + currentQuestions.length + '</span>' +
-          (subjectBadges[q.subject] || '') +
+          subjectBadge +
         '</div>' +
         streakBadge +
       '</div>' +
@@ -200,12 +245,16 @@
     container.innerHTML = html;
 
     if (liveRegion) {
-      liveRegion.textContent = 'Question ' + (currentIndex + 1) + ' of ' + currentQuestions.length + ': ' + q.subject + '. ' + q.prompt;
+      liveRegion.textContent = activeSubject + ' Question ' + (currentIndex + 1) + ' of ' + currentQuestions.length + ': ' + q.prompt;
     }
 
-    updateMascotReaction('neutral', "Take your time! Read each option carefully.");
+    updateMascotReaction('neutral', 'Take your time! Read each option carefully.');
 
-    // Wire up option selection
+    var changeBtn = document.getElementById('btn-change-subject');
+    if (changeBtn) {
+      changeBtn.addEventListener('click', renderSubjectPicker);
+    }
+
     var form = document.getElementById('readiness-options-form');
     var submitBtn = document.getElementById('btn-submit-answer');
     var radios = form.querySelectorAll('input[type="radio"]');
@@ -214,15 +263,11 @@
       radio.addEventListener('change', function () {
         submitBtn.removeAttribute('disabled');
         updateMascotReaction('thinking', "Good thought! Click 'Check My Answer' when ready.");
-        // Highlight selected label
         radios.forEach(function (r, idx) {
           var lbl = document.getElementById('label-' + idx);
           if (lbl) {
-            if (r.checked) {
-              lbl.classList.add('option-selected');
-            } else {
-              lbl.classList.remove('option-selected');
-            }
+            if (r.checked) lbl.classList.add('option-selected');
+            else lbl.classList.remove('option-selected');
           }
         });
       });
@@ -231,8 +276,7 @@
     submitBtn.addEventListener('click', function () {
       var selectedRadio = form.querySelector('input[type="radio"]:checked');
       if (!selectedRadio) return;
-      var selectedIdx = parseInt(selectedRadio.value, 10);
-      handleAnswer(selectedIdx);
+      handleAnswer(parseInt(selectedRadio.value, 10));
     });
   }
 
@@ -247,14 +291,12 @@
       subject: q.subject
     });
 
-    // Disable radios
     var radios = document.querySelectorAll('input[name="cpea-choice"]');
     radios.forEach(function (r) { r.disabled = true; });
 
     var submitBtn = document.getElementById('btn-submit-answer');
     if (submitBtn) submitBtn.style.display = 'none';
 
-    // Highlight correct vs chosen
     var correctLabel = document.getElementById('label-' + q.correctIndex);
     if (correctLabel) correctLabel.classList.add('option-correct');
 
@@ -262,17 +304,16 @@
       var chosenLabel = document.getElementById('label-' + selectedIndex);
       if (chosenLabel) chosenLabel.classList.add('option-incorrect');
       streak = 0;
-      updateMascotReaction('happy', "Nice try! Read the explanation below to see why option " + ['A','B','C','D'][q.correctIndex] + " is correct.");
+      updateMascotReaction('happy', 'Nice try! Read the explanation below to see why option ' + ['A', 'B', 'C', 'D'][q.correctIndex] + ' is correct.');
     } else {
       streak++;
       if (streak > maxStreak) maxStreak = streak;
-      var cheer = streak >= 3 ? "Amazing! " + streak + " correct in a row! You're a superstar!" : "Spot on! That's correct!";
+      var cheer = streak >= 3 ? 'Amazing! ' + streak + " correct in a row! You're a superstar!" : "Spot on! That's correct!";
       updateMascotReaction('celebrating', cheer);
     }
 
     renderStarsTrail();
 
-    // Show feedback explanation
     var feedbackArea = document.getElementById('question-feedback-area');
     var liveRegion = document.getElementById('readiness-live-announcer');
 
@@ -306,141 +347,120 @@
     }
   }
 
+  function computeBand(correctCount) {
+    if (correctCount >= 9) {
+      return {
+        bandName: 'Exam Star',
+        bandBadge: '🌟',
+        mascotCheer: 'Incredible job! You showed outstanding ' + activeSubject + ' mastery across these 10 sample questions. Keep shining!'
+      };
+    }
+    if (correctCount >= 7) {
+      return {
+        bandName: 'Looking Good',
+        bandBadge: '🚀',
+        mascotCheer: 'Super effort! You have a strong ' + activeSubject + ' foundation. A little regular practice will make you unstoppable!'
+      };
+    }
+    if (correctCount >= 5) {
+      return {
+        bandName: 'Getting There',
+        bandBadge: '💪',
+        mascotCheer: 'Great work completing all 10 ' + activeSubject + ' questions! Practising key topics will build even more confidence.'
+      };
+    }
+    return {
+      bandName: 'Just Starting',
+      bandBadge: '🌱',
+      mascotCheer: 'Every learning journey starts here! Practising these sample ' + activeSubject + ' questions is a great way to grow.'
+    };
+  }
+
   function renderResultsScreen() {
     var container = document.getElementById('readiness-card');
     var liveRegion = document.getElementById('readiness-live-announcer');
     if (!container) return;
 
-    var totalQuestions = currentQuestions.length;
+    var totalQuestions = currentQuestions.length || QUESTIONS_PER_SESSION;
     var correctCount = userAnswers.filter(function (a) { return a.isCorrect; }).length;
     var percentage = Math.round((correctCount / totalQuestions) * 100);
+    var bandInfo = computeBand(correctCount);
+    var otherSubject = activeSubject === 'Mathematics' ? 'Language Arts' : 'Mathematics';
 
-    // Readiness Bands
-    var bandName = '';
-    var bandBadge = '';
-    var mascotCheer = '';
+    updateMascotReaction('celebrating', bandInfo.mascotCheer);
 
-    if (correctCount >= 11) {
-      bandName = 'Exam Star';
-      bandBadge = '🌟';
-      mascotCheer = "Incredible job! You showed outstanding mastery across all subjects. Keep shining!";
-    } else if (correctCount >= 8) {
-      bandName = 'Looking Good';
-      bandBadge = '🚀';
-      mascotCheer = "Super effort! You have a really strong foundation. A little extra review and you'll be unstoppable!";
-    } else if (correctCount >= 5) {
-      bandName = 'Getting There';
-      bandBadge = '💪';
-      mascotCheer = "Great work finishing all 12 questions! Reviewing key concepts will build even more confidence.";
-    } else {
-      bandName = 'Just Starting';
-      bandBadge = '🌱';
-      mascotCheer = "Every learning journey starts here! Practising these sample questions is the best way to grow.";
-    }
+    var bookUrl = '/book?rcSubject=' + encodeURIComponent(activeSubject) +
+      '&rcScore=' + encodeURIComponent(String(correctCount)) +
+      '&rcTotal=' + encodeURIComponent(String(totalQuestions)) +
+      '&rcBand=' + encodeURIComponent(bandInfo.bandName);
 
-    updateMascotReaction('celebrating', mascotCheer);
-
-    // Subject breakdown
-    var subjects = ['Language Arts', 'Mathematics', 'Science', 'Social Studies'];
-    var subjectBadgesNames = {
-      'Language Arts': 'Word Whiz 📚',
-      'Mathematics': 'Number Ninja 🔢',
-      'Science': 'Science Spark ⚡',
-      'Social Studies': 'World Explorer 🧭'
-    };
-
-    var subjectRowsHtml = '';
-    var strengths = [];
-    var practiceAreas = [];
-
-    subjects.forEach(function (subj) {
-      var subjAnswers = userAnswers.filter(function (a) { return a.subject === subj; });
-      var subjCorrect = subjAnswers.filter(function (a) { return a.isCorrect; }).length;
-      var subjTotal = subjAnswers.length || 3;
-      var subjPct = Math.round((subjCorrect / subjTotal) * 100);
-
-      if (subjCorrect >= 2) {
-        strengths.push(subj + ' (' + subjCorrect + '/' + subjTotal + ' correct)');
-      } else {
-        practiceAreas.push(subj + ' (Review recommended: ' + subjCorrect + '/' + subjTotal + ')');
-      }
-
-      subjectRowsHtml += '' +
-        '<div class="subject-row">' +
-          '<div class="subject-row-header">' +
-            '<span class="subject-row-name">' + subj + '</span>' +
-            '<span class="subject-row-badge">' + subjectBadgesNames[subj] + '</span>' +
-            '<span class="subject-row-score"><strong>' + subjCorrect + '/' + subjTotal + '</strong> (' + subjPct + '%)</span>' +
-          '</div>' +
-          '<div class="subject-progress-bar" role="progressbar" aria-valuenow="' + subjPct + '" aria-valuemin="0" aria-valuemax="100">' +
-            '<div class="subject-progress-fill" style="width: ' + subjPct + '%;"></div>' +
-          '</div>' +
-        '</div>';
-    });
-
-    var strengthsHtml = strengths.length > 0
-      ? '<div class="results-insight-box insight-strengths"><h4>✨ What You Did Really Well</h4><ul>' + strengths.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ul></div>'
+    var subjectIcon = activeSubject === 'Mathematics' ? '🔢' : '📚';
+    var streakLine = maxStreak >= 2
+      ? '<p class="results-streak-note">🔥 Best Streak: <strong>' + maxStreak + ' in a row</strong></p>'
       : '';
-
-    var practiceHtml = practiceAreas.length > 0
-      ? '<div class="results-insight-box insight-practice"><h4>🎯 What to Practise Next</h4><ul>' + practiceAreas.map(function(p){ return '<li>' + escapeHtml(p) + '</li>'; }).join('') + '</ul></div>'
-      : '<div class="results-insight-box insight-strengths"><h4>🎯 Next Steps</h4><p>You scored well across all 4 subjects! Keep practicing with new question sets.</p></div>';
 
     var resultsHtml = '' +
       '<div class="results-container">' +
         '<div class="results-header">' +
-          '<span class="results-band-icon" aria-hidden="true">' + bandBadge + '</span>' +
-          '<h2 class="results-title">' + bandName + '</h2>' +
+          '<span class="results-band-icon" aria-hidden="true">' + bandInfo.bandBadge + '</span>' +
+          '<p class="results-subject-pill">' + subjectIcon + ' ' + escapeHtml(activeSubject) + ' Track</p>' +
+          '<h2 class="results-title">' + escapeHtml(bandInfo.bandName) + '</h2>' +
           '<p class="results-score-display">' + correctCount + ' out of ' + totalQuestions + ' Correct &bull; ' + percentage + '%</p>' +
-          '<p class="results-disclaimer"><strong>Note:</strong> This readiness check is a fun, unofficial practice guide and not an official CPEA examination score.</p>' +
+          streakLine +
+          '<p class="results-disclaimer"><strong>Note:</strong> Sample questions: not an official CPEA paper. Results are not stored automatically.</p>' +
         '</div>' +
 
         '<div class="results-breakdown-section">' +
-          '<h3>Subject Breakdown</h3>' +
-          '<div class="subject-bars-list">' +
-            subjectRowsHtml +
+          '<h3>' + escapeHtml(activeSubject) + ' Score Progress</h3>' +
+          '<div class="subject-row">' +
+            '<div class="subject-row-header">' +
+              '<span class="subject-row-name">' + escapeHtml(activeSubject) + '</span>' +
+              '<span class="subject-row-badge">' + escapeHtml(bandInfo.bandName) + ' ' + bandInfo.bandBadge + '</span>' +
+              '<span class="subject-row-score"><strong>' + correctCount + '/' + totalQuestions + '</strong> (' + percentage + '%)</span>' +
+            '</div>' +
+            '<div class="subject-progress-bar" role="progressbar" aria-valuenow="' + percentage + '" aria-valuemin="0" aria-valuemax="100">' +
+              '<div class="subject-progress-fill" style="width: ' + percentage + '%;"></div>' +
+            '</div>' +
           '</div>' +
-        '</div>' +
-
-        '<div class="results-insights-grid">' +
-          strengthsHtml +
-          practiceHtml +
         '</div>' +
 
         '<div class="results-actions print-hidden">' +
           '<button type="button" id="btn-print-results" class="btn btn-secondary">🖨️ Print My Results</button>' +
-          '<button type="button" id="btn-retry-quiz" class="btn btn-primary">🔄 Try Again with New Questions</button>' +
-          '<a href="/book" class="btn btn-accent">📅 Book a Consultation</a>' +
+          '<button type="button" id="btn-retry-quiz" class="btn btn-primary">🔄 Try 10 New ' + escapeHtml(activeSubject) + ' Questions</button>' +
+          '<button type="button" id="btn-switch-subject" class="btn btn-secondary">⇄ Try ' + escapeHtml(otherSubject) + '</button>' +
+          '<a href="' + escapeHtml(bookUrl) + '" class="btn btn-accent">📅 Book a Consultation</a>' +
         '</div>' +
       '</div>';
 
     container.innerHTML = resultsHtml;
 
     if (liveRegion) {
-      liveRegion.textContent = 'Quiz complete! You scored ' + correctCount + ' out of 12 (' + percentage + '%). Readiness level: ' + bandName;
+      liveRegion.textContent = activeSubject + ' readiness check complete! You scored ' + correctCount + ' out of ' + totalQuestions + ' (' + percentage + '%). Readiness band: ' + bandInfo.bandName;
     }
 
-    // Wire up results actions
     var printBtn = document.getElementById('btn-print-results');
     if (printBtn) {
-      printBtn.addEventListener('click', function () {
-        window.print();
-      });
+      printBtn.addEventListener('click', function () { window.print(); });
     }
 
     var retryBtn = document.getElementById('btn-retry-quiz');
     if (retryBtn) {
-      retryBtn.addEventListener('click', function () {
-        startNewSession();
-      });
+      retryBtn.addEventListener('click', function () { startSubjectSession(activeSubject); });
+    }
+
+    var switchBtn = document.getElementById('btn-switch-subject');
+    if (switchBtn) {
+      switchBtn.addEventListener('click', function () { startSubjectSession(otherSubject); });
     }
   }
 
-  function startNewSession() {
+  function startSubjectSession(subject) {
+    activeSubject = subject;
     currentIndex = 0;
     userAnswers = [];
     streak = 0;
-    currentQuestions = pickRandomSession(questionsData);
+    maxStreak = 0;
+    currentQuestions = pickSubjectSession(questionsData, subject);
     renderCurrentQuestion();
   }
 
@@ -456,7 +476,10 @@
 
   function initReadinessCheck() {
     var dataEl = document.getElementById('readiness-questions-data');
-    if (!dataEl) return;
+    var cardEl = document.getElementById('readiness-card');
+    if (!dataEl || !cardEl) return;
+
+    initialPickerHtml = cardEl.innerHTML;
 
     try {
       questionsData = JSON.parse(dataEl.textContent);
@@ -465,8 +488,19 @@
       return;
     }
 
-    if (Array.isArray(questionsData) && questionsData.length > 0) {
-      startNewSession();
+    if (!Array.isArray(questionsData) || questionsData.length === 0) return;
+
+    // Optional URL deep-link (?subject=math or ?subject=language-arts)
+    var preselected = null;
+    try {
+      var params = new URLSearchParams(window.location.search);
+      preselected = normalizeSubjectParam(params.get('subject'));
+    } catch (_) {}
+
+    if (preselected) {
+      startSubjectSession(preselected);
+    } else {
+      wirePickerButtons();
     }
   }
 

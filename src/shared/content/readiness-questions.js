@@ -1,21 +1,22 @@
 /**
- * CPEA Mock Examination Question Bank
- * Original, culturally grounded sample questions designed for Caribbean primary students (ages 11-12).
- * Formatted across 4 exam subjects: Language Arts, Mathematics, Science, and Social Studies.
+ * CPEA-Style Sample Readiness Check Question Bank
+ * Original, culturally grounded sample practice questions for Caribbean primary students (approx. ages 10–12).
  *
- * Each question has:
- * - subject: Subject category
- * - prompt: Question text
- * - passage: Optional reading passage (used in Language Arts)
- * - imageSvg: Optional original inline SVG graphic
- * - options: 4 distinct choices (A to D)
- * - correctIndex: Index (0-3) of the correct choice
- * - explanation: Friendly, educational explanation shown after answering
+ * IMPORTANT:
+ * - Active public tracks: Mathematics (20 original sample questions) and Language Arts (20 original sample questions).
+ * - Each session draws 10 randomized questions from the chosen active subject.
+ * - Science (6) and Social Studies (6) are preserved in code in HIDDEN_SUBJECTS for potential future use,
+ *   but are NOT exposed in the public subject picker or embedded into rendered page data.
+ * - All questions are original practice samples, NOT official CPEA exam papers.
  */
+
+const ACTIVE_SUBJECTS = ['Mathematics', 'Language Arts'];
+const HIDDEN_SUBJECTS = ['Science', 'Social Studies'];
+const QUESTIONS_PER_SESSION = 10;
 
 const READINESS_QUESTIONS = [
   // =========================================================================
-  // LANGUAGE ARTS (6 Questions)
+  // LANGUAGE ARTS (20 Original Sample Questions — Active Track)
   // =========================================================================
   {
     id: 'la-01',
@@ -77,9 +78,143 @@ const READINESS_QUESTIONS = [
     correctIndex: 1,
     explanation: 'In a "neither... nor" structure with compound subjects, the verb agrees with the subject closest to it ("the students were").'
   },
+  {
+    id: 'la-07',
+    subject: 'Language Arts',
+    passage: 'On Saturday morning, a group of primary students met near the sandy cove with small spades and watering cans. Working side by side, they planted thirty young sea-grape saplings along the dunes. Their teacher explained that the spreading roots would hold the loose sand in place during strong coastal winds.',
+    prompt: 'What is the MAIN IDEA of the passage?',
+    options: [
+      'Sea-grape trees grow faster than palm trees.',
+      'Students planted sea-grape saplings to help protect the beach from sand erosion.',
+      'The students preferred gardening to swimming on Saturday.',
+      'Strong winds blew away all of the watering cans.'
+    ],
+    correctIndex: 1,
+    explanation: 'Every detail in the paragraph focuses on the students planting sea-grape saplings so their roots protect the dunes.'
+  },
+  {
+    id: 'la-08',
+    subject: 'Language Arts',
+    prompt: 'Read the sentence below:\n"At sunrise, the calm harbour shimmered like a sheet of polished glass."\nWhich figure of speech is used in this sentence?',
+    options: ['Metaphor', 'Simile', 'Onomatopoeia', 'Oxymoron'],
+    correctIndex: 1,
+    explanation: 'A simile compares two different things using the word "like" or "as" ("shimmered like a sheet of polished glass").'
+  },
+  {
+    id: 'la-09',
+    subject: 'Language Arts',
+    prompt: 'Choose the correct homophone to complete the sentence:\n"Please place the extra dictionaries over __________ on the top shelf."',
+    options: ['their', 'there', 'they\'re', 'theirs'],
+    correctIndex: 1,
+    explanation: '"There" refers to a place or location. "Their" shows ownership, and "they\'re" is short for "they are".'
+  },
+  {
+    id: 'la-10',
+    subject: 'Language Arts',
+    prompt: 'Which word is the OPPOSITE (antonym) of the word "GENEROUS"?',
+    options: ['Kind', 'Selfish', 'Helpful', 'Cheerful'],
+    correctIndex: 1,
+    explanation: 'A generous person gladly shares with others, while a selfish person thinks only of themselves.'
+  },
+  {
+    id: 'la-11',
+    subject: 'Language Arts',
+    prompt: 'In the sentence below, what part of speech is the word "SWIFTLY"?\n"The cricket ball rolled swiftly across the grassy outfield."',
+    options: ['Noun', 'Adjective', 'Adverb', 'Preposition'],
+    correctIndex: 2,
+    explanation: '"Swiftly" describes HOW the ball rolled (it modifies the verb "rolled"), making it an adverb.'
+  },
+  {
+    id: 'la-12',
+    subject: 'Language Arts',
+    prompt: 'Choose the correct past-tense verb to complete the sentence:\n"Yesterday afternoon, Keisha __________ her brightly coloured kite above the playing field."',
+    options: ['flied', 'flew', 'flying', 'flies'],
+    correctIndex: 1,
+    explanation: '"Fly" is an irregular verb; its simple past tense is "flew" (not "flied").'
+  },
+  {
+    id: 'la-13',
+    subject: 'Language Arts',
+    prompt: 'Which sentence uses the apostrophe CORRECTLY to show ownership?',
+    options: [
+      'The students backpack was left beside the classroom door.',
+      'The student\'s backpack was left beside the classroom door.',
+      'The student\'s backpack\'s was left beside the classroom door.',
+      'The students\'s backpack was left beside the classroom door.'
+    ],
+    correctIndex: 1,
+    explanation: 'For a single owner ("the student"), add an apostrophe and "s" ("student\'s") before the item owned ("backpack").'
+  },
+  {
+    id: 'la-14',
+    subject: 'Language Arts',
+    prompt: 'What does the prefix "RE-" mean in words like "rebuild", "reread", and "rewrite"?',
+    options: ['Before', 'Not', 'Again', 'Under'],
+    correctIndex: 2,
+    explanation: 'The prefix "re-" means "again" or "back", so "reread" means to read again.'
+  },
+  {
+    id: 'la-15',
+    subject: 'Language Arts',
+    passage: 'Tariq looked up at the thick grey clouds rolling in from the east. Without being asked, he rolled his bicycle under the covered porch, shut the bedroom shutters, and packed his yellow raincoat into his school bag.',
+    prompt: 'What can you INFER from Tariq\'s actions?',
+    options: [
+      'Tariq is getting ready to sell his bicycle.',
+      'Tariq expects a heavy rain shower to start soon.',
+      'Tariq forgot where he left his school bag.',
+      'Tariq plans to go swimming in the afternoon.'
+    ],
+    correctIndex: 1,
+    explanation: 'Dark grey clouds, moving a bicycle under shelter, closing shutters, and packing a raincoat all show he expects rain.'
+  },
+  {
+    id: 'la-16',
+    subject: 'Language Arts',
+    prompt: 'Choose the BEST conjunction to join the two ideas:\n"Maya practised her speech every evening, __________ she felt calm and confident on stage."',
+    options: ['although', 'so', 'unless', 'but'],
+    correctIndex: 1,
+    explanation: '"So" shows a cause-and-effect relationship: practising every evening caused her to feel calm on stage.'
+  },
+  {
+    id: 'la-17',
+    subject: 'Language Arts',
+    prompt: 'Which word is CLOSEST in meaning (synonym) to the word "CAUTIOUS"?',
+    options: ['Careful', 'Noisy', 'Reckless', 'Sleepy'],
+    correctIndex: 0,
+    explanation: '"Cautious" means careful and watchful to avoid danger or mistakes.'
+  },
+  {
+    id: 'la-18',
+    subject: 'Language Arts',
+    prompt: 'Choose the word that BEST completes the sentence:\n"Both players on the netball team remembered to bring __________ own water bottles."',
+    options: ['his', 'her', 'their', 'its'],
+    correctIndex: 2,
+    explanation: '"Both players" is a plural subject, so it takes the plural possessive pronoun "their".'
+  },
+  {
+    id: 'la-19',
+    subject: 'Language Arts',
+    prompt: 'Which word is spelled CORRECTLY?',
+    options: ['neccessary', 'necessary', 'necesary', 'neccesary'],
+    correctIndex: 1,
+    explanation: '"Necessary" is spelled with one "c" and two "s"s (a handy memory trick: one collar, two sleeves).'
+  },
+  {
+    id: 'la-20',
+    subject: 'Language Arts',
+    prompt: 'Which of the following sentences states a FACT rather than an opinion?',
+    options: [
+      'Mangoes are the tastiest fruit in the entire world.',
+      'An island is a piece of land completely surrounded by water.',
+      'Blue is a much prettier colour than green.',
+      'Friday is always the most exciting day of the week.'
+    ],
+    correctIndex: 1,
+    explanation: 'A fact can be proven true for everyone; the definition of an island is a verifiable fact, whereas the others are personal opinions.'
+  },
 
   // =========================================================================
-  // MATHEMATICS (6 Questions)
+  // MATHEMATICS (20 Original Sample Questions — Active Track)
   // =========================================================================
   {
     id: 'math-01',
@@ -98,16 +233,14 @@ const READINESS_QUESTIONS = [
   {
     id: 'math-02',
     subject: 'Mathematics',
-    imageSvg: `<svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Analog clock showing 3:15">
+    imageSvg: `<svg width="140" height="140" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Analog clock showing 3:00">
       <circle cx="70" cy="70" r="60" fill="#FFF9C4" stroke="#1A365D" stroke-width="3"/>
       <circle cx="70" cy="70" r="4" fill="#1A365D"/>
       <text x="70" y="24" font-size="12" font-weight="bold" text-anchor="middle" fill="#1A365D">12</text>
       <text x="120" y="74" font-size="12" font-weight="bold" text-anchor="middle" fill="#1A365D">3</text>
       <text x="70" y="124" font-size="12" font-weight="bold" text-anchor="middle" fill="#1A365D">6</text>
       <text x="20" y="74" font-size="12" font-weight="bold" text-anchor="middle" fill="#1A365D">9</text>
-      <!-- Hour hand pointing to 3 -->
       <line x1="70" y1="70" x2="98" y2="70" stroke="#1A365D" stroke-width="3.5" stroke-linecap="round"/>
-      <!-- Minute hand pointing to 12 -->
       <line x1="70" y1="70" x2="70" y2="30" stroke="#E65100" stroke-width="2.5" stroke-linecap="round"/>
     </svg>`,
     prompt: 'The clock shows when a cricket match started (3:00 PM). The match ended at 5:45 PM. How long did the match last?',
@@ -121,15 +254,12 @@ const READINESS_QUESTIONS = [
     imageSvg: `<svg width="220" height="130" viewBox="0 0 220 130" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing mangoes picked: Mon 20, Tue 35, Wed 25">
       <line x1="30" y1="100" x2="200" y2="100" stroke="#1A365D" stroke-width="2"/>
       <line x1="30" y1="20" x2="30" y2="100" stroke="#1A365D" stroke-width="2"/>
-      <!-- Bars -->
       <rect x="45" y="60" width="30" height="40" fill="#2E75B6"/>
       <rect x="95" y="30" width="30" height="70" fill="#F5A623"/>
       <rect x="145" y="50" width="30" height="50" fill="#4CAF50"/>
-      <!-- Labels -->
       <text x="60" y="115" font-size="10" text-anchor="middle" fill="#1A365D">Mon</text>
       <text x="110" y="115" font-size="10" text-anchor="middle" fill="#1A365D">Tue</text>
       <text x="160" y="115" font-size="10" text-anchor="middle" fill="#1A365D">Wed</text>
-      <!-- Values -->
       <text x="60" y="55" font-size="10" text-anchor="middle" fill="#1A365D" font-weight="bold">20</text>
       <text x="110" y="25" font-size="10" text-anchor="middle" fill="#1A365D" font-weight="bold">35</text>
       <text x="160" y="45" font-size="10" text-anchor="middle" fill="#1A365D" font-weight="bold">25</text>
@@ -163,24 +293,143 @@ const READINESS_QUESTIONS = [
     correctIndex: 1,
     explanation: '4 notebooks + $4.00 = $16.00, so 4 notebooks = $12.00. One notebook = $12.00 ÷ 4 = $3.00.'
   },
+  {
+    id: 'math-07',
+    subject: 'Mathematics',
+    imageSvg: `<svg width="200" height="110" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rectangle garden bed 12 metres long and 5 metres wide">
+      <rect x="35" y="25" width="130" height="55" fill="#E8F5E9" stroke="#1A365D" stroke-width="2.5"/>
+      <text x="100" y="18" font-size="12" fill="#1A365D" font-weight="bold" text-anchor="middle">12 m</text>
+      <text x="182" y="57" font-size="12" fill="#1A365D" font-weight="bold" text-anchor="middle">5 m</text>
+    </svg>`,
+    prompt: 'A rectangular school garden is 12 metres long and 5 metres wide. What is the PERIMETER around the garden?',
+    options: ['17 m', '34 m', '60 m', '29 m'],
+    correctIndex: 1,
+    explanation: 'Perimeter of a rectangle = 2 × (Length + Width) = 2 × (12 + 5) = 2 × 17 = 34 m.'
+  },
+  {
+    id: 'math-08',
+    subject: 'Mathematics',
+    prompt: 'Amara drank 1/4 of a jug of sorrel and her brother drank 3/8 of the same jug. What fraction of the jug did they drink altogether?',
+    options: ['4/12', '5/8', '1/2', '7/8'],
+    correctIndex: 1,
+    explanation: 'Convert 1/4 to eighths: 1/4 = 2/8. Then add: 2/8 + 3/8 = 5/8.'
+  },
+  {
+    id: 'math-09',
+    subject: 'Mathematics',
+    prompt: 'At a snack stall, a bottle of coconut water costs $3.75 and a baked patty costs $2.50. If Jalen pays with a $10.00 note, how much change should he receive?',
+    options: ['$3.25', '$3.75', '$4.25', '$6.25'],
+    correctIndex: 1,
+    explanation: 'Total cost = $3.75 + $2.50 = $6.25. Change = $10.00 - $6.25 = $3.75.'
+  },
+  {
+    id: 'math-10',
+    subject: 'Mathematics',
+    prompt: 'What is the place value of the digit 7 in the number 47,382?',
+    options: ['70', '700', '7,000', '70,000'],
+    correctIndex: 2,
+    explanation: 'Reading from right to left: 2 (ones), 8 (tens), 3 (hundreds), 7 (thousands). So 7 represents 7,000.'
+  },
+  {
+    id: 'math-11',
+    subject: 'Mathematics',
+    prompt: 'To make fresh limeade, Malik mixes water and lime juice in the ratio 4 : 1. If he uses 3 cups of lime juice, how many cups of water does he need?',
+    options: ['7 cups', '9 cups', '12 cups', '15 cups'],
+    correctIndex: 2,
+    explanation: 'For every 1 cup of lime juice he needs 4 cups of water. For 3 cups of lime juice: 3 × 4 = 12 cups of water.'
+  },
+  {
+    id: 'math-12',
+    subject: 'Mathematics',
+    imageSvg: `<svg width="200" height="110" viewBox="0 0 200 110" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Straight line divided into a 125 degree angle and unknown angle x">
+      <line x1="20" y1="85" x2="180" y2="85" stroke="#1A365D" stroke-width="2.5"/>
+      <line x1="100" y1="85" x2="145" y2="25" stroke="#E65100" stroke-width="2.5"/>
+      <path d="M76 85 A24 24 0 0 1 114 66" stroke="#2E75B6" stroke-width="2" fill="none"/>
+      <text x="64" y="58" font-size="12" fill="#1A365D" font-weight="bold">125°</text>
+      <text x="132" y="72" font-size="12" fill="#E65100" font-weight="bold">x</text>
+    </svg>`,
+    prompt: 'In the diagram above, the two angles lie on a straight line. What is the size of angle x?',
+    options: ['45°', '55°', '65°', '75°'],
+    correctIndex: 1,
+    explanation: 'Angles on a straight line add up to 180°. Therefore, x = 180° - 125° = 55°.'
+  },
+  {
+    id: 'math-13',
+    subject: 'Mathematics',
+    prompt: 'Look at the number pattern below. What is the NEXT number in the sequence?\n5,  9,  13,  17,  ___',
+    options: ['19', '20', '21', '22'],
+    correctIndex: 2,
+    explanation: 'Each term increases by 4 (+4): 5 + 4 = 9, 9 + 4 = 13, 13 + 4 = 17, and 17 + 4 = 21.'
+  },
+  {
+    id: 'math-14',
+    subject: 'Mathematics',
+    prompt: 'A wooden sailboat is 4.5 metres long. What is its length in centimetres?',
+    options: ['45 cm', '405 cm', '450 cm', '4,500 cm'],
+    correctIndex: 2,
+    explanation: 'There are 100 centimetres in 1 metre. So 4.5 × 100 = 450 centimetres.'
+  },
+  {
+    id: 'math-15',
+    subject: 'Mathematics',
+    prompt: 'A school backpack normally costs $40.00. During a sale, it is discounted by 15%. How much money is taken off the regular price?',
+    options: ['$4.00', '$6.00', '$8.00', '$15.00'],
+    correctIndex: 1,
+    explanation: '10% of $40 is $4, and 5% of $40 is $2. Together, 15% of $40 = $4 + $2 = $6.00.'
+  },
+  {
+    id: 'math-16',
+    subject: 'Mathematics',
+    prompt: 'A teacher has 53 seashells to share equally among 6 craft tables. How many seashells will be LEFT OVER?',
+    options: ['3 seashells', '4 seashells', '5 seashells', '8 seashells'],
+    correctIndex: 2,
+    explanation: '6 × 8 = 48 seashells are shared equally. Remainder = 53 - 48 = 5 seashells left over.'
+  },
+  {
+    id: 'math-17',
+    subject: 'Mathematics',
+    prompt: 'A rectangular craft box is 5 cm long, 4 cm wide, and 3 cm tall. What is the VOLUME of the box?',
+    options: ['12 cm³', '24 cm³', '47 cm³', '60 cm³'],
+    correctIndex: 3,
+    explanation: 'Volume = Length × Width × Height = 5 × 4 × 3 = 60 cm³.'
+  },
+  {
+    id: 'math-18',
+    subject: 'Mathematics',
+    prompt: 'What is 6,482 rounded to the nearest HUNDRED?',
+    options: ['6,400', '6,480', '6,500', '7,000'],
+    correctIndex: 2,
+    explanation: 'The tens digit is 8 (which is 5 or greater), so we round 482 up to 500, giving 6,500.'
+  },
+  {
+    id: 'math-19',
+    subject: 'Mathematics',
+    prompt: 'Which of the following numbers is a PRIME number?',
+    options: ['15', '21', '23', '27'],
+    correctIndex: 2,
+    explanation: 'A prime number has exactly two factors: 1 and itself. 23 is prime, whereas 15 = 3×5, 21 = 3×7, and 27 = 3×9.'
+  },
+  {
+    id: 'math-20',
+    subject: 'Mathematics',
+    prompt: 'Which decimal is EQUAL to the fraction 3/4?',
+    options: ['0.34', '0.50', '0.75', '0.80'],
+    correctIndex: 2,
+    explanation: '3 ÷ 4 = 0.75 (or think of 3 quarters of a dollar = 75 cents = $0.75).'
+  },
 
   // =========================================================================
-  // SCIENCE (6 Questions)
+  // SCIENCE (6 Questions — Preserved in Code, Hidden from Public UI)
   // =========================================================================
   {
     id: 'sci-01',
     subject: 'Science',
     imageSvg: `<svg width="200" height="120" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Water cycle diagram showing evaporation, condensation, and precipitation">
-      <!-- Sun -->
       <circle cx="165" cy="30" r="14" fill="#F5A623"/>
-      <!-- Cloud -->
       <path d="M70 35 Q80 20 95 25 Q110 15 120 28 Q130 32 125 45 Q115 50 75 45 Z" fill="#90CAF9" stroke="#1A365D" stroke-width="1.5"/>
-      <!-- Ocean -->
       <path d="M20 100 Q60 90 100 100 Q140 110 180 100 L180 118 L20 118 Z" fill="#2E75B6"/>
-      <!-- Evaporation Arrow -->
       <path d="M50 90 Q45 65 65 52" stroke="#E65100" stroke-width="2" stroke-dasharray="3 3" marker-end="url(#arrow)"/>
       <text x="40" y="68" font-size="9" fill="#E65100" font-weight="bold">Stage X</text>
-      <!-- Rain -->
       <line x1="90" y1="52" x2="85" y2="70" stroke="#1A365D" stroke-width="1.5"/>
       <line x1="105" y1="52" x2="100" y2="70" stroke="#1A365D" stroke-width="1.5"/>
     </svg>`,
@@ -246,20 +495,17 @@ const READINESS_QUESTIONS = [
   },
 
   // =========================================================================
-  // SOCIAL STUDIES (6 Questions)
+  // SOCIAL STUDIES (6 Questions — Preserved in Code, Hidden from Public UI)
   // =========================================================================
   {
     id: 'ss-01',
     subject: 'Social Studies',
     imageSvg: `<svg width="180" height="120" viewBox="0 0 180 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Archipelago map outline">
-      <!-- Water -->
       <rect width="180" height="120" fill="#E1F5FE" rx="6"/>
-      <!-- Island shapes -->
       <path d="M45 35 Q65 25 85 30 Q70 42 45 35 Z" fill="#81C784" stroke="#1A365D" stroke-width="1.5"/>
       <circle cx="80" cy="50" r="10" fill="#A5D6A7" stroke="#1A365D" stroke-width="1.5"/>
       <ellipse cx="110" cy="70" rx="14" ry="8" fill="#81C784" stroke="#1A365D" stroke-width="1.5"/>
       <circle cx="135" cy="88" r="7" fill="#A5D6A7" stroke="#1A365D" stroke-width="1.5"/>
-      <!-- Compass Rose -->
       <text x="155" y="24" font-size="11" font-weight="bold" fill="#1A365D">N ↑</text>
     </svg>`,
     prompt: 'What geographical term describes a chain or cluster of islands, such as the Caribbean archipelago?',
@@ -319,30 +565,72 @@ const READINESS_QUESTIONS = [
   }
 ];
 
+function shuffleArray(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function normalizeActiveSubject(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const cleaned = raw.trim().toLowerCase();
+  if (cleaned === 'math' || cleaned === 'maths' || cleaned === 'mathematics') {
+    return 'Mathematics';
+  }
+  if (cleaned === 'la' || cleaned === 'english' || cleaned === 'language-arts' || cleaned === 'language arts') {
+    return 'Language Arts';
+  }
+  return null;
+}
+
+function getActiveQuestions(questions = READINESS_QUESTIONS) {
+  return questions.filter(q => ACTIVE_SUBJECTS.includes(q.subject));
+}
+
+function getQuestionsBySubject(subject, questions = READINESS_QUESTIONS) {
+  const canonical = normalizeActiveSubject(subject);
+  if (!canonical) return [];
+  return questions.filter(q => q.subject === canonical);
+}
+
+function getReadinessBand(correctCount, total = QUESTIONS_PER_SESSION) {
+  if (!Number.isInteger(correctCount) || total <= 0) {
+    return { band: 'Just Starting', badge: '🌱' };
+  }
+  if (correctCount >= 9) return { band: 'Exam Star', badge: '🌟' };
+  if (correctCount >= 7) return { band: 'Looking Good', badge: '🚀' };
+  if (correctCount >= 5) return { band: 'Getting There', badge: '💪' };
+  return { band: 'Just Starting', badge: '🌱' };
+}
+
 /**
- * Generates a randomized 12-question quiz session:
- * Selects 3 questions per subject (4 subjects = 12 questions total),
- * and shuffles option order while keeping correctIndex accurate.
+ * Generates a randomized 10-question quiz session for an active subject
+ * ('Mathematics' or 'Language Arts'). Shuffles question selection and option order
+ * while preserving the exact correctIndex.
  */
-function generateQuizSession(questions = READINESS_QUESTIONS) {
-  const subjects = ['Language Arts', 'Mathematics', 'Science', 'Social Studies'];
-  const selected = [];
+function generateQuizSession(subject = 'Mathematics', questions = READINESS_QUESTIONS) {
+  // Backwards-safety: if caller passed a questions array as first argument, default subject to Mathematics
+  let targetSubject = subject;
+  let sourceQuestions = questions;
+  if (Array.isArray(subject)) {
+    sourceQuestions = subject;
+    targetSubject = 'Mathematics';
+  }
 
-  subjects.forEach(subj => {
-    const pool = questions.filter(q => q.subject === subj);
-    // Shuffle pool
-    const shuffled = [...pool].sort(() => 0.5 - Math.random());
-    // Pick 3
-    selected.push(...shuffled.slice(0, 3));
-  });
+  const canonical = normalizeActiveSubject(targetSubject);
+  if (!canonical) {
+    throw new Error(`Unsupported or hidden readiness subject: ${targetSubject}`);
+  }
 
-  // Shuffle overall order of questions
-  const quiz = selected.sort(() => 0.5 - Math.random());
+  const pool = sourceQuestions.filter(q => q.subject === canonical);
+  const selected = shuffleArray(pool).slice(0, QUESTIONS_PER_SESSION);
 
-  // Shuffle options for each question
-  return quiz.map((q, qIndex) => {
+  return selected.map((q, qIndex) => {
     const originalCorrectOption = q.options[q.correctIndex];
-    const shuffledOptions = [...q.options].sort(() => 0.5 - Math.random());
+    const shuffledOptions = shuffleArray(q.options);
     const newCorrectIndex = shuffledOptions.indexOf(originalCorrectOption);
 
     return {
@@ -360,6 +648,13 @@ function generateQuizSession(questions = READINESS_QUESTIONS) {
 }
 
 module.exports = {
+  ACTIVE_SUBJECTS,
+  HIDDEN_SUBJECTS,
+  QUESTIONS_PER_SESSION,
   READINESS_QUESTIONS,
+  normalizeActiveSubject,
+  getActiveQuestions,
+  getQuestionsBySubject,
+  getReadinessBand,
   generateQuizSession
 };
