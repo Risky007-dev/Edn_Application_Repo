@@ -146,9 +146,9 @@ aws cloudformation deploy \
 
 > **OIDC Trust Security (No GitHub Environment Used):** `GitHubDeployRole` uses strict `StringEquals` on `token.actions.githubusercontent.com:sub` matching ONLY `repo:Risky007-dev/Edn_Application_Repo:ref:refs/heads/main` (zero wildcards, zero GitHub environments). Pull requests and feature branches cannot assume the deploy role.
 
-1. **Set Repository Variables** (via `gh variable set` or **Settings → Secrets and variables → Actions → Variables**):
-   - `AWS_DEPLOY_ROLE_ARN` = `GitHubDeployRoleArn` output from Stack `02`.
-   - `OPS_ALERT_EMAIL` = Owner email for CloudWatch/SNS/Budget alerts.
+1. **Set Repository Variable & Secret:**
+   - **Variable** (`gh variable set AWS_DEPLOY_ROLE_ARN`): `GitHubDeployRoleArn` output from Stack `02`.
+   - **Secret** (`gh secret set OPS_ALERT_EMAIL`): Owner alert email for CloudWatch/SNS/Budget alerts (stored as an Actions Secret so it never appears in public repo variables or logs).
 2. **Populate Anthropic API Key Out-of-Band in Secrets Manager:**
    After setting a hard spend cap in the Anthropic Console:
    ```bash

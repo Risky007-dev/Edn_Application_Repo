@@ -97,7 +97,7 @@ jobs:
           docker rm -f tt-smoke
 
       - name: Scan Container Image with Trivy (HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: tutortime-ci-test:local
           format: table
@@ -294,7 +294,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.release.outputs.target_tag }}
           CERT_ARN: ${{ steps.prereqs.outputs.cert_arn }}
-          ALERT_EMAIL: ${{ vars.OPS_ALERT_EMAIL }}
+          ALERT_EMAIL: ${{ secrets.OPS_ALERT_EMAIL }}
         run: |
           to_overrides() {
             node -e "const p=require('./infra/params/production.json')[\"$1\"].parameters; console.log(Object.entries(p).map(([k,v])=>k+'='+v).join(' '));"

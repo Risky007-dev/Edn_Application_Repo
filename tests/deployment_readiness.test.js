@@ -354,9 +354,12 @@ async function run() {
       !securityStackYaml.includes('s3:DeleteBucket'));
 
     const ciWorkflowYaml = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/ci-deploy.yml'), 'utf8');
-    check('ci-deploy.yml deploys directly to production on push to main with zero staging jobs, zero GitHub environments, data change-set guard, CF invalidation, and auto-rollback',
+    check('ci-deploy.yml deploys directly to production on push to main with zero staging jobs, zero GitHub environments, pinned trivy-action SHA, secret OPS_ALERT_EMAIL, data change-set guard, CF invalidation, and auto-rollback',
       !ciWorkflowYaml.includes('deploy-staging') &&
       !/^\s+environment:/m.test(ciWorkflowYaml) &&
+      ciWorkflowYaml.includes('aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25') &&
+      ciWorkflowYaml.includes('secrets.OPS_ALERT_EMAIL') &&
+      !ciWorkflowYaml.includes('vars.OPS_ALERT_EMAIL') &&
       ciWorkflowYaml.includes('tutortime-production-deploy') &&
       ciWorkflowYaml.includes('create-change-set') &&
       ciWorkflowYaml.includes('create-invalidation') &&

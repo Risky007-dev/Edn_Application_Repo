@@ -120,6 +120,6 @@
 ## 5. Rollout Summary
 
 See [`infra/OWNER_RUNBOOK.md`](infra/OWNER_RUNBOOK.md) for exact step-by-step commands:
-1. **Prepare (Before Merging to `main`):** Back up all 3 DynamoDB tables, enable PITR on `popcorn-maths-subscribers`, export both Route 53 zones, deploy Stack `01` via Change Set (verifying zero replacements/removals), deploy Stack `02` (`us-east-2`) and Stack `03a` (`us-east-1`), create GitHub `production` environment (`main` only, no reviewers) + repo variables (`AWS_DEPLOY_ROLE_ARN`, `OPS_ALERT_EMAIL`), and populate `tutortime/production/anthropic-api-key` out-of-band in Secrets Manager.
+1. **Prepare (Before Merging to `main`):** Back up all 3 DynamoDB tables, enable PITR on `popcorn-maths-subscribers`, export both Route 53 zones, deploy Stack `01` via Change Set (verifying zero replacements/removals), deploy Stack `02` (`us-east-2`) and Stack `03a` (`us-east-1`), set GitHub variable `AWS_DEPLOY_ROLE_ARN` and GitHub secret `OPS_ALERT_EMAIL`, and populate `tutortime/production/anthropic-api-key` out-of-band in Secrets Manager.
 2. **Deploy (`ManageLiveDnsRecords=false`):** Merge `feature/local-completion` into `main` via PR, watch CI/CD deploy production, and verify all pages, forms, email, portal, chatbot, and redirects through CloudFront using the real hostnames.
 3. **Go Live:** Atomically update only the approved web Route 53 records (never touching `mail.tutortime.ai`, `MX`, `TXT`, `DKIM`, `DMARC`), verify live traffic end-to-end, and prove auto-deploy with one small push to `main`.
