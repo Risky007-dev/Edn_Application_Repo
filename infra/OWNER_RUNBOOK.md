@@ -3,7 +3,7 @@
 > **DOCUMENT STATUS:** PRODUCTION-DIRECT RUNBOOK (Matches [`DEPLOYMENT_PLAN.md`](../DEPLOYMENT_PLAN.md))  
 > **ARCHITECTURE:** Zero-VM **AWS Lambda (Container + AWS Lambda Web Adapter 0.8.4) + Amazon CloudFront** (`us-east-2` compute/data + `us-east-1` edge ACM TLS cert)  
 > **DEPLOY MODEL:** Every push to `main` automatically runs tests → builds immutable image → verifies Stack `01` Change Set has zero replacements/removals → deploys production → invalidates CloudFront (`/*`) → runs live smoke tests → rolls back automatically to the last good image on failure (first deploy stops and reports). **No staging, no manual approval, one deploy at a time, pull requests never deploy.**  
-> **HARD SAFETY RULES:** Never touch `mail.tutortime.ai`, `MX`, `TXT`, `DKIM`, `DMARC`, or mail Lambdas. Delete no AWS resources or data. No old-server cleanup.
+> **HARD SAFETY RULES:** Never touch `MX`, `TXT`, `DKIM`, `DMARC`, or mail Lambdas. Delete no AWS resources or data *(sole owner-approved exception: delete only the stale `A` record on `mail.tutortime.ai` at go-live after verifying zero MX/CNAME/SES dependency)*. No old-server cleanup.
 
 ---
 
@@ -196,11 +196,11 @@ aws cloudformation deploy \
 
 ## Phase 4 — Minimal-Downtime Atomic Route 53 Cutover
 
-*(Note: Legacy ALB `web-elb` is already deleted, so `popcornmaths.com` / `www.popcornmaths.com` currently have dangling Alias records, and `tutortime.ai` / `checkin.tutortime.ai` point to unreachable external IP `184.73.129.137`.)*
+*(Note: Legacy ALB `web-elb` is already deleted, so `popcornmaths.com` / `www.popcornmaths.com` currently have dangling Alias records, and `tutortime.ai` / `checkin.tutortime.ai` / `mail.tutortime.ai` point to the retired crashed legacy server.)*
 
 Using Route 53 `UPSERT` switches web traffic atomically (~0s DNS gap) while keeping `ManageNewSubdomainDnsRecords="false"` and `ManageLiveDnsRecords="false"` in `infra/params/production.json` so **future pushes to `main` and rollbacks can never conflict with or undo live DNS**.
 
-**NEVER touch `mail.tutortime.ai`, `MX`, `TXT`, `DMARC`, `_domainkey` DKIM `CNAME`s, `bounce.tutortime.ai`, or `inbound-test.tutortime.ai`.**
+**NEVER touch `MX`, `TXT`, `DMARC`, `_domainkey` DKIM `CNAME`s, `bounce.tutortime.ai`, or `inbound-test.tutortime.ai`.** *(One owner-approved go-live exception: delete ONLY the stale `A` record on `mail.tutortime.ai` once confirmed that zero MX/CNAME/SES rules depend on it.)*
 
 ```bash
 CF_DOMAIN=$(aws cloudformation describe-stacks --region us-east-2 \

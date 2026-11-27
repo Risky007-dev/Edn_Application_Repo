@@ -1,22 +1,27 @@
 /**
  * Check Copy Script (npm run check:copy)
- * Scans content modules for all items marked status: 'PROPOSED-COPY'
- * so the business owner can review and approve proposed wording.
+ * Audits content modules for any unapproved items marked status: 'PROPOSED-COPY'
+ * and counts approved entries. Exits non-zero if unapproved PROPOSED-COPY items remain.
  */
 
-const path = require('path');
 const content = require('../src/shared/content');
 
-const items = [];
+const proposedItems = [];
+let approvedCount = 0;
 
 function scanObject(obj, prefix = '') {
   if (!obj || typeof obj !== 'object') return;
 
   if (obj.status === 'PROPOSED-COPY' && typeof obj.text === 'string') {
-    items.push({
+    proposedItems.push({
       path: prefix,
       text: obj.text
     });
+    return;
+  }
+
+  if (obj.status === 'APPROVED' && typeof obj.text === 'string') {
+    approvedCount++;
     return;
   }
 
@@ -35,15 +40,24 @@ function scanObject(obj, prefix = '') {
 scanObject(content);
 
 console.log('================================================================');
-console.log('       PROPOSED-COPY ITEMS AWAITING OWNER APPROVAL              ');
+console.log('       CONTENT COPY REGISTRY AUDIT (APPROVED vs PROPOSED)       ');
 console.log('================================================================\n');
 
-items.forEach((item, idx) => {
+proposedItems.forEach((item, idx) => {
   console.log(`[${String(idx + 1).padStart(2, ' ')}] Key: ${item.path}`);
   console.log(`     Copy: "${item.text}"\n`);
 });
 
 console.log('================================================================');
-console.log(`TOTAL PROPOSED-COPY ITEMS: ${items.length}`);
-console.log('Status: Ready for Cassie / Owner Review');
+console.log(`TOTAL APPROVED ITEMS:      ${approvedCount}`);
+console.log(`TOTAL PROPOSED-COPY ITEMS: ${proposedItems.length}`);
+if (proposedItems.length === 0) {
+  console.log('Status: PASS — All content copy approved by owner');
+} else {
+  console.log('Status: FAIL — Unapproved PROPOSED-COPY items remain');
+}
 console.log('================================================================\n');
+
+if (proposedItems.length > 0) {
+  process.exit(1);
+}

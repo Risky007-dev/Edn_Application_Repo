@@ -58,7 +58,7 @@ async function run() {
     assert('/privacy displays "Draft, pending review" banner', privacy.body.includes('Draft, pending review'));
     assert('/privacy preserves data-todo="legal" markers', privacy.body.includes('data-todo="legal"'));
     assert('/privacy renders visitor-facing Chatbot Privacy wording', privacy.body.includes('Tutor Time Helper') && privacy.body.includes('Zero Personal Data Collection'));
-    assert('/privacy discloses Readiness Check zero-storage, voluntary chatbot result sharing, and booking attachment (PROPOSED-COPY)',
+    assert('/privacy discloses Readiness Check zero-storage, voluntary chatbot result sharing, and booking attachment (approved copy)',
       privacy.body.includes('Readiness Check Result Sharing') &&
       privacy.body.includes('Talk about my results') &&
       privacy.body.includes('subject, score out of 10, and readiness band') &&

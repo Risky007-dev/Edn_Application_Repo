@@ -4,7 +4,7 @@
  *   1. Non-AI recommendation card on /readiness-check (works without an API key)
  *   2. Server-side Claude chatbot grounding in src/shared/chatbot/chatController.js
  *
- * All visitor-facing rationales are marked status: 'PROPOSED-COPY' for Cassie's approval.
+ * All visitor-facing rationales are marked status: 'APPROVED' (approved by owner 2026-11-27).
  * HARD RULE: Never invent prices, dates, or session availability.
  */
 
@@ -19,7 +19,7 @@ const SERVICE_CATALOG = {
     bookParam: 'One-on-One Tutoring',
     shortDesc: {
       text: 'Tailored one-to-one instruction paced to your child\'s needs and curriculum goals.',
-      status: 'PROPOSED-COPY'
+      status: 'APPROVED'
     }
   },
   'sunday-workshops': {
@@ -29,7 +29,7 @@ const SERVICE_CATALOG = {
     bookParam: 'Small Group Tutoring',
     shortDesc: {
       text: 'Guided small-group practice sessions focused on confidence, fluency, and exam habits (schedules confirmed upon enquiry).',
-      status: 'PROPOSED-COPY'
+      status: 'APPROVED'
     }
   },
   'seasonal-pop-ups': {
@@ -39,7 +39,7 @@ const SERVICE_CATALOG = {
     bookParam: 'One-on-One Tutoring',
     shortDesc: {
       text: 'Short, focused seasonal refreshers and holiday clinics to keep strong skills sharp (upcoming availability confirmed upon enquiry).',
-      status: 'PROPOSED-COPY'
+      status: 'APPROVED'
     }
   }
 };
@@ -63,11 +63,11 @@ const RECOMMENDATION_RULE_TABLE = [
     rationale: {
       Mathematics: {
         text: 'Dedicated One-on-One Tutoring helps build core math foundations step-by-step at your child\'s own pace, with Sunday Workshops as a supportive group option as confidence grows.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       },
       'Language Arts': {
         text: 'Dedicated One-on-One Tutoring strengthens reading comprehension, grammar, and writing step-by-step in a calm setting, with Sunday Workshops as a helpful companion option.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       }
     }
   },
@@ -82,11 +82,11 @@ const RECOMMENDATION_RULE_TABLE = [
     rationale: {
       Mathematics: {
         text: 'Core math skills are taking shape! Sunday Workshops provide structured, encouraging group practice to build fluency, with One-on-One Tutoring available for targeted topic gaps.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       },
       'Language Arts': {
         text: 'Core reading and grammar skills are growing! Sunday Workshops offer steady, guided group practice, with One-on-One Tutoring available if your child would benefit from individual support.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       }
     }
   },
@@ -101,11 +101,11 @@ const RECOMMENDATION_RULE_TABLE = [
     rationale: {
       Mathematics: {
         text: 'Strong math foundations are already in place! Sunday Workshops help sharpen speed and problem-solving confidence, while Seasonal Pop-Ups offer focused refreshers during breaks.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       },
       'Language Arts': {
         text: 'Strong literacy habits are showing! Sunday Workshops help refine comprehension and editing skills, while Seasonal Pop-Ups offer focused refreshers during breaks.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       }
     }
   },
@@ -120,11 +120,11 @@ const RECOMMENDATION_RULE_TABLE = [
     rationale: {
       Mathematics: {
         text: 'Outstanding work on these sample questions! Short Seasonal Pop-Ups help stretch higher-order math thinking and keep skills sharp, with Sunday Workshops as an optional steady tune-up.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       },
       'Language Arts': {
         text: 'Outstanding work on these sample questions! Short Seasonal Pop-Ups keep reading, vocabulary, and exam confidence high, with Sunday Workshops as an optional steady tune-up.',
-        status: 'PROPOSED-COPY'
+        status: 'APPROVED'
       }
     }
   }
@@ -133,15 +133,15 @@ const RECOMMENDATION_RULE_TABLE = [
 const RECOMMENDATION_UI_COPY = {
   heading: {
     text: 'Suggested Next Steps for Your Family',
-    status: 'PROPOSED-COPY'
+    status: 'APPROVED'
   },
   availabilityNote: {
     text: 'Availability, schedules, and fees are confirmed with Teacher Cassie during a consultation — no dates or prices are quoted automatically.',
-    status: 'PROPOSED-COPY'
+    status: 'APPROVED'
   },
   talkButtonLabel: {
     text: 'Talk about my results',
-    status: 'PROPOSED-COPY'
+    status: 'APPROVED'
   }
 };
 

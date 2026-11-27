@@ -306,7 +306,7 @@ Resources:
     Condition: ShouldCreateLegacyPolicy
     Properties:
       ManagedPolicyName: !Sub 'TutorTime-Application-Policy-${EnvironmentName}'
-      Description: Least-privilege data & email access policy for Tutor Time application.
+      Description: Least-privilege access for Tutor Time application running on EC2.
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
