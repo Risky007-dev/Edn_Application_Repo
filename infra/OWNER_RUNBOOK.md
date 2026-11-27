@@ -142,16 +142,14 @@ aws cloudformation deploy \
 
 ---
 
-## Phase 2 — Configure GitHub `production` Environment, Variables & Anthropic Secret
+## Phase 2 — Configure GitHub Repository Variables & Anthropic Secret
 
-1. **Create GitHub `production` Environment (`main` branch only, no required reviewers):**
-   - Repo **Settings → Environments → New environment → `production`**.
-   - Deployment branches: **Selected branches** → `main`.
-   - Required reviewers: **none** (push to `main` deploys straight to production).
-2. **Set Repository Variables** (**Settings → Secrets and variables → Actions → Variables**):
+> **OIDC Trust Security (No GitHub Environment Used):** `GitHubDeployRole` uses strict `StringEquals` on `token.actions.githubusercontent.com:sub` matching ONLY `repo:Risky007-dev/Edn_Application_Repo:ref:refs/heads/main` (zero wildcards, zero GitHub environments). Pull requests and feature branches cannot assume the deploy role.
+
+1. **Set Repository Variables** (via `gh variable set` or **Settings → Secrets and variables → Actions → Variables**):
    - `AWS_DEPLOY_ROLE_ARN` = `GitHubDeployRoleArn` output from Stack `02`.
    - `OPS_ALERT_EMAIL` = Owner email for CloudWatch/SNS/Budget alerts.
-3. **Populate Anthropic API Key Out-of-Band in Secrets Manager (Owner Action):**
+2. **Populate Anthropic API Key Out-of-Band in Secrets Manager:**
    After setting a hard spend cap in the Anthropic Console:
    ```bash
    aws secretsmanager put-secret-value \

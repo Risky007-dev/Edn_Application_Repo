@@ -342,9 +342,10 @@ async function run() {
       !appStackYaml.includes('anthropic-api-key:SecretString'));
 
     const securityStackYaml = fs.readFileSync(path.join(REPO_ROOT, 'infra/02-security-cicd-stack.yaml'), 'utf8');
-    check('02-security-cicd-stack.yaml scopes GitHubDeployRole trust to main + production (no staging) and allows CloudFront invalidation + safe data updates',
-      securityStackYaml.includes('ref:refs/heads/main') &&
-      securityStackYaml.includes('environment:production') &&
+    check('02-security-cicd-stack.yaml scopes GitHubDeployRole trust with StringEquals strictly to refs/heads/main (no wildcards, no environments) and allows CloudFront invalidation + safe data updates',
+      securityStackYaml.includes("token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubRepository}:ref:refs/heads/main'") &&
+      !securityStackYaml.includes('StringLike:') &&
+      !securityStackYaml.includes('environment:production') &&
       !securityStackYaml.includes('environment:staging') &&
       securityStackYaml.includes('cloudfront:CreateInvalidation') &&
       securityStackYaml.includes('cloudfront:GetInvalidation') &&
@@ -353,8 +354,9 @@ async function run() {
       !securityStackYaml.includes('s3:DeleteBucket'));
 
     const ciWorkflowYaml = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/ci-deploy.yml'), 'utf8');
-    check('ci-deploy.yml deploys directly to production on push to main with zero staging jobs, data change-set guard, CF invalidation, and auto-rollback',
+    check('ci-deploy.yml deploys directly to production on push to main with zero staging jobs, zero GitHub environments, data change-set guard, CF invalidation, and auto-rollback',
       !ciWorkflowYaml.includes('deploy-staging') &&
+      !/^\s+environment:/m.test(ciWorkflowYaml) &&
       ciWorkflowYaml.includes('tutortime-production-deploy') &&
       ciWorkflowYaml.includes('create-change-set') &&
       ciWorkflowYaml.includes('create-invalidation') &&
