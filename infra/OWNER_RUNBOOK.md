@@ -1,7 +1,7 @@
 # Tutor Time & Popcorn Math: AWS Infrastructure & Migration Runbook
 
 > **DOCUMENT STATUS:** DRAFT / PENDING OWNER REVIEW  
-> **SCOPE:** Operational runbook for deploying `infra/tutortime-stack.yaml`, transitioning from `STORAGE_DRIVER=local` to `STORAGE_DRIVER=aws`, stack verification, and emergency rollback procedures without data loss.
+> **SCOPE:** Operational runbook for deploying CloudFormation stacks (`infra/01-data-stack.yaml`..`04-ops-budget-stack.yaml` or single-stack `infra/tutortime-stack.yaml`), running a side-by-side **staging ("practice")** environment, transitioning from `STORAGE_DRIVER=local` to `STORAGE_DRIVER=aws`, verifying the stack, and rolling back safely without data loss.
 
 ---
 
@@ -10,59 +10,69 @@
 Before creating any cloud resources, the business owner must confirm and decide the following:
 
 1. **Custom Domain & SES Verification (REQUIRED parameter: `SesIdentityArn`)**:
-   - Confirm whether the notification email address (`ADMIN_NOTIFICATION_EMAIL`) and sender address (`SENDER_EMAIL`) are on your verified domain in Amazon SES.
-   - Note down the SES Identity ARN: `arn:aws:ses:us-east-2:<AWS_ACCOUNT_ID>:identity/<YOUR_DOMAIN_OR_EMAIL>`. This parameter is REQUIRED (no default); CloudFormation deployment will fail if omitted.
-   - Confirm SES Production Access status (in SES sandbox, emails can only be sent to pre-verified addresses).
+   - Confirm whether `CASSIE_NOTIFICATION_EMAIL`, `ADMIN_NOTIFICATION_EMAIL`, and `SENDER_EMAIL` / `PORTAL_SENDER_EMAIL` are on verified identities in Amazon SES (`us-east-2`).
+   - Note down the primary SES Identity ARN (`arn:aws:ses:us-east-2:<AWS_ACCOUNT_ID>:identity/mail.tutortime.ai`) and any additional identity ARNs (`AdditionalSesIdentityArns`, e.g., `tutortime.ai`, `popcornmaths.com`).
+   - Confirm SES Production Access status (`ses:GetAccount` / `ses:GetEmailIdentity` are granted in `AppManagedPolicy` so the portal's sandbox guard can verify recipients safely).
 2. **Data Retention Policy (`TODO(legal)`)**:
-   - Determine how long applicant CV PDFs should be stored in S3 before automatic deletion.
-   - The default parameter in CloudFormation is set to `90` days. If you prefer `180` or `365` days, adjust `CVRetentionDays` accordingly.
+   - Applicant CV PDFs in S3 expire automatically after `CVRetentionDays` (default **`180` days** / 6 months per `docs/legal/DATA_RETENTION_SCHEDULE.md`).
+   - DynamoDB `SubmissionsTable` enables native TTL on `expireAt` (`180` days for `PRESENTER_APPLICATION`, `730` days for `SCHOOL_ENQUIRY`, `365` days for other enquiries).
 3. **S3 Bucket Naming**:
-   - S3 bucket names are globally unique. Choose a name such as `tutortime-cv-uploads-<random-suffix>` or leave blank to let CloudFormation generate one automatically.
-4. **Target Site Origin (REQUIRED parameter: `SiteOrigin`)**:
-   - Determine the allowed web origin for CORS direct browser uploads (e.g., `https://popcornmaths.com` or `https://www.popcornmaths.com`). Must match pattern `^https://[a-zA-Z0-9.-]+$`. This parameter is REQUIRED (no default); CloudFormation deployment will fail if omitted.
-5. **Existing EC2 IAM Role**:
-   - Identify the existing IAM role currently attached to your server instance (`<EXISTING_ROLE_NAME>`). Note: you attach the policy to the **role**, not to an instance profile.
+   - S3 bucket names are globally unique. Leave `UploadsBucketName` blank to let CloudFormation generate one automatically, or choose an explicit unique name.
+4. **Target Site Origins (REQUIRED: `SiteOrigin`, optional `AdditionalCorsOrigin`)**:
+   - Configure the allowed HTTPS origins for direct browser S3 presigned POST CV uploads (e.g., `SiteOrigin=https://tutortime.ai`, `AdditionalCorsOrigin=https://www.tutortime.ai`, or `https://staging.tutortime.ai` on staging). Must match `^https://[a-zA-Z0-9.-]+$`.
+5. **Runtime Execution Role**:
+   - Attach `AppManagedPolicyArn` (or use `LambdaExecutionRole` exported from `infra/02-security-cicd-stack.yaml`) to your runtime execution role (Lambda, App Runner, ECS Task Role, or EC2 Role).
 
 ---
 
 ## 2. Step-by-Step Deployment Procedure
 
-### Step 1: Review CloudFormation Template
-Inspect `infra/tutortime-stack.yaml` to ensure resource definitions, parameter defaults, and retention policies align with your requirements.
-
-### Step 2: Validate the Template
-Run template validation using the AWS CLI in `us-east-2`:
+### Step 1: Review & Validate CloudFormation Templates
+Inspect `infra/tutortime-stack.yaml` (and `infra/01-data-stack.yaml`..`04-ops-budget-stack.yaml` for the full serverless stack). Validate syntax using the AWS CLI in `us-east-2`:
 ```bash
 aws cloudformation validate-template \
   --region us-east-2 \
   --template-body file://infra/tutortime-stack.yaml
 ```
 
-### Step 3: Deploy the CloudFormation Stack
-Create the stack with the chosen parameter values (replace placeholders). Note that `SiteOrigin` and `SesIdentityArn` are **REQUIRED** parameters with no default values (omitting them will cause stack creation to fail validation). Note also the `--capabilities CAPABILITY_IAM` flag:
+### Step 2A: Deploy Production Single-Stack Data Layer (`tutortime-stack.yaml`)
 ```bash
-# popcornmaths.com is assumed; the owner must confirm the domain first.
-aws cloudformation create-stack \
+aws cloudformation deploy \
   --stack-name tutortime-production-infra \
   --region us-east-2 \
-  --template-body file://infra/tutortime-stack.yaml \
-  --parameters \
-      ParameterKey=EnvironmentName,ParameterValue=production \
-      ParameterKey=DynamoDBTableName,ParameterValue=tutortime-submissions \
-      ParameterKey=SiteOrigin,ParameterValue=https://popcornmaths.com \
-      ParameterKey=CVRetentionDays,ParameterValue=90 \
-      ParameterKey=SesIdentityArn,ParameterValue=arn:aws:ses:us-east-2:<ACCOUNT_ID>:identity/popcornmaths.com \
-  --capabilities CAPABILITY_IAM
+  --template-file infra/tutortime-stack.yaml \
+  --parameter-overrides \
+      EnvironmentName=production \
+      DynamoDBTableName=tutortime-submissions \
+      PortalTableName=tutortime-portal \
+      SubscribersTableName=popcorn-maths-subscribers \
+      SiteOrigin=https://tutortime.ai \
+      AdditionalCorsOrigin=https://www.tutortime.ai \
+      CVRetentionDays=180 \
+      SesIdentityArn=arn:aws:ses:us-east-2:<ACCOUNT_ID>:identity/mail.tutortime.ai \
+  --capabilities CAPABILITY_NAMED_IAM
 ```
 
-Wait for stack creation to complete:
+### Step 2B: Deploy an Isolated Staging ("Practice") Copy (`EnvironmentName=staging`)
+Because `DynamoDBTableName`, `PortalTableName`, and `SubscribersTableName` parameterize per environment cleanly, a separate staging stack can run in `us-east-2` alongside production with **zero table-name collisions** and `EMAIL_DRIVER=mock`:
 ```bash
-aws cloudformation wait stack-create-complete \
-  --stack-name tutortime-production-infra \
-  --region us-east-2
+aws cloudformation deploy \
+  --stack-name tutortime-staging-infra \
+  --region us-east-2 \
+  --template-file infra/tutortime-stack.yaml \
+  --parameter-overrides \
+      EnvironmentName=staging \
+      DynamoDBTableName=tutortime-staging-submissions \
+      PortalTableName=tutortime-portal-staging \
+      SubscribersTableName=tutortime-staging-subscribers \
+      SiteOrigin=https://staging.tutortime.ai \
+      CVRetentionDays=180 \
+      SesIdentityArn=arn:aws:ses:us-east-2:<ACCOUNT_ID>:identity/mail.tutortime.ai \
+  --capabilities CAPABILITY_NAMED_IAM
 ```
+> For the full modular serverless deployment (`01-data-stack.yaml` -> `02-security-cicd-stack.yaml` -> `03a-edge-cert-stack.yaml` -> `03b-app-stack.yaml` -> `04-ops-budget-stack.yaml`), see [`DEPLOYMENT_PLAN.md`](../DEPLOYMENT_PLAN.md) and parameter sets in `infra/params/staging.json` and `infra/params/production.json`.
 
-Query the stack outputs to get the generated Bucket Name and IAM Policy ARN:
+### Step 3: Query Stack Outputs & Verify Resources
 ```bash
 aws cloudformation describe-stacks \
   --stack-name tutortime-production-infra \
@@ -70,127 +80,70 @@ aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs" \
   --output table
 ```
+Verify that `SubmissionsTableName`, `PortalTableName`, `SubscribersTableName`, `UploadsBucketName`, and `AppManagedPolicyArn` are exported cleanly.
 
-### Step 4: Verify the CloudFormation Stack
-Confirm that all stack resources were created cleanly:
-```bash
-# 1. Check overall stack status (should return CREATE_COMPLETE)
-aws cloudformation describe-stacks \
-  --stack-name tutortime-production-infra \
-  --region us-east-2 \
-  --query "Stacks[0].StackStatus" \
-  --output text
-
-# 2. List all created resources
-aws cloudformation list-stack-resources \
-  --stack-name tutortime-production-infra \
-  --region us-east-2 \
-  --output table
-```
-
-### Step 5: Attach the Scoped Policy to the Existing Role
-Attach the generated managed policy to your existing IAM role (attach to the **role**, not the instance profile):
-```bash
-aws iam attach-role-policy \
-  --role-name <EXISTING_ROLE_NAME> \
-  --policy-arn <APP_MANAGED_POLICY_ARN>
-```
-
-### Step 6: Update Server Environment Variables
-On the application server, edit `<ENV_FILE_PATH>` (located in `<APP_DIR>`) and configure:
+### Step 4: Configure Runtime Environment Variables
+Configure these runtime environment variables (never bake `.env` into Docker images; store secret keys like `ANTHROPIC_API_KEY` and `ADMIN_API_KEY` in AWS Secrets Manager / SSM Parameter Store):
 ```env
-# Storage Configuration
+# Storage & Persistence
 STORAGE_DRIVER=aws
 AWS_REGION=us-east-2
-DYNAMODB_TABLE_NAME=tutortime-submissions
-UPLOADS_BUCKET_NAME=<UPLOADS_BUCKET_NAME_FROM_STACK_OUTPUTS>
+DYNAMODB_TABLE_NAME=<SubmissionsTableName output>
+PORTAL_TABLE_NAME=<PortalTableName output>
+SUBSCRIBERS_TABLE_NAME=<SubscribersTableName output>
+UPLOADS_BUCKET_NAME=<UploadsBucketName output>
 
-# Email Notifications
-ADMIN_NOTIFICATION_EMAIL=cassie@tutortime.example
-# popcornmaths.com is assumed; the owner must confirm the domain first.
-SENDER_EMAIL=notifications@popcornmaths.com
+# Email Notifications (independent from STORAGE_DRIVER; use 'mock' on staging)
+EMAIL_DRIVER=ses
+SES_REGION=us-east-2
+CASSIE_NOTIFICATION_EMAIL=Cassie@tutortime.ai
+ADMIN_NOTIFICATION_EMAIL=notifications@mail.tutortime.ai
+SENDER_EMAIL=noreply@mail.tutortime.ai
 SEND_CONFIRMATIONS=false
+
+# Private Portal Host & Addresses
+PORTAL_HOST=checkin.tutortime.ai          # checkin-staging.tutortime.ai on staging
+PORTAL_BASE_URL=https://checkin.tutortime.ai
+PORTAL_SENDER_EMAIL=noreply@mail.tutortime.ai
+CASSIE_REPLY_TO_EMAIL=Cassie@tutortime.ai
 ```
 
-### Step 7: Restart Application & Verify Live Health
-Restart the application process using your production process manager:
-```bash
-<RESTART_COMMAND>
-```
-
-Confirm that the server logs indicate initialization of the AWS driver.
-
-### Step 8: Test with a Single Live Submission
-1. Open the website in your browser.
-2. Submit a test enquiry via `/contact` or `/book`.
-3. Check the DynamoDB table to verify the record was written:
-```bash
-aws dynamodb query \
-  --region us-east-2 \
-  --table-name tutortime-submissions \
-  --key-condition-expression "formType = :ft" \
-  --expression-attribute-values '{":ft": {"S": "CONTACT"}}' \
-  --limit 1
-```
-4. Verify that the record contains top-level form fields, a timestamped sort key, and `PENDING_REVIEW` status.
+### Step 5: Test Live Health & Submissions
+1. Check `GET /health` -> `200 { "status": "ok" }` and `GET /privacy` -> `200` (confirms `docs/` is packaged inside container).
+2. Submit a test enquiry via `/contact` or `/book` and confirm the DynamoDB item has top-level fields, `PENDING_REVIEW` status, and an integer `expireAt` epoch timestamp.
+3. Submit a test presenter CV PDF on `/popcorn-math/presenters` and confirm browser CSP allows the direct presigned POST to S3.
 
 ---
 
 ## 3. Stack Rollback Procedure (No Deletion of Retained Resources)
 
-If you need to tear down or roll back the CloudFormation infrastructure, follow these steps.
-Because `SubmissionsTable` and `UploadsBucket` have `DeletionPolicy: Retain` explicitly configured in `infra/tutortime-stack.yaml`, deleting the stack deletes **only** the managed IAM policy; your DynamoDB table and S3 bucket with all customer submissions and CV uploads are **retained and protected from deletion**.
+Because `SubmissionsTable`, `PortalTable`, `SubscribersTable`, and `UploadsBucket` all enforce `DeletionPolicy: Retain` and `UpdateReplacePolicy: Retain` (with Point-in-Time Recovery enabled), deleting an application stack never deletes stored submissions, portal records, subscribers, or CV PDFs.
 
 > [!NOTE]
-> **Stack Re-creation Note (Retained Fixed Resource Names):**  
-> Because the DynamoDB table and S3 bucket are retained after stack deletion and use fixed names, attempting to re-create the stack later with the same parameters will fail with an "already exists" error.
-> The owner must decide between two options:
-> 1. **Use different resource names:** Provide new unique names via `DynamoDBTableName` and `UploadsBucketName` parameters when creating the new stack.
-> 2. **Import existing resources:** Use CloudFormation's resource import feature to attach the existing retained table and bucket to the new stack.
-> The owner decides which approach to take.
+> **Stack Re-creation Note (Retained Resource Names):**  
+> Because DynamoDB tables and the S3 bucket are retained after stack deletion, re-creating a stack with the same resource names will fail with an "already exists" error unless you either pass new resource names (`DynamoDBTableName`, `PortalTableName`, `SubscribersTableName`, `UploadsBucketName`) or use CloudFormation Resource Import.
 
-### Step 1: Revert Application to Local Storage
-Switch the application back to flat-file storage before removing cloud policies:
-```bash
-# Revert STORAGE_DRIVER on the server
-sed -i 's/STORAGE_DRIVER=aws/STORAGE_DRIVER=local/' <ENV_FILE_PATH>
-<RESTART_COMMAND>
-```
+### Rollback Checklist
+1. **Pause notifications without data loss:** Switch `EMAIL_DRIVER=mock` (keeps saving bookings to DynamoDB without sending emails).
+2. **Revert to local driver if needed:** Set `STORAGE_DRIVER=local`.
+3. **If tearing down an IAM policy/stack cleanly:**
+   ```bash
+   aws iam detach-role-policy \
+     --role-name <EXISTING_ROLE_NAME> \
+     --policy-arn <APP_MANAGED_POLICY_ARN>
 
-### Step 2: Detach the Managed Policy from the Existing Role
-Detach the policy from your existing IAM role prior to stack deletion:
-```bash
-aws iam detach-role-policy \
-  --role-name <EXISTING_ROLE_NAME> \
-  --policy-arn <APP_MANAGED_POLICY_ARN>
-```
+   aws cloudformation delete-stack \
+     --stack-name <STACK_NAME> \
+     --region us-east-2
 
-### Step 3: Delete the CloudFormation Stack
-Delete the stack:
-```bash
-aws cloudformation delete-stack \
-  --stack-name tutortime-production-infra \
-  --region us-east-2
-```
-
-Wait for stack deletion to complete:
-```bash
-aws cloudformation wait stack-delete-complete \
-  --stack-name tutortime-production-infra \
-  --region us-east-2
-```
-
-### Step 4: Verify Retained Resources Were NOT Deleted
-Confirm that the DynamoDB table and S3 bucket remain safely intact:
-```bash
-# 1. Verify DynamoDB table still exists with all data intact
-aws dynamodb describe-table \
-  --table-name tutortime-submissions \
-  --region us-east-2 \
-  --query "Table.TableStatus" \
-  --output text
-
-# 2. Verify S3 bucket still exists with all uploaded files intact
-aws s3api head-bucket \
-  --bucket <UPLOADS_BUCKET_NAME>
-```
+   aws cloudformation wait stack-delete-complete \
+     --stack-name <STACK_NAME> \
+     --region us-east-2
+   ```
+4. **Confirm retained stores remain intact:**
+   ```bash
+   aws dynamodb describe-table --table-name tutortime-submissions --region us-east-2 --query "Table.TableStatus" --output text
+   aws dynamodb describe-table --table-name tutortime-portal --region us-east-2 --query "Table.TableStatus" --output text
+   aws dynamodb describe-table --table-name popcorn-maths-subscribers --region us-east-2 --query "Table.TableStatus" --output text
+   aws s3api head-bucket --bucket <UPLOADS_BUCKET_NAME>
+   ```

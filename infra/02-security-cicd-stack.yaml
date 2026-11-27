@@ -1,0 +1,561 @@
+# ==============================================================================
+# STACK 02 — SECURITY, SECRETS, SHARED ECR & GITHUB OIDC: Tutor Time & Popcorn Math
+# Region: us-east-2
+# ==============================================================================
+# Provisions:
+#   - Optional shared immutable ECR repository (tutortime-app) so Staging and
+#     Production promote the exact same verified Docker image SHA without rebuild.
+#   - AWS Secrets Manager secrets (auto-generated ADMIN_API_KEY, FAULT_INJECTION_KEY,
+#     ORIGIN_VERIFY_SECRET; out-of-band placeholder shell for ANTHROPIC_API_KEY).
+#   - Least-privilege LambdaExecutionRole scoped strictly to Stack 01 tables/bucket,
+#     verified SESv2 domain identities, Stack 02 secrets, CloudWatch Logs, & X-Ray.
+#   - Passwordless GitHub Actions OIDC Provider + scoped GitHubDeployRole (zero
+#     static AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in GitHub Secrets).
+# ==============================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Tutor Time & Popcorn Math (Stack 02 - Security & CI/CD): Secrets Manager shells,
+  least-privilege Lambda execution role, optional shared ECR repository, and
+  passwordless GitHub Actions OIDC federation.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+    Description: Target environment name.
+
+  DataStackName:
+    Type: String
+    Default: tutortime-production-infra
+    Description: Name of Stack 01 (Data) whose exported table/bucket ARNs are imported.
+
+  EcrRepositoryName:
+    Type: String
+    Default: tutortime-app
+    Description: Name of the shared Amazon ECR repository storing immutable git-<sha> container images.
+
+  CreateEcrRepository:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Set 'true' on the primary/first environment stack; 'false' on secondary environment to share the same ECR repo.
+
+  CreateGitHubOidcProvider:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Set 'true' once per AWS account (audit confirmed 0 existing OIDC providers); 'false' for subsequent stacks.
+
+  CreateGitHubDeployRole:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Set 'true' on the primary security stack to create the shared GitHub Actions OIDC deploy role.
+
+  GitHubRepository:
+    Type: String
+    Default: Risky007-dev/Edn_Application_Repo
+    Description: GitHub repository (owner/repo) allowed to assume GitHubDeployRole via OIDC.
+
+  SesPrimaryDomain:
+    Type: String
+    Default: mail.tutortime.ai
+    Description: Primary verified SES domain identity name (no ARN/account ID needed).
+
+  SesSecondaryDomain:
+    Type: String
+    Default: tutortime.ai
+    Description: Secondary verified SES domain identity name.
+
+  SesLegacyDomain:
+    Type: String
+    Default: popcornmaths.com
+    Description: Legacy verified SES domain identity name.
+
+Conditions:
+  ShouldCreateEcr: !Equals [!Ref CreateEcrRepository, 'true']
+  ShouldCreateOidcProvider: !Equals [!Ref CreateGitHubOidcProvider, 'true']
+  ShouldCreateDeployRole: !Equals [!Ref CreateGitHubDeployRole, 'true']
+
+Resources:
+  # ----------------------------------------------------------------------------
+  # 1. Shared Immutable ECR Repository (Scan-on-Push + Lifecycle Hygiene)
+  # ----------------------------------------------------------------------------
+  AppEcrRepository:
+    Type: AWS::ECR::Repository
+    Condition: ShouldCreateEcr
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: !Ref EcrRepositoryName
+      ImageTagMutability: IMMUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Expire untagged images after 7 days",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 7
+                },
+                "action": { "type": "expire" }
+              },
+              {
+                "rulePriority": 2,
+                "description": "Retain last 15 immutable git-* images for instant rollback",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": ["git-"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 15
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: shared
+
+  # ----------------------------------------------------------------------------
+  # 2. AWS Secrets Manager Secrets (Zero Plaintext Secrets in Git or CFN)
+  # ----------------------------------------------------------------------------
+  AnthropicApiKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'tutortime/${EnvironmentName}/anthropic-api-key'
+      Description: !Sub 'Anthropic Claude API key for Tutor Time Helper (${EnvironmentName}). Populate {"value":"sk-ant-..."} out-of-band after setting console spend cap.'
+      SecretString: '{"value":""}'
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AdminApiKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'tutortime/${EnvironmentName}/admin-api-key'
+      Description: !Sub 'X-Admin-Key secret gating /api/metrics and /subscribers (${EnvironmentName}).'
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: value
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  FaultInjectionKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'tutortime/${EnvironmentName}/fault-injection-key'
+      Description: !Sub 'X-Debug-Fault-Key secret gating /api/debug/fault when enabled (${EnvironmentName}).'
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: value
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  OriginVerifySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'tutortime/${EnvironmentName}/origin-verify-secret'
+      Description: !Sub 'Shared CloudFront-to-Lambda X-Origin-Verify secret blocking direct Lambda Function URL bypass (${EnvironmentName}).'
+      GenerateSecretString:
+        SecretStringTemplate: '{}'
+        GenerateStringKey: value
+        PasswordLength: 48
+        ExcludePunctuation: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 3. Least-Privilege AWS Lambda Execution Role
+  # ----------------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'tutortime-${EnvironmentName}-lambda-exec-role'
+      Description: !Sub 'Least-privilege execution role for Tutor Time Lambda Web Adapter (${EnvironmentName}).'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub 'tutortime-${EnvironmentName}-runtime-policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CloudWatchLogsWrite
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/tutortime-${EnvironmentName}-app:*'
+
+              - Sid: XRayTracingWrite
+                Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: '*'
+
+              - Sid: DynamoDBSubmissionsAndChatbotCounter
+                Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource:
+                  - Fn::ImportValue: !Sub '${DataStackName}-SubmissionsTableArn'
+
+              - Sid: DynamoDBPortalAccess
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - Fn::ImportValue: !Sub '${DataStackName}-PortalTableArn'
+                  - !Sub
+                    - '${PortalArn}/index/*'
+                    - PortalArn:
+                        Fn::ImportValue: !Sub '${DataStackName}-PortalTableArn'
+
+              - Sid: DynamoDBSubscribersAccess
+                Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                Resource:
+                  - Fn::ImportValue: !Sub '${DataStackName}-SubscribersTableArn'
+
+              - Sid: S3CvUploadsPutOnly
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Sub
+                    - '${BucketArn}/cv-uploads/*'
+                    - BucketArn:
+                        Fn::ImportValue: !Sub '${DataStackName}-UploadsBucketArn'
+
+              - Sid: SESv2SendEmailScoped
+                Effect: Allow
+                Action:
+                  - ses:SendEmail
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SesPrimaryDomain}'
+                  - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SesSecondaryDomain}'
+                  - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SesLegacyDomain}'
+
+              - Sid: SESv2SandboxStatusRead
+                Effect: Allow
+                Action:
+                  - ses:GetAccount
+                  - ses:GetEmailIdentity
+                Resource: '*'
+
+              - Sid: SecretsManagerReadScoped
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref AnthropicApiKeySecret
+                  - !Ref AdminApiKeySecret
+                  - !Ref FaultInjectionKeySecret
+                  - !Ref OriginVerifySecret
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 4. Passwordless GitHub Actions OIDC Provider & Scoped Deploy Role
+  # ----------------------------------------------------------------------------
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+      Tags:
+        - Key: Application
+          Value: TutorTime
+
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Condition: ShouldCreateDeployRole
+    Properties:
+      RoleName: tutortime-github-actions-deploy-role
+      Description: Passwordless OIDC deployment role for GitHub Actions (main, staging, production).
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com'
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub 'repo:${GitHubRepository}:ref:refs/heads/main'
+                  - !Sub 'repo:${GitHubRepository}:environment:staging'
+                  - !Sub 'repo:${GitHubRepository}:environment:production'
+      Policies:
+        - PolicyName: tutortime-cicd-deploy-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: EcrAuthToken
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+
+              - Sid: EcrPushPullScoped
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                  - ecr:DescribeRepositories
+                  - ecr:DescribeImages
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/${EcrRepositoryName}'
+
+              - Sid: CloudFormationTutortimeStacks
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:ListStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:DetectStackDrift
+                  - cloudformation:DescribeStackDriftDetectionStatus
+                  - cloudformation:ValidateTemplate
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/tutortime-*/*'
+                  - !Sub 'arn:${AWS::Partition}:cloudformation:us-east-1:${AWS::AccountId}:stack/tutortime-*/*'
+
+              - Sid: LambdaAndEdgeDeployment
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:DeleteFunction
+                  - lambda:CreateFunctionUrlConfig
+                  - lambda:UpdateFunctionUrlConfig
+                  - lambda:GetFunctionUrlConfig
+                  - lambda:DeleteFunctionUrlConfig
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:PutFunctionConcurrency
+                  - lambda:DeleteFunctionConcurrency
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tutortime-*'
+
+              - Sid: CloudFrontAndAcmManagement
+                Effect: Allow
+                Action:
+                  - cloudfront:CreateDistribution
+                  - cloudfront:UpdateDistribution
+                  - cloudfront:GetDistribution
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:DeleteDistribution
+                  - cloudfront:CreateFunction
+                  - cloudfront:UpdateFunction
+                  - cloudfront:DescribeFunction
+                  - cloudfront:PublishFunction
+                  - cloudfront:DeleteFunction
+                  - cloudfront:CreateResponseHeadersPolicy
+                  - cloudfront:UpdateResponseHeadersPolicy
+                  - cloudfront:GetResponseHeadersPolicy
+                  - cloudfront:DeleteResponseHeadersPolicy
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:TagResource
+                  - acm:RequestCertificate
+                  - acm:DescribeCertificate
+                  - acm:DeleteCertificate
+                  - acm:AddTagsToCertificate
+                Resource: '*'
+
+              - Sid: Route53ValidationAndRecords
+                Effect: Allow
+                Action:
+                  - route53:ChangeResourceRecordSets
+                  - route53:GetChange
+                  - route53:GetHostedZone
+                  - route53:ListResourceRecordSets
+                Resource:
+                  - arn:aws:route53:::hostedzone/*
+                  - arn:aws:route53:::change/*
+
+              - Sid: LogsEventsAlarmsSnsBudgets
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteLogGroup
+                  - logs:DescribeLogGroups
+                  - logs:PutMetricFilter
+                  - logs:DeleteMetricFilter
+                  - logs:TagResource
+                  - events:PutRule
+                  - events:DeleteRule
+                  - events:DescribeRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutDashboard
+                  - cloudwatch:DeleteDashboards
+                  - sns:CreateTopic
+                  - sns:DeleteTopic
+                  - sns:GetTopicAttributes
+                  - sns:SetTopicAttributes
+                  - sns:Subscribe
+                  - sns:Unsubscribe
+                  - budgets:CreateBudget
+                  - budgets:ModifyBudget
+                  - budgets:DeleteBudget
+                  - budgets:ViewBudget
+                Resource: '*'
+
+              - Sid: SecretsManagerReadForCfnResolve
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:tutortime/*'
+
+              - Sid: PassLambdaExecutionRoleOnly
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/tutortime-*-lambda-exec-role'
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: lambda.amazonaws.com
+      Tags:
+        - Key: Application
+          Value: TutorTime
+
+Outputs:
+  EcrRepositoryName:
+    Description: Shared ECR repository name.
+    Value: !If [ShouldCreateEcr, !Ref AppEcrRepository, !Ref EcrRepositoryName]
+    Export:
+      Name: !Sub '${AWS::StackName}-EcrRepositoryName'
+
+  EcrRepositoryUri:
+    Description: Shared ECR repository URI.
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-EcrRepositoryUri'
+
+  LambdaExecutionRoleArn:
+    Description: ARN of least-privilege Lambda execution role.
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaExecutionRoleArn'
+
+  AnthropicApiKeySecretArn:
+    Description: ARN of Anthropic API key secret (populate out-of-band).
+    Value: !Ref AnthropicApiKeySecret
+    Export:
+      Name: !Sub '${AWS::StackName}-AnthropicApiKeySecretArn'
+
+  AdminApiKeySecretArn:
+    Description: ARN of auto-generated X-Admin-Key secret.
+    Value: !Ref AdminApiKeySecret
+    Export:
+      Name: !Sub '${AWS::StackName}-AdminApiKeySecretArn'
+
+  FaultInjectionKeySecretArn:
+    Description: ARN of auto-generated fault injection secret.
+    Value: !Ref FaultInjectionKeySecret
+    Export:
+      Name: !Sub '${AWS::StackName}-FaultInjectionKeySecretArn'
+
+  OriginVerifySecretArn:
+    Description: ARN of auto-generated CloudFront X-Origin-Verify secret.
+    Value: !Ref OriginVerifySecret
+    Export:
+      Name: !Sub '${AWS::StackName}-OriginVerifySecretArn'
+
+  GitHubDeployRoleArn:
+    Condition: ShouldCreateDeployRole
+    Description: ARN of passwordless GitHub Actions OIDC deploy role.
+    Value: !GetAtt GitHubDeployRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-GitHubDeployRoleArn'

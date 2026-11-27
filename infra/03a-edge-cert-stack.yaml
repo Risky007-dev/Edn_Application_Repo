@@ -1,0 +1,111 @@
+# ==============================================================================
+# STACK 03a — CLOUDFRONT EDGE TLS CERTIFICATE (ACM in us-east-1)
+# Region: us-east-1 (MANDATORY AWS requirement for CloudFront TLS certificates)
+# ==============================================================================
+# Auto-validates via Route 53 DNS CNAMEs (does NOT touch existing A/MX/TXT/DKIM
+# records on tutortime.ai or popcornmaths.com).
+#
+# Production cert covers all 5 hostnames:
+#   - tutortime.ai, www.tutortime.ai, checkin.tutortime.ai
+#   - popcornmaths.com, www.popcornmaths.com (302 forward -> Popcorn Math page)
+#
+# Staging cert covers 2 hostnames:
+#   - staging.tutortime.ai, checkin-staging.tutortime.ai
+# ==============================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Tutor Time & Popcorn Math (Stack 03a - Edge Certificate in us-east-1):
+  DNS-validated ACM TLS certificate for CloudFront distribution aliases.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+    Description: Target environment name.
+
+  TutortimeHostedZoneId:
+    Type: String
+    Description: Route 53 Public Hosted Zone ID for tutortime.ai (e.g. Z04729501Z8GNOKNPRCKY).
+
+  PopcornHostedZoneId:
+    Type: String
+    Default: ''
+    Description: Route 53 Public Hosted Zone ID for popcornmaths.com (required for production; unused in staging).
+
+  PrimaryDomain:
+    Type: String
+    Default: tutortime.ai
+    Description: Primary public domain (tutortime.ai for prod; staging.tutortime.ai for staging).
+
+  PortalDomain:
+    Type: String
+    Default: checkin.tutortime.ai
+    Description: Private portal domain (checkin.tutortime.ai for prod; checkin-staging.tutortime.ai for staging).
+
+  PopcornDomain:
+    Type: String
+    Default: popcornmaths.com
+    Description: Legacy Popcorn Math domain forwarded to the Popcorn Math page (production only).
+
+Conditions:
+  IsProduction: !Equals [!Ref EnvironmentName, 'production']
+  IsStaging: !Equals [!Ref EnvironmentName, 'staging']
+
+Resources:
+  ProductionEdgeCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: IsProduction
+    Properties:
+      DomainName: !Ref PrimaryDomain
+      SubjectAlternativeNames:
+        - !Sub 'www.${PrimaryDomain}'
+        - !Ref PortalDomain
+        - !Ref PopcornDomain
+        - !Sub 'www.${PopcornDomain}'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref PrimaryDomain
+          HostedZoneId: !Ref TutortimeHostedZoneId
+        - DomainName: !Sub 'www.${PrimaryDomain}'
+          HostedZoneId: !Ref TutortimeHostedZoneId
+        - DomainName: !Ref PortalDomain
+          HostedZoneId: !Ref TutortimeHostedZoneId
+        - DomainName: !Ref PopcornDomain
+          HostedZoneId: !Ref PopcornHostedZoneId
+        - DomainName: !Sub 'www.${PopcornDomain}'
+          HostedZoneId: !Ref PopcornHostedZoneId
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  StagingEdgeCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: IsStaging
+    Properties:
+      DomainName: !Ref PrimaryDomain
+      SubjectAlternativeNames:
+        - !Ref PortalDomain
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref PrimaryDomain
+          HostedZoneId: !Ref TutortimeHostedZoneId
+        - DomainName: !Ref PortalDomain
+          HostedZoneId: !Ref TutortimeHostedZoneId
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  EdgeCertificateArn:
+    Description: ARN of the us-east-1 ACM certificate to pass into Stack 03b (us-east-2).
+    Value: !If [IsProduction, !Ref ProductionEdgeCertificate, !Ref StagingEdgeCertificate]
+    Export:
+      Name: !Sub '${AWS::StackName}-EdgeCertificateArn'

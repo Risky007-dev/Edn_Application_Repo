@@ -1,0 +1,851 @@
+# ==============================================================================
+# STACK 03b — APPLICATION COMPUTE & EDGE CDN (Lambda + CloudFront)
+# Region: us-east-2 (CloudFront is global; references us-east-1 ACM cert ARN)
+# ==============================================================================
+# Zero-VM serverless architecture:
+#   - AWS Lambda Container Image (Node 24 + AWS Lambda Web Adapter 0.8.4)
+#   - Lambda Function URL locked behind CloudFront via X-Origin-Verify secret
+#   - Amazon CloudFront Distribution (HTTP/2 + HTTP/3, PriceClass_100):
+#       * Static assets (/css/*, /js/*, /fonts/*, /assets/*, /favicon.*) cached
+#         at global edge POPs (CachingOptimized) for fast Caribbean mobile UX.
+#       * Dynamic SSR, forms, chatbot, private portal (/office, /p/*, checkin.*)
+#         strictly uncached (CachingDisabled) with AllViewerExceptHostHeader.
+#       * Edge CloudFront Function forwards visitor Host -> X-Forwarded-Host,
+#         redirects www.tutortime.ai -> https://tutortime.ai (301), and forwards
+#         popcornmaths.com / www.popcornmaths.com -> https://tutortime.ai/services/popcorn-math
+#         with HTTP 302 initially (parameterized to flip to 301 later with 1 param).
+#   - Safe conditional Route 53 Alias records that NEVER touch MX/TXT/DKIM/DMARC
+#     or mail.tutortime.ai records, and default ManageLiveDnsRecords=false on
+#     production until cutover so existing VM/ALB A records never collide.
+# ==============================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Tutor Time & Popcorn Math (Stack 03b - App & Edge): AWS Lambda container with
+  Lambda Web Adapter, CloudFront CDN, edge host/redirect functions, and safe DNS.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+    Description: Deployment target environment name.
+
+  DataStackName:
+    Type: String
+    Default: tutortime-production-infra
+    Description: Name of Stack 01 (Data) providing exported DynamoDB table & S3 bucket names.
+
+  SecurityStackName:
+    Type: String
+    Default: tutortime-production-security
+    Description: Name of Stack 02 (Security) providing LambdaExecutionRoleArn & Secrets Manager secrets.
+
+  EcrRepositoryName:
+    Type: String
+    Default: tutortime-app
+    Description: Shared ECR repository name containing immutable git-<sha> container images.
+
+  ImageTag:
+    Type: String
+    AllowedPattern: '^[a-zA-Z0-9._-]+$'
+    Description: Immutable container image tag in ECR (e.g. git-b1187f2). Never use latest in production.
+
+  EdgeCertificateArn:
+    Type: String
+    AllowedPattern: '^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[a-zA-Z0-9-]+$'
+    ConstraintDescription: Must be an issued ACM certificate ARN in us-east-1 (from Stack 03a).
+    Description: ARN of the us-east-1 ACM certificate from Stack 03a.
+
+  # --- Domains & Safe DNS Cutover Controls ---
+  PrimaryDomain:
+    Type: String
+    Default: tutortime.ai
+    Description: Primary public domain (tutortime.ai for prod; staging.tutortime.ai for staging).
+
+  PortalDomain:
+    Type: String
+    Default: checkin.tutortime.ai
+    Description: Private portal hostname (checkin.tutortime.ai for prod; checkin-staging.tutortime.ai for staging).
+
+  PopcornDomain:
+    Type: String
+    Default: popcornmaths.com
+    Description: Legacy Popcorn Math domain forwarded to the Popcorn Math page (production only).
+
+  PopcornRedirectStatusCode:
+    Type: Number
+    Default: 302
+    AllowedValues:
+      - 302
+      - 301
+    Description: >
+      HTTP status code for popcornmaths.com -> Popcorn Math page forwarding.
+      Starts at 302 per owner/Cassie approval; flip to 301 once cutover is verified.
+
+  PopcornRedirectTargetUrl:
+    Type: String
+    Default: https://tutortime.ai/services/popcorn-math
+    AllowedPattern: '^https://[a-zA-Z0-9./_-]+$'
+    Description: Destination URL for popcornmaths.com and www.popcornmaths.com forwarding.
+
+  TutortimeHostedZoneId:
+    Type: String
+    Default: ''
+    Description: Route 53 Hosted Zone ID for tutortime.ai (required when ManageDnsRecords or ManageLiveDnsRecords is true).
+
+  PopcornHostedZoneId:
+    Type: String
+    Default: ''
+    Description: Route 53 Hosted Zone ID for popcornmaths.com (required when ManageLiveDnsRecords is true in production).
+
+  ManageNewSubdomainDnsRecords:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Create Route 53 Alias records for brand-new hostnames that do not yet exist in Route 53
+      (staging.tutortime.ai, checkin-staging.tutortime.ai on staging; www.tutortime.ai on prod).
+
+  ManageLiveDnsRecords:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Production cutover toggle. Keep 'false' during initial deploy because tutortime.ai,
+      checkin.tutortime.ai, popcornmaths.com, and www.popcornmaths.com already have live A records.
+      Flip to 'true' ONLY at cutover after removing legacy VM/ALB A records (never touches mail records).
+
+  # --- Lambda Sizing & Cost Guardrails ---
+  LambdaMemoryMB:
+    Type: Number
+    Default: 512
+    MinValue: 256
+    MaxValue: 3008
+    Description: Lambda memory in MB (512 MB gives fast Node 24 startup at minimal cost).
+
+  LambdaTimeoutSeconds:
+    Type: Number
+    Default: 25
+    MinValue: 10
+    MaxValue: 60
+    Description: Lambda invocation timeout in seconds (must exceed 15s Anthropic API timeout).
+
+  LambdaReservedConcurrency:
+    Type: Number
+    Default: 20
+    MinValue: 0
+    MaxValue: 100
+    Description: Hard Lambda concurrency cap for spend protection (0 = unreserved).
+
+  EnableWarmerRule:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Optional 5-minute EventBridge /health ping to keep 1 Lambda container warm.
+
+  # --- Application Configuration & Feature Flags ---
+  SiteUrl:
+    Type: String
+    Default: https://tutortime.ai
+    Description: Canonical public base URL for sitemap, robots.txt, and Open Graph tags.
+
+  PortalBaseUrl:
+    Type: String
+    Default: https://checkin.tutortime.ai
+    Description: Base URL for private attendance portal and /p/:token parent links.
+
+  EmailDriver:
+    Type: String
+    Default: ses
+    AllowedValues:
+      - ses
+      - mock
+    Description: Form & portal email dispatch driver ('mock' on staging; 'ses' on production).
+
+  CassieNotificationEmail:
+    Type: String
+    Default: Cassie@tutortime.ai
+    Description: Primary inbox receiving consultation and form notifications.
+
+  AdminNotificationEmail:
+    Type: String
+    Default: notifications@mail.tutortime.ai
+    Description: Fallback admin notification inbox if CASSIE_NOTIFICATION_EMAIL is unset.
+
+  SenderEmail:
+    Type: String
+    Default: noreply@mail.tutortime.ai
+    Description: Verified SES outgoing sender address for public form notifications.
+
+  PortalSenderEmail:
+    Type: String
+    Default: noreply@mail.tutortime.ai
+    Description: Verified SES outgoing sender address for private portal parent notices.
+
+  CassieReplyToEmail:
+    Type: String
+    Default: Cassie@tutortime.ai
+    Description: Reply-To address for parent portal attendance and custom notices.
+
+  ContactEmail:
+    Type: String
+    Default: hello@tutortime.ai
+    Description: Public contact & privacy support email address displayed on site.
+
+  SendConfirmations:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Toggle automated applicant confirmation emails.
+
+  WhatsappPhoneNumber:
+    Type: String
+    Default: '+12647295791'
+    Description: Anguilla WhatsApp Business click-to-chat phone number.
+
+  ShowLocalPreviewBanner:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Show non-production preview banner ('true' on staging, 'false' on production).
+
+  SiteNoIndex:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Force Disallow all in /robots.txt ('true' on staging, 'false' on production).
+
+  FeaturesChatbotEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Master kill-switch for Tutor Time Helper AI chatbot.
+
+  FeaturesReadinessCheckEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Feature flag for Mathematics & Language Arts Readiness Check.
+
+  ChatbotModel:
+    Type: String
+    Default: claude-haiku-5-5
+    Description: Anthropic Claude model identifier.
+
+  ChatbotDailyRequestCap:
+    Type: Number
+    Default: 200
+    MinValue: 1
+    MaxValue: 5000
+    Description: Hard daily cap on chatbot queries across all users (backed by DynamoDB atomic counter).
+
+  FormRateLimitMax:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 500
+    Description: Max form submissions per IP per 15-minute window.
+
+  PortalLoginRateLimitMax:
+    Type: Number
+    Default: 5
+    MinValue: 1
+    MaxValue: 100
+    Description: Max failed portal login attempts per IP per 15-minute window.
+
+  LateIsBillable:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Whether late attendance counts as billable by default in portal.
+
+  FaultInjectionEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Synthetic fault injection toggle (strictly 'false' in normal operation).
+
+  GuideMascotImagePath:
+    Type: String
+    Default: ''
+    Description: Optional approved Guide mascot image path (leave empty for inline SVG default).
+
+  BucketMascotImagePath:
+    Type: String
+    Default: ''
+    Description: Optional approved illustrated Popcorn Bucket mascot path (leave empty for inline SVG default).
+
+Conditions:
+  IsProduction: !Equals [!Ref EnvironmentName, 'production']
+  IsStaging: !Equals [!Ref EnvironmentName, 'staging']
+  HasReservedConcurrency: !Not [!Equals [!Ref LambdaReservedConcurrency, 0]]
+  ShouldEnableWarmer: !Equals [!Ref EnableWarmerRule, 'true']
+  HasTutortimeZone: !Not [!Equals [!Ref TutortimeHostedZoneId, '']]
+  HasPopcornZone: !Not [!Equals [!Ref PopcornHostedZoneId, '']]
+  ShouldCreateStagingDns: !And [!Condition IsStaging, !Equals [!Ref ManageNewSubdomainDnsRecords, 'true'], !Condition HasTutortimeZone]
+  ShouldCreateProdWwwDns: !And [!Condition IsProduction, !Equals [!Ref ManageNewSubdomainDnsRecords, 'true'], !Condition HasTutortimeZone]
+  ShouldCreateProdLiveTutortimeDns: !And [!Condition IsProduction, !Equals [!Ref ManageLiveDnsRecords, 'true'], !Condition HasTutortimeZone]
+  ShouldCreateProdLivePopcornDns: !And [!Condition IsProduction, !Equals [!Ref ManageLiveDnsRecords, 'true'], !Condition HasPopcornZone]
+
+Resources:
+  # ----------------------------------------------------------------------------
+  # 1. CloudWatch Log Group (30-Day Rolling Retention, Zero PII)
+  # ----------------------------------------------------------------------------
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/tutortime-${EnvironmentName}-app'
+      RetentionInDays: 30
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 2. AWS Lambda Container Function (Express 5 + AWS Lambda Web Adapter)
+  # ----------------------------------------------------------------------------
+  AppFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: AppLogGroup
+    Properties:
+      FunctionName: !Sub 'tutortime-${EnvironmentName}-app'
+      Description: !Sub 'Tutor Time & Popcorn Math modular monolith (${EnvironmentName}) running via Lambda Web Adapter.'
+      PackageType: Image
+      Architectures:
+        - x86_64
+      Code:
+        ImageUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepositoryName}:${ImageTag}'
+      Role:
+        Fn::ImportValue: !Sub '${SecurityStackName}-LambdaExecutionRoleArn'
+      MemorySize: !Ref LambdaMemoryMB
+      Timeout: !Ref LambdaTimeoutSeconds
+      ReservedConcurrentExecutions: !If [HasReservedConcurrency, !Ref LambdaReservedConcurrency, !Ref 'AWS::NoValue']
+      TracingConfig:
+        Mode: Active
+      LoggingConfig:
+        LogGroup: !Ref AppLogGroup
+        LogFormat: Text
+      Environment:
+        Variables:
+          NODE_ENV: production
+          PORT: '5001'
+          AWS_LWA_PORT: '5001'
+          AWS_LWA_READINESS_CHECK_PATH: /health
+          AWS_LWA_INVOKE_MODE: BUFFERED
+          TRUST_PROXY: '1'
+          STORAGE_DRIVER: aws
+          EMAIL_DRIVER: !Ref EmailDriver
+          SES_REGION: !Ref AWS::Region
+          DYNAMODB_TABLE_NAME:
+            Fn::ImportValue: !Sub '${DataStackName}-SubmissionsTableName'
+          PORTAL_TABLE_NAME:
+            Fn::ImportValue: !Sub '${DataStackName}-PortalTableName'
+          SUBSCRIBERS_TABLE_NAME:
+            Fn::ImportValue: !Sub '${DataStackName}-SubscribersTableName'
+          UPLOADS_BUCKET_NAME:
+            Fn::ImportValue: !Sub '${DataStackName}-UploadsBucketName'
+          SITE_URL: !Ref SiteUrl
+          PUBLIC_SITE_URL: !Ref SiteUrl
+          PORTAL_BASE_URL: !Ref PortalBaseUrl
+          PORTAL_HOST: !Ref PortalDomain
+          CASSIE_NOTIFICATION_EMAIL: !Ref CassieNotificationEmail
+          ADMIN_NOTIFICATION_EMAIL: !Ref AdminNotificationEmail
+          SENDER_EMAIL: !Ref SenderEmail
+          PORTAL_SENDER_EMAIL: !Ref PortalSenderEmail
+          CASSIE_REPLY_TO_EMAIL: !Ref CassieReplyToEmail
+          CONTACT_EMAIL: !Ref ContactEmail
+          SEND_CONFIRMATIONS: !Ref SendConfirmations
+          WHATSAPP_PHONE_NUMBER: !Ref WhatsappPhoneNumber
+          SHOW_LOCAL_PREVIEW_BANNER: !Ref ShowLocalPreviewBanner
+          SITE_NOINDEX: !Ref SiteNoIndex
+          FEATURES_CHATBOT_ENABLED: !Ref FeaturesChatbotEnabled
+          FEATURES_READINESS_CHECK_ENABLED: !Ref FeaturesReadinessCheckEnabled
+          CHATBOT_MODEL: !Ref ChatbotModel
+          CHATBOT_DAILY_REQUEST_CAP: !Sub '${ChatbotDailyRequestCap}'
+          FORM_RATE_LIMIT_MAX: !Sub '${FormRateLimitMax}'
+          PORTAL_LOGIN_RATE_LIMIT_MAX: !Sub '${PortalLoginRateLimitMax}'
+          LATE_IS_BILLABLE: !Ref LateIsBillable
+          FAULT_INJECTION_ENABLED: !Ref FaultInjectionEnabled
+          GUIDE_MASCOT_IMAGE_PATH: !Ref GuideMascotImagePath
+          BUCKET_MASCOT_IMAGE_PATH: !Ref BucketMascotImagePath
+          # Literal Secrets Manager dynamic references (never nested inside Fn::Sub)
+          ANTHROPIC_API_KEY: !If
+            - IsProduction
+            - '{{resolve:secretsmanager:tutortime/production/anthropic-api-key:SecretString:value}}'
+            - '{{resolve:secretsmanager:tutortime/staging/anthropic-api-key:SecretString:value}}'
+          ADMIN_API_KEY: !If
+            - IsProduction
+            - '{{resolve:secretsmanager:tutortime/production/admin-api-key:SecretString:value}}'
+            - '{{resolve:secretsmanager:tutortime/staging/admin-api-key:SecretString:value}}'
+          FAULT_INJECTION_KEY: !If
+            - IsProduction
+            - '{{resolve:secretsmanager:tutortime/production/fault-injection-key:SecretString:value}}'
+            - '{{resolve:secretsmanager:tutortime/staging/fault-injection-key:SecretString:value}}'
+          ORIGIN_VERIFY_SECRET: !If
+            - IsProduction
+            - '{{resolve:secretsmanager:tutortime/production/origin-verify-secret:SecretString:value}}'
+            - '{{resolve:secretsmanager:tutortime/staging/origin-verify-secret:SecretString:value}}'
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 3. Lambda Function URL (Locked Behind CloudFront X-Origin-Verify Secret)
+  # ----------------------------------------------------------------------------
+  AppFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt AppFunction.Arn
+      AuthType: NONE
+      InvokeMode: BUFFERED
+
+  AppFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AppFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: '*'
+      FunctionUrlAuthType: NONE
+
+  # ----------------------------------------------------------------------------
+  # 4. CloudFront Edge Functions (Host Forwarding + 302 Popcorn Math Forward)
+  # ----------------------------------------------------------------------------
+  ProductionViewerRequestFunction:
+    Type: AWS::CloudFront::Function
+    Condition: IsProduction
+    Properties:
+      Name: !Sub 'tutortime-${EnvironmentName}-viewer-request'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: 'Edge forwarding: popcornmaths.com -> Popcorn Math (302/301), www -> apex (301), Host -> X-Forwarded-Host.'
+        Runtime: cloudfront-js-2.0
+      FunctionCode: !Sub |
+        function buildQueryString(qs) {
+          if (!qs) return '';
+          var keys = Object.keys(qs);
+          if (keys.length === 0) return '';
+          var parts = [];
+          for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            var entry = qs[k];
+            if (entry.multiValue) {
+              for (var j = 0; j < entry.multiValue.length; j++) {
+                parts.push(k + '=' + entry.multiValue[j].value);
+              }
+            } else if (entry.value !== undefined && entry.value !== '') {
+              parts.push(k + '=' + entry.value);
+            } else {
+              parts.push(k);
+            }
+          }
+          return '?' + parts.join('&');
+        }
+
+        function handler(event) {
+          var request = event.request;
+          var headers = request.headers;
+          var host = (headers.host && headers.host.value ? headers.host.value : '').toLowerCase();
+
+          // 1. Forward popcornmaths.com & www.popcornmaths.com at the edge (zero Lambda cost)
+          if (host === '${PopcornDomain}' || host === 'www.${PopcornDomain}') {
+            var code = ${PopcornRedirectStatusCode};
+            var desc = code === 301 ? 'Moved Permanently' : 'Found';
+            return {
+              statusCode: code,
+              statusDescription: desc,
+              headers: {
+                location: { value: '${PopcornRedirectTargetUrl}' },
+                'cache-control': { value: code === 301 ? 'public, max-age=3600' : 'no-cache, no-store, must-revalidate' }
+              }
+            };
+          }
+
+          // 2. Canonicalize www.tutortime.ai -> https://tutortime.ai (301) preserving path & query
+          if (host === 'www.${PrimaryDomain}') {
+            var target = 'https://${PrimaryDomain}' + request.uri + buildQueryString(request.querystring);
+            return {
+              statusCode: 301,
+              statusDescription: 'Moved Permanently',
+              headers: {
+                location: { value: target },
+                'cache-control': { value: 'public, max-age=3600' }
+              }
+            };
+          }
+
+          // 3. Strip any client-spoofed origin secret & preserve original Host for Express portal routing
+          delete headers['x-origin-verify'];
+          headers['x-forwarded-host'] = { value: host };
+          return request;
+        }
+
+  StagingViewerRequestFunction:
+    Type: AWS::CloudFront::Function
+    Condition: IsStaging
+    Properties:
+      Name: !Sub 'tutortime-${EnvironmentName}-viewer-request'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: 'Staging edge function: strips client x-origin-verify and copies Host -> X-Forwarded-Host.'
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var headers = request.headers;
+          var host = (headers.host && headers.host.value ? headers.host.value : '').toLowerCase();
+          delete headers['x-origin-verify'];
+          headers['x-forwarded-host'] = { value: host };
+          return request;
+        }
+
+  # ----------------------------------------------------------------------------
+  # 5. Staging X-Robots-Tag: noindex Response Headers Policy
+  # ----------------------------------------------------------------------------
+  StagingNoIndexResponsePolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Condition: IsStaging
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub 'tutortime-${EnvironmentName}-noindex-headers'
+        Comment: Prevents search engines from indexing any route on staging.
+        CustomHeadersConfig:
+          Items:
+            - Header: X-Robots-Tag
+              Value: 'noindex, nofollow, noarchive'
+              Override: true
+
+  # ----------------------------------------------------------------------------
+  # 6. Amazon CloudFront Distribution (Global Edge CDN + TLS 1.2/HTTP3)
+  # ----------------------------------------------------------------------------
+  AppDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'Tutor Time & Popcorn Math (${EnvironmentName}) - Zero-VM CloudFront + Lambda'
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        Aliases: !If
+          - IsProduction
+          - - !Ref PrimaryDomain
+            - !Sub 'www.${PrimaryDomain}'
+            - !Ref PortalDomain
+            - !Ref PopcornDomain
+            - !Sub 'www.${PopcornDomain}'
+          - - !Ref PrimaryDomain
+            - !Ref PortalDomain
+        ViewerCertificate:
+          AcmCertificateArn: !Ref EdgeCertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        Origins:
+          - Id: LambdaFunctionUrlOrigin
+            DomainName: !Select [2, !Split ['/', !GetAtt AppFunctionUrl.FunctionUrl]]
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
+              OriginReadTimeout: 30
+              OriginKeepaliveTimeout: 5
+            OriginCustomHeaders:
+              - HeaderName: X-Origin-Verify
+                HeaderValue: !If
+                  - IsProduction
+                  - '{{resolve:secretsmanager:tutortime/production/origin-verify-secret:SecretString:value}}'
+                  - '{{resolve:secretsmanager:tutortime/staging/origin-verify-secret:SecretString:value}}'
+        # Static asset behaviors cached at edge POPs for fast Anguilla/Caribbean mobile load times
+        CacheBehaviors:
+          - PathPattern: /css/*
+            TargetOriginId: LambdaFunctionUrlOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: !If [IsStaging, !Ref StagingNoIndexResponsePolicy, !Ref 'AWS::NoValue']
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !If
+                  - IsProduction
+                  - !GetAtt ProductionViewerRequestFunction.FunctionARN
+                  - !GetAtt StagingViewerRequestFunction.FunctionARN
+          - PathPattern: /js/*
+            TargetOriginId: LambdaFunctionUrlOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: !If [IsStaging, !Ref StagingNoIndexResponsePolicy, !Ref 'AWS::NoValue']
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !If
+                  - IsProduction
+                  - !GetAtt ProductionViewerRequestFunction.FunctionARN
+                  - !GetAtt StagingViewerRequestFunction.FunctionARN
+          - PathPattern: /fonts/*
+            TargetOriginId: LambdaFunctionUrlOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: !If [IsStaging, !Ref StagingNoIndexResponsePolicy, !Ref 'AWS::NoValue']
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !If
+                  - IsProduction
+                  - !GetAtt ProductionViewerRequestFunction.FunctionARN
+                  - !GetAtt StagingViewerRequestFunction.FunctionARN
+          - PathPattern: /assets/*
+            TargetOriginId: LambdaFunctionUrlOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: !If [IsStaging, !Ref StagingNoIndexResponsePolicy, !Ref 'AWS::NoValue']
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !If
+                  - IsProduction
+                  - !GetAtt ProductionViewerRequestFunction.FunctionARN
+                  - !GetAtt StagingViewerRequestFunction.FunctionARN
+          - PathPattern: /favicon.*
+            TargetOriginId: LambdaFunctionUrlOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+            ResponseHeadersPolicyId: !If [IsStaging, !Ref StagingNoIndexResponsePolicy, !Ref 'AWS::NoValue']
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !If
+                  - IsProduction
+                  - !GetAtt ProductionViewerRequestFunction.FunctionARN
+                  - !GetAtt StagingViewerRequestFunction.FunctionARN
+        # Default dynamic behavior (SSR HTML, /api/*, /office/*, /p/*, /subscribe): NEVER cached
+        DefaultCacheBehavior:
+          TargetOriginId: LambdaFunctionUrlOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          ResponseHeadersPolicyId: !If [IsStaging, !Ref StagingNoIndexResponsePolicy, !Ref 'AWS::NoValue']
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !If
+                - IsProduction
+                - !GetAtt ProductionViewerRequestFunction.FunctionARN
+                - !GetAtt StagingViewerRequestFunction.FunctionARN
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 7. Optional EventBridge Warmer (Pings /health every 5 min when enabled)
+  # ----------------------------------------------------------------------------
+  LambdaWarmerRule:
+    Type: AWS::Events::Rule
+    Condition: ShouldEnableWarmer
+    Properties:
+      Name: !Sub 'tutortime-${EnvironmentName}-lambda-warmer'
+      Description: Keeps one Lambda execution environment warm by invoking GET /health every 5 minutes.
+      ScheduleExpression: rate(5 minutes)
+      State: ENABLED
+      Targets:
+        - Id: WarmHealthTarget
+          Arn: !GetAtt AppFunction.Arn
+          Input: '{"version":"2.0","rawPath":"/health","rawQueryString":"","headers":{"host":"localhost"},"requestContext":{"http":{"method":"GET","path":"/health","protocol":"HTTP/1.1","sourceIp":"127.0.0.1","userAgent":"aws-eventbridge-warmer"}}}'
+
+  LambdaWarmerPermission:
+    Type: AWS::Lambda::Permission
+    Condition: ShouldEnableWarmer
+    Properties:
+      FunctionName: !Ref AppFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt LambdaWarmerRule.Arn
+
+  # ----------------------------------------------------------------------------
+  # 8. Safe Conditional Route 53 Alias Records (Zero Impact on Email DNS!)
+  #    CloudFront Alias HostedZoneId is globally constant: Z2FDTNDATAQYW2
+  # ----------------------------------------------------------------------------
+  StagingDnsRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Condition: ShouldCreateStagingDns
+    Properties:
+      HostedZoneId: !Ref TutortimeHostedZoneId
+      Comment: Staging CloudFront Alias records (staging.tutortime.ai & checkin-staging.tutortime.ai).
+      RecordSets:
+        - Name: !Ref PrimaryDomain
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref PrimaryDomain
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref PortalDomain
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref PortalDomain
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+
+  ProductionWwwDnsRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Condition: ShouldCreateProdWwwDns
+    Properties:
+      HostedZoneId: !Ref TutortimeHostedZoneId
+      Comment: Brand-new www.tutortime.ai Alias record (did not exist in pre-cutover DNS audit).
+      RecordSets:
+        - Name: !Sub 'www.${PrimaryDomain}'
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Sub 'www.${PrimaryDomain}'
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+
+  ProductionLiveTutortimeDnsRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Condition: ShouldCreateProdLiveTutortimeDns
+    Properties:
+      HostedZoneId: !Ref TutortimeHostedZoneId
+      Comment: Production cutover Alias records for tutortime.ai & checkin.tutortime.ai (mail DNS untouched).
+      RecordSets:
+        - Name: !Ref PrimaryDomain
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref PrimaryDomain
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref PortalDomain
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref PortalDomain
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+
+  ProductionLivePopcornDnsRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Condition: ShouldCreateProdLivePopcornDns
+    Properties:
+      HostedZoneId: !Ref PopcornHostedZoneId
+      Comment: Production cutover Alias records forwarding popcornmaths.com & www.popcornmaths.com to Popcorn Math page.
+      RecordSets:
+        - Name: !Ref PopcornDomain
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Ref PopcornDomain
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Sub 'www.${PopcornDomain}'
+          Type: A
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+        - Name: !Sub 'www.${PopcornDomain}'
+          Type: AAAA
+          AliasTarget:
+            DNSName: !GetAtt AppDistribution.DomainName
+            HostedZoneId: Z2FDTNDATAQYW2
+
+Outputs:
+  AppFunctionName:
+    Description: AWS Lambda function name.
+    Value: !Ref AppFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-AppFunctionName'
+
+  AppFunctionArn:
+    Description: AWS Lambda function ARN.
+    Value: !GetAtt AppFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AppFunctionArn'
+
+  AppLogGroupName:
+    Description: CloudWatch Log Group name (30-day retention).
+    Value: !Ref AppLogGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-AppLogGroupName'
+
+  AppFunctionUrlEndpoint:
+    Description: Direct Lambda Function URL (protected by X-Origin-Verify; invoke via CloudFront).
+    Value: !GetAtt AppFunctionUrl.FunctionUrl
+
+  CloudFrontDistributionId:
+    Description: CloudFront Distribution ID (used for cache invalidations if needed).
+    Value: !Ref AppDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain name (usable for pre-cutover smoke testing).
+    Value: !GetAtt AppDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDomainName'
+
+  DeployedImageTag:
+    Description: Immutable ECR image tag currently deployed to Lambda.
+    Value: !Ref ImageTag

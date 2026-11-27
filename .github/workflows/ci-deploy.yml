@@ -1,0 +1,356 @@
+name: CI & Zero-VM CloudFormation Deploy (Lambda + CloudFront)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: 'Environment to deploy (staging or production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      rollback_image_tag:
+        description: 'Optional existing immutable ECR tag (e.g. git-abc1234) for instant rollback without rebuild'
+        required: false
+        default: ''
+        type: string
+  schedule:
+    # Weekly Monday 08:00 UTC CloudFormation drift check (read-only)
+    - cron: '0 8 * * 1'
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: tutortime-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  EDGE_CERT_REGION: us-east-1
+  ECR_REPOSITORY: tutortime-app
+
+jobs:
+  # ============================================================================
+  # 1. Code Quality, Full Automated Tests, CloudFormation Lint & Container Smoke
+  # ============================================================================
+  validate-and-test:
+    name: Test, CFN Lint & Container Smoke Check
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies (deterministic lockfile)
+        run: npm ci
+
+      - name: Syntax, Copy Registry & Full Automated Test Suite
+        env:
+          STORAGE_DRIVER: local
+          EMAIL_DRIVER: mock
+          SEND_CONFIRMATIONS: 'false'
+        run: |
+          node scripts/check-syntax.js
+          npm test
+          npm run check:copy
+
+      - name: Validate CloudFormation Templates (cfn-lint)
+        run: |
+          pip install --quiet cfn-lint
+          cfn-lint infra/*.yaml
+
+      - name: Verify Zero Hardcoded Account IDs or Secrets in Repo Infra
+        run: |
+          ! grep -rnE --exclude='ci-deploy.yml' 'arn:aws:[^:]+:[^:]*:[0-9]{12}:|AKIA[0-9A-Z]{16}|sk-ant-api[0-9]{2}-' infra/ .github/ Dockerfile ecs-task-definition*.json
+
+      - name: Build Container Image & Run Local Smoke Test (Offline Mode)
+        run: |
+          docker build -t tutortime-ci-test:local .
+          docker run -d --name tt-smoke -p 5001:5001 \
+            -e STORAGE_DRIVER=local \
+            -e EMAIL_DRIVER=mock \
+            -e SEND_CONFIRMATIONS=false \
+            -e NODE_ENV=production \
+            -e ORIGIN_VERIFY_SECRET=ci-smoke-origin-secret \
+            tutortime-ci-test:local
+          sleep 3
+          # Confirm container runs as non-root user `node`
+          test "$(docker exec tt-smoke whoami)" = "node"
+          # Confirm no .env file was baked into container image
+          ! docker exec tt-smoke test -f /app/.env
+          # Confirm direct request without X-Origin-Verify is blocked (403) while /health returns 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5001/health)" = "200"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5001/)" = "403"
+          # Run full read-only smoke test with origin header
+          node scripts/smoke-test.js \
+            --base-url=http://127.0.0.1:5001 \
+            --origin-verify-secret=ci-smoke-origin-secret
+          docker rm -f tt-smoke
+
+      - name: Scan Container Image with Trivy (HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: tutortime-ci-test:local
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  # ============================================================================
+  # 2. Build & Push Immutable git-<sha> Container Image via GitHub OIDC
+  # ============================================================================
+  build-and-push:
+    name: Build & Push Immutable ECR Image
+    needs: validate-and-test
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.rollback_image_tag == '')
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute immutable image tag
+        id: meta
+        run: echo "image_tag=git-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials via OIDC (zero static keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Immutable Image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          docker build -t "${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}" .
+          docker push "${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+  # ============================================================================
+  # 3. Deploy Staging (Mock Email, NoIndex, Preview Banner) + Live Smoke Test
+  # ============================================================================
+  deploy-staging:
+    name: Deploy Staging (CloudFormation)
+    needs: [validate-and-test, build-and-push]
+    if: |
+      always() &&
+      needs.validate-and-test.result == 'success' &&
+      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'staging'))
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.tutortime.ai
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve Immutable Image Tag
+        id: tag
+        run: |
+          TAG="${{ inputs.rollback_image_tag || needs.build-and-push.outputs.image_tag }}"
+          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Staging CloudFormation Stacks (01 -> 02 -> 03a -> 03b -> 04)
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+          ALERT_EMAIL: ${{ vars.OPS_ALERT_EMAIL }}
+        run: |
+          to_overrides() {
+            node -e "const p=require('./infra/params/staging.json')[\"$1\"].parameters; console.log(Object.entries(p).map(([k,v])=>k+'='+v).join(' '));"
+          }
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-staging-data \
+            --template-file infra/01-data-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides dataStack)
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-staging-security \
+            --template-file infra/02-security-cicd-stack.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides securityStack)
+
+          aws cloudformation deploy --region "$EDGE_CERT_REGION" \
+            --stack-name tutortime-staging-edge-cert \
+            --template-file infra/03a-edge-cert-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides edgeCertStack)
+
+          CERT_ARN=$(aws cloudformation describe-stacks --region "$EDGE_CERT_REGION" \
+            --stack-name tutortime-staging-edge-cert \
+            --query "Stacks[0].Outputs[?OutputKey=='EdgeCertificateArn'].OutputValue" --output text)
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-staging-app \
+            --template-file infra/03b-app-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides appStack) ImageTag="$IMAGE_TAG" EdgeCertificateArn="$CERT_ARN"
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-staging-ops \
+            --template-file infra/04-ops-budget-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides opsStack) AlertEmail="$ALERT_EMAIL"
+
+      - name: Run Live Staging Smoke Tests
+        run: |
+          node scripts/smoke-test.js \
+            --base-url=https://staging.tutortime.ai \
+            --portal-url=https://checkin-staging.tutortime.ai \
+            --expect-noindex=true \
+            --expect-preview-banner=true
+
+  # ============================================================================
+  # 4. Deploy Production (Manual Owner Approval Gate -> Promotes Exact Same SHA)
+  # ============================================================================
+  deploy-production:
+    name: Deploy Production (CloudFormation - Manual Approval)
+    needs: [validate-and-test, build-and-push, deploy-staging]
+    if: |
+      always() &&
+      needs.validate-and-test.result == 'success' &&
+      (needs.deploy-staging.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'production'))
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://tutortime.ai
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve Immutable Image Tag
+        id: tag
+        run: |
+          TAG="${{ inputs.rollback_image_tag || needs.build-and-push.outputs.image_tag }}"
+          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Production CloudFormation Stacks (01 in-place -> 02 -> 03a -> 03b -> 04)
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+          ALERT_EMAIL: ${{ vars.OPS_ALERT_EMAIL }}
+        run: |
+          to_overrides() {
+            node -e "const p=require('./infra/params/production.json')[\"$1\"].parameters; console.log(Object.entries(p).map(([k,v])=>k+'='+v).join(' '));"
+          }
+
+          # Stack 01 updates existing `tutortime-production-infra` in-place (zero data replacement)
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-production-infra \
+            --template-file infra/01-data-stack.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides dataStack)
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-production-security \
+            --template-file infra/02-security-cicd-stack.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides securityStack)
+
+          aws cloudformation deploy --region "$EDGE_CERT_REGION" \
+            --stack-name tutortime-production-edge-cert \
+            --template-file infra/03a-edge-cert-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides edgeCertStack)
+
+          CERT_ARN=$(aws cloudformation describe-stacks --region "$EDGE_CERT_REGION" \
+            --stack-name tutortime-production-edge-cert \
+            --query "Stacks[0].Outputs[?OutputKey=='EdgeCertificateArn'].OutputValue" --output text)
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-production-app \
+            --template-file infra/03b-app-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides appStack) ImageTag="$IMAGE_TAG" EdgeCertificateArn="$CERT_ARN"
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-production-ops \
+            --template-file infra/04-ops-budget-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides opsStack) AlertEmail="$ALERT_EMAIL"
+
+      - name: Run Live Production Smoke Tests
+        run: |
+          CF_DOMAIN=$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+            --stack-name tutortime-production-app \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomainName'].OutputValue" --output text)
+          LIVE_DNS=$(node -e "console.log(require('./infra/params/production.json').appStack.parameters.ManageLiveDnsRecords)")
+          REDIR_CODE=$(node -e "console.log(require('./infra/params/production.json').appStack.parameters.PopcornRedirectStatusCode)")
+          if [ "$LIVE_DNS" = "true" ]; then
+            node scripts/smoke-test.js \
+              --base-url=https://tutortime.ai \
+              --portal-url=https://checkin.tutortime.ai \
+              --redirect-url=https://popcornmaths.com \
+              --expect-redirect-status="$REDIR_CODE" \
+              --expect-noindex=false \
+              --expect-preview-banner=false
+          else
+            echo "Pre-cutover deploy verified via CloudFront endpoint: https://${CF_DOMAIN}"
+            node scripts/smoke-test.js \
+              --base-url="https://${CF_DOMAIN}" \
+              --expect-noindex=false \
+              --expect-preview-banner=false
+          fi
+
+  # ============================================================================
+  # 5. Weekly Read-Only CloudFormation Drift Detection
+  # ============================================================================
+  weekly-drift-check:
+    name: Weekly CloudFormation Drift Detection
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Detect Drift Across Production Stacks
+        run: |
+          for stack in tutortime-production-infra tutortime-production-security tutortime-production-app tutortime-production-ops; do
+            echo "Checking drift for ${stack}..."
+            DRIFT_ID=$(aws cloudformation detect-stack-drift --region "$AWS_REGION" --stack-name "$stack" --query StackDriftDetectionId --output text || true)
+            if [ -n "$DRIFT_ID" ]; then
+              sleep 5
+              aws cloudformation describe-stack-drift-detection-status --region "$AWS_REGION" --stack-drift-detection-id "$DRIFT_ID" --output table
+            fi
+          done

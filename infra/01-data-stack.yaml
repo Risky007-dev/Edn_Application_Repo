@@ -1,0 +1,441 @@
+# ==============================================================================
+# STACK 01 — DATA PERSISTENCE: Tutor Time & Popcorn Math
+# Region: us-east-2
+# ==============================================================================
+# Manages stateful data stores with DeletionPolicy: Retain & UpdateReplacePolicy:
+# Retain and Point-in-Time Recovery enabled.
+#
+# ZERO-DATA-LOSS COMPATIBILITY WITH EXISTING `tutortime-production-infra` STACK:
+# Read-only AWS audit (2026-11-26) verified:
+#   - `tutortime-production-infra` currently owns: SubmissionsTable, UploadsBucket,
+#     UploadsBucketPolicy, and AppManagedPolicy.
+#   - `tutortime-portal` (3 items) and `popcorn-maths-subscribers` (10 items)
+#     already exist in DynamoDB outside CloudFormation.
+#
+# Therefore:
+#   - Production in-place update sets CreatePortalTable=false and
+#     CreateSubscribersTable=false so CloudFormation updates SubmissionsTable
+#     (enabling TTL `expireAt`) and UploadsBucket (upgrading CORS to tutortime.ai)
+#     with Replacement: False and zero collisions, while exporting ALL table ARNs.
+#   - Staging sets CreatePortalTable=true and CreateSubscribersTable=true to
+#     provision isolated staging tables (`tutortime-staging-*`) cleanly.
+#   - No AWS account IDs, IPs, or credentials are hardcoded anywhere.
+# ==============================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Tutor Time & Popcorn Math (Stack 01 - Data): On-Demand DynamoDB tables
+  (submissions with TTL, portal with GSI1+TTL, newsletter subscribers),
+  private encrypted S3 CV uploads bucket with TLS-only policy, and exports.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+    Description: Deployment target environment name.
+
+  DynamoDBTableName:
+    Type: String
+    Default: tutortime-submissions
+    Description: Name of the DynamoDB table for public form submissions and atomic counters.
+
+  PortalTableName:
+    Type: String
+    Default: tutortime-portal
+    Description: Name of the DynamoDB table for Kashamar's private attendance & invoicing portal.
+
+  CreatePortalTable:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Set 'false' when updating existing tutortime-production-infra (tutortime-portal
+      already exists outside CFN). Set 'true' for staging or clean installs / CFN import.
+
+  SubscribersTableName:
+    Type: String
+    Default: popcorn-maths-subscribers
+    Description: Name of the DynamoDB table for newsletter subscribers (/subscribe & /subscribers).
+
+  CreateSubscribersTable:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Set 'false' when updating existing tutortime-production-infra (popcorn-maths-subscribers
+      already exists outside CFN). Set 'true' for staging or clean installs / CFN import.
+
+  UploadsBucketName:
+    Type: String
+    Default: ''
+    Description: >
+      Optional explicit name for the private CV uploads S3 bucket.
+      Leave empty to preserve/auto-generate CloudFormation bucket naming.
+
+  SiteOrigin:
+    Type: String
+    AllowedPattern: '^https://[a-zA-Z0-9.-]+$'
+    ConstraintDescription: Must be an HTTPS origin (e.g., https://tutortime.ai).
+    Description: Primary HTTPS origin allowed for S3 presigned POST CORS uploads (REQUIRED).
+
+  AdditionalCorsOrigin:
+    Type: String
+    Default: ''
+    AllowedPattern: '^(|https://[a-zA-Z0-9.-]+)$'
+    ConstraintDescription: Must be empty or a valid HTTPS origin (e.g., https://www.tutortime.ai).
+    Description: Optional secondary HTTPS origin for S3 presigned POST CORS uploads.
+
+  CVRetentionDays:
+    Type: Number
+    Default: 180
+    MinValue: 30
+    MaxValue: 3650
+    Description: Days to retain uploaded applicant CV PDFs before automatic S3 expiration (confirmed 180 days).
+
+  SesIdentityArn:
+    Type: String
+    Default: ''
+    Description: >
+      Optional additional verified SES domain/email identity ARN for legacy managed policy compatibility
+      (default empty; mail.tutortime.ai, tutortime.ai, and popcornmaths.com are included dynamically).
+
+  CreateLegacyManagedPolicy:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Keep 'true' when updating existing tutortime-production-infra so its exported
+      AppManagedPolicyArn stays intact. Set 'false' on staging (Stack 02 owns LambdaExecutionRole).
+
+Conditions:
+  HasBucketName: !Not [!Equals [!Ref UploadsBucketName, '']]
+  HasAdditionalCorsOrigin: !Not [!Equals [!Ref AdditionalCorsOrigin, '']]
+  HasCustomSesIdentityArn: !Not [!Equals [!Ref SesIdentityArn, '']]
+  ShouldCreatePortalTable: !Equals [!Ref CreatePortalTable, 'true']
+  ShouldCreateSubscribersTable: !Equals [!Ref CreateSubscribersTable, 'true']
+  ShouldCreateLegacyPolicy: !Equals [!Ref CreateLegacyManagedPolicy, 'true']
+
+Resources:
+  # ----------------------------------------------------------------------------
+  # 1. DynamoDB Submissions Table (On-Demand, PITR, Automated TTL on expireAt)
+  # ----------------------------------------------------------------------------
+  SubmissionsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref DynamoDBTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: formType
+          AttributeType: S
+        - AttributeName: createdAt#id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: formType
+          KeyType: HASH
+        - AttributeName: createdAt#id
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expireAt
+        Enabled: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 2. DynamoDB Private Portal Table (Conditional for staging / import)
+  # ----------------------------------------------------------------------------
+  PortalTable:
+    Type: AWS::DynamoDB::Table
+    Condition: ShouldCreatePortalTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref PortalTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 3. DynamoDB Newsletter Subscribers Table (Conditional for staging / import)
+  # ----------------------------------------------------------------------------
+  SubscribersTable:
+    Type: AWS::DynamoDB::Table
+    Condition: ShouldCreateSubscribersTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref SubscribersTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 4. Private S3 Bucket for Presigned PDF CV Uploads
+  # ----------------------------------------------------------------------------
+  UploadsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If [HasBucketName, !Ref UploadsBucketName, !Ref 'AWS::NoValue']
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - POST
+            AllowedOrigins: !If
+              - HasAdditionalCorsOrigin
+              - - !Ref SiteOrigin
+                - !Ref AdditionalCorsOrigin
+              - - !Ref SiteOrigin
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldCvUploads
+            Prefix: cv-uploads/
+            Status: Enabled
+            ExpirationInDays: !Ref CVRetentionDays
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
+  # 5. S3 Bucket Policy (Enforce TLS-Only Transport)
+  # ----------------------------------------------------------------------------
+  UploadsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UploadsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonTLSRequests
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt UploadsBucket.Arn
+              - !Sub '${UploadsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ----------------------------------------------------------------------------
+  # 6. Scoped IAM Managed Policy (Retained for production stack continuity)
+  # ----------------------------------------------------------------------------
+  AppManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: ShouldCreateLegacyPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'TutorTime-Application-Policy-${EnvironmentName}'
+      Description: Least-privilege data & email access policy for Tutor Time application.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DynamoDBSubmissionsAccess
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:GetItem
+              - dynamodb:UpdateItem
+            Resource:
+              - !GetAtt SubmissionsTable.Arn
+
+          - Sid: DynamoDBPortalAccess
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:Query
+              - dynamodb:Scan
+            Resource:
+              - !If
+                - ShouldCreatePortalTable
+                - !GetAtt PortalTable.Arn
+                - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${PortalTableName}'
+              - !If
+                - ShouldCreatePortalTable
+                - !Sub '${PortalTable.Arn}/index/*'
+                - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${PortalTableName}/index/*'
+
+          - Sid: DynamoDBSubscribersAccess
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:GetItem
+              - dynamodb:Scan
+            Resource:
+              - !If
+                - ShouldCreateSubscribersTable
+                - !GetAtt SubscribersTable.Arn
+                - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SubscribersTableName}'
+
+          - Sid: S3CvUploadsPutAccess
+            Effect: Allow
+            Action:
+              - s3:PutObject
+            Resource:
+              - !Sub '${UploadsBucket.Arn}/cv-uploads/*'
+
+          - Sid: SESNotificationEmailAccess
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+            Resource:
+              - !If
+                - HasCustomSesIdentityArn
+                - !Ref SesIdentityArn
+                - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/mail.tutortime.ai'
+              - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/mail.tutortime.ai'
+              - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/tutortime.ai'
+              - !Sub 'arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/popcornmaths.com'
+
+          - Sid: SESSandboxCheckReadAccess
+            Effect: Allow
+            Action:
+              - ses:GetAccount
+              - ses:GetEmailIdentity
+            Resource: '*'
+
+Outputs:
+  SubmissionsTableName:
+    Description: DynamoDB table name for form submissions and atomic chatbot counters.
+    Value: !Ref SubmissionsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-SubmissionsTableName'
+
+  SubmissionsTableArn:
+    Description: ARN of the DynamoDB submissions table.
+    Value: !GetAtt SubmissionsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SubmissionsTableArn'
+
+  PortalTableName:
+    Description: DynamoDB table name for Kashamar's private attendance & invoicing portal.
+    Value: !If [ShouldCreatePortalTable, !Ref PortalTable, !Ref PortalTableName]
+    Export:
+      Name: !Sub '${AWS::StackName}-PortalTableName'
+
+  PortalTableArn:
+    Description: ARN of the DynamoDB portal table.
+    Value: !If
+      - ShouldCreatePortalTable
+      - !GetAtt PortalTable.Arn
+      - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${PortalTableName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-PortalTableArn'
+
+  SubscribersTableName:
+    Description: DynamoDB table name for newsletter subscribers.
+    Value: !If [ShouldCreateSubscribersTable, !Ref SubscribersTable, !Ref SubscribersTableName]
+    Export:
+      Name: !Sub '${AWS::StackName}-SubscribersTableName'
+
+  SubscribersTableArn:
+    Description: ARN of the DynamoDB newsletter subscribers table.
+    Value: !If
+      - ShouldCreateSubscribersTable
+      - !GetAtt SubscribersTable.Arn
+      - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SubscribersTableName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-SubscribersTableArn'
+
+  UploadsBucketName:
+    Description: Name of private S3 bucket for CV uploads.
+    Value: !Ref UploadsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-UploadsBucketName'
+
+  UploadsBucketArn:
+    Description: ARN of private S3 bucket for CV uploads.
+    Value: !GetAtt UploadsBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-UploadsBucketArn'
+
+  AppManagedPolicyArn:
+    Condition: ShouldCreateLegacyPolicy
+    Description: ARN of managed IAM policy (retained for production stack continuity).
+    Value: !Ref AppManagedPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-AppManagedPolicyArn'
