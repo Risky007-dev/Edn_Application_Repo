@@ -1,11 +1,13 @@
 /**
  * Local File-Based Storage Driver
- * Persists submissions to gitignored JSON files.
- * Zero external cloud dependencies; ideal for local offline development.
+ * Persists submissions and newsletter subscribers to gitignored JSON files.
+ * Zero external cloud dependencies; lazy disk initialization so importing in
+ * AWS Lambda (read-only /app filesystem) never fails with EROFS.
  */
 
 const fs = require('fs');
 const path = require('path');
+const { computeSubmissionExpireAt } = require('./retention');
 
 function getDataDir() {
   return process.env.DATA_DIR || path.join(__dirname, '../../../data');
@@ -13,6 +15,10 @@ function getDataDir() {
 
 function getSubmissionsFile() {
   return path.join(getDataDir(), 'tutortime-submissions.json');
+}
+
+function getSubscribersFile() {
+  return process.env.SUBSCRIBERS_DB_FILE || path.join(__dirname, '../../../subscribers.json');
 }
 
 function ensureDataFile() {
@@ -23,6 +29,17 @@ function ensureDataFile() {
   }
   if (!fs.existsSync(file)) {
     fs.writeFileSync(file, JSON.stringify({ submissions: [] }, null, 2));
+  }
+}
+
+function ensureSubscribersFile() {
+  const file = getSubscribersFile();
+  const dir = path.dirname(file);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(file, JSON.stringify({ subscribers: [] }, null, 2));
   }
 }
 
@@ -51,27 +68,54 @@ function writeSubmissions(submissions) {
   }
 }
 
+function readSubscribers() {
+  ensureSubscribersFile();
+  const file = getSubscribersFile();
+  try {
+    const raw = fs.readFileSync(file, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.subscribers) ? parsed.subscribers : [];
+  } catch (err) {
+    console.error('[LocalStorage] Error reading subscribers:', err.message);
+    return [];
+  }
+}
+
+function writeSubscribers(subscribers) {
+  ensureSubscribersFile();
+  const file = getSubscribersFile();
+  try {
+    const tmpFile = `${file}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tmpFile, JSON.stringify({ subscribers }, null, 2));
+    fs.renameSync(tmpFile, file);
+    return true;
+  } catch (err) {
+    console.error('[LocalStorage] Error saving subscribers:', err.message);
+    return false;
+  }
+}
+
 function generateId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 class LocalDriver {
   constructor() {
-    ensureDataFile();
-    console.log('[Storage] Initialized Local File Storage at:', getSubmissionsFile());
+    // Lazy disk initialization: never write on require() so read-only Lambda /app stays EROFS-free
   }
 
   async saveSubmission(formType, payload) {
     const submissions = readSubmissions();
     const id = generateId();
     const now = new Date().toISOString();
-    
+
     const record = {
       formType,
       'createdAt#id': `${now}#${id}`,
       id,
       createdAt: now,
       status: 'PENDING_REVIEW',
+      expireAt: computeSubmissionExpireAt(formType, now),
       ...payload
     };
 
@@ -89,11 +133,33 @@ class LocalDriver {
     return submissions.filter(s => s.formType === formType).length;
   }
 
+  async addSubscriber(email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const subscribers = readSubscribers();
+    if (subscribers.some(s => s.email === cleanEmail)) {
+      return { created: false, duplicate: true };
+    }
+    const subscriber = {
+      email: cleanEmail,
+      subscribedAt: new Date().toISOString(),
+      confirmed: false
+    };
+    subscribers.push(subscriber);
+    if (!writeSubscribers(subscribers)) {
+      throw new Error('Failed to persist subscriber locally');
+    }
+    return { created: true, duplicate: false, subscriber };
+  }
+
+  async listSubscribers() {
+    return readSubscribers();
+  }
+
   async createUploadPresignedPost(filename, mimeType = 'application/pdf') {
     const id = generateId();
     const sanitized = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
     const key = `cv-uploads/local/${id}_${sanitized}`;
-    
+
     // In local development mode, return a simulated presigned post payload
     return {
       url: '/api/uploads/mock-post',
@@ -113,4 +179,8 @@ class LocalDriver {
   }
 }
 
-module.exports = new LocalDriver();
+const defaultLocalInstance = new LocalDriver();
+defaultLocalInstance.LocalDriver = LocalDriver;
+defaultLocalInstance.computeExpireAt = (formType, dateOrIso) =>
+  computeSubmissionExpireAt(formType, dateOrIso instanceof Date ? dateOrIso.toISOString() : dateOrIso);
+module.exports = defaultLocalInstance;

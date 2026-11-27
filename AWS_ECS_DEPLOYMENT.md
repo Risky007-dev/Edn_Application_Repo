@@ -66,19 +66,15 @@ docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:lat
 
 ### Step 4: Set Up AWS Secrets Manager
 
-Store sensitive data securely:
+> **Note:** Outgoing email delivery now uses **Amazon SESv2** authenticated via IAM roles (`ses:SendEmail`). Legacy `SENDER_PASSWORD` / Gmail app password secrets are obsolete — if a real password was ever saved in `popcorn-maths/sender-password`, rotate that password at your email provider and delete the secret.
+
+Store sensitive API keys securely:
 
 ```bash
-# Store sender email
+# Store Anthropic API key for Tutor Time Helper chatbot
 aws secretsmanager create-secret `
-  --name popcorn-maths/sender-email `
-  --secret-string "your-email@gmail.com" `
-  --region $AWS_REGION
-
-# Store sender password (app password for Gmail)
-aws secretsmanager create-secret `
-  --name popcorn-maths/sender-password `
-  --secret-string "your-app-password" `
+  --name tutortime/production/anthropic-api-key `
+  --secret-string '{"value":"YOUR_ANTHROPIC_API_KEY"}' `
   --region $AWS_REGION
 ```
 

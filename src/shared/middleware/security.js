@@ -7,20 +7,51 @@ const crypto = require('crypto');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-// Content Security Policy permitting local styles, fonts, and inline scripts
-const helmetMiddleware = helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      fontSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"]
-    }
-  },
-  crossOriginEmbedderPolicy: false
-});
+const helmetCache = new Map();
+
+/**
+ * Build allowed Content-Security-Policy connect-src origins from an env map.
+ * Permits 'self' plus configured S3 presigned-POST upload endpoints when UPLOADS_BUCKET_NAME is set.
+ */
+function buildConnectSrc(env = process.env) {
+  const sources = ["'self'"];
+  const bucket = String((env && env.UPLOADS_BUCKET_NAME) || '').trim();
+  const region = String((env && env.AWS_REGION) || 'us-east-2').trim();
+  if (bucket && /^[a-z0-9.-]+$/i.test(bucket) && /^[a-z0-9-]+$/i.test(region)) {
+    sources.push(`https://${bucket}.s3.${region}.amazonaws.com`);
+    sources.push(`https://${bucket}.s3.amazonaws.com`);
+  }
+  return sources;
+}
+
+function getHelmetInstance() {
+  const bucket = (process.env.UPLOADS_BUCKET_NAME || '').trim();
+  const region = (process.env.AWS_REGION || 'us-east-2').trim();
+  const cacheKey = `${bucket}|${region}`;
+  if (helmetCache.has(cacheKey)) {
+    return helmetCache.get(cacheKey);
+  }
+  const middleware = helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        fontSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: buildConnectSrc(process.env)
+      }
+    },
+    crossOriginEmbedderPolicy: false
+  });
+  helmetCache.set(cacheKey, middleware);
+  return middleware;
+}
+
+// Content Security Policy permitting local styles, fonts, inline scripts, and S3 CV uploads
+function helmetMiddleware(req, res, next) {
+  return getHelmetInstance()(req, res, next);
+}
 
 // General API rate limiter
 const generalApiLimiter = rateLimit({
@@ -60,6 +91,8 @@ function timingSafeCompare(a, b) {
 
 module.exports = {
   helmetMiddleware,
+  buildConnectSrc,
+  getAllowedConnectSources: buildConnectSrc,
   generalApiLimiter,
   formSubmissionLimiter,
   timingSafeCompare

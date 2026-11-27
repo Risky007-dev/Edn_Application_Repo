@@ -25,6 +25,42 @@
           "value": "production"
         },
         {
+          "name": "STORAGE_DRIVER",
+          "value": "aws"
+        },
+        {
+          "name": "EMAIL_DRIVER",
+          "value": "ses"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "YOUR_REGION"
+        },
+        {
+          "name": "DYNAMODB_TABLE_NAME",
+          "value": "tutortime-submissions"
+        },
+        {
+          "name": "PORTAL_TABLE_NAME",
+          "value": "tutortime-portal"
+        },
+        {
+          "name": "SUBSCRIBERS_TABLE_NAME",
+          "value": "popcorn-maths-subscribers"
+        },
+        {
+          "name": "UPLOADS_BUCKET_NAME",
+          "value": "YOUR_UPLOADS_BUCKET_NAME"
+        },
+        {
+          "name": "CASSIE_NOTIFICATION_EMAIL",
+          "value": "Cassie@tutortime.ai"
+        },
+        {
+          "name": "PORTAL_HOST",
+          "value": "checkin.tutortime.ai"
+        },
+        {
           "name": "CLAUDE_MODEL",
           "value": "claude-haiku-5-5"
         }
@@ -32,15 +68,11 @@
       "secrets": [
         {
           "name": "ANTHROPIC_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_AWS_ACCOUNT_ID:secret:popcorn-maths/anthropic-api-key"
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_AWS_ACCOUNT_ID:secret:tutortime/production/anthropic-api-key"
         },
         {
-          "name": "SENDER_EMAIL",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_AWS_ACCOUNT_ID:secret:popcorn-maths/sender-email"
-        },
-        {
-          "name": "SENDER_PASSWORD",
-          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_AWS_ACCOUNT_ID:secret:popcorn-maths/sender-password"
+          "name": "ADMIN_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_REGION:YOUR_AWS_ACCOUNT_ID:secret:tutortime/production/admin-api-key"
         }
       ],
       "logConfiguration": {
@@ -52,7 +84,7 @@
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "node -e \"require('http').get('http://localhost:5001', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""],
+        "command": ["CMD-SHELL", "node -e \"require('http').get('http://localhost:5001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""],
         "interval": 30,
         "timeout": 10,
         "retries": 3,

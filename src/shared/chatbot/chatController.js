@@ -1,10 +1,13 @@
 /**
  * Chatbot Controller & Claude API Orchestrator
  * Integrates official Anthropic Claude SDK with server-side web search,
- * strict safety guardrails, daily usage caps, rate limiting, and zero-PII logging.
+ * strict safety guardrails, daily usage caps (in-memory locally, atomic DynamoDB
+ * counter in AWS Lambda/multi-instance mode), rate limiting, and zero-PII logging.
  */
 
 const { Anthropic } = require('@anthropic-ai/sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const { getSystemPrompt } = require('./systemPrompt');
@@ -20,12 +23,20 @@ const WEB_SEARCH_TOOL_TYPE = 'web_search_20260318';
 const MAX_INPUT_LENGTH = Number(process.env.CHATBOT_MAX_INPUT_LENGTH || 500);
 const MAX_CONVERSATION_TURNS = 10;
 const TIMEOUT_MS = 15000;
+const DAILY_COUNTER_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-// Daily Request Cap Management (In-Memory, zero-persistence)
+// Daily Request Cap Management (In-Memory fallback for local mode & tests)
 let dailyCounter = {
   dateStr: new Date().toISOString().slice(0, 10),
   count: 0
 };
+
+let cachedCounterDocClient = null;
+let injectedCounterDocClient = null;
+
+function setDailyCounterDocClientForTests(docClient) {
+  injectedCounterDocClient = docClient || null;
+}
 
 function getDailyCap() {
   return Number(process.env.CHATBOT_DAILY_REQUEST_CAP || 200);
@@ -53,6 +64,77 @@ function getDailyCount() {
 
 function resetDailyCounterForTests() {
   dailyCounter = { dateStr: new Date().toISOString().slice(0, 10), count: 0 };
+}
+
+function shouldUseDynamoDailyCounter() {
+  if (injectedCounterDocClient) return true;
+  if (injectedClient) return false;
+  return (process.env.STORAGE_DRIVER || 'local').toLowerCase().trim() === 'aws';
+}
+
+function getCounterDocClient() {
+  if (injectedCounterDocClient) return injectedCounterDocClient;
+  if (!cachedCounterDocClient) {
+    const region = process.env.AWS_REGION || 'us-east-2';
+    cachedCounterDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
+  }
+  return cachedCounterDocClient;
+}
+
+/**
+ * Enforces the daily chatbot request cap.
+ * In AWS Lambda / multi-replica deployments (STORAGE_DRIVER=aws), uses a single
+ * atomic conditional UpdateItem counter in DynamoDB (zero PII, 7-day TTL) so
+ * cold starts and concurrent containers cannot bypass CHATBOT_DAILY_REQUEST_CAP.
+ * Falls back gracefully to the in-memory counter on local mode or transient errors.
+ */
+async function checkAndIncrementDailyCapAsync() {
+  if (!shouldUseDynamoDailyCounter()) {
+    return { allowed: checkAndIncrementDailyCap(), count: getDailyCount() };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cap = getDailyCap();
+  const tableName = process.env.DYNAMODB_TABLE_NAME || 'tutortime-submissions';
+  const expireAt = Math.floor(Date.now() / 1000) + DAILY_COUNTER_TTL_SECONDS;
+
+  try {
+    const docClient = getCounterDocClient();
+    const res = await docClient.send(new UpdateCommand({
+      TableName: tableName,
+      Key: {
+        formType: 'SYSTEM_COUNTER',
+        'createdAt#id': `CHATBOT_DAILY#${today}`
+      },
+      UpdateExpression: 'SET requestCount = if_not_exists(requestCount, :zero) + :one, expireAt = :ttl, updatedAt = :now',
+      ConditionExpression: 'attribute_not_exists(requestCount) OR requestCount < :cap',
+      ExpressionAttributeValues: {
+        ':zero': 0,
+        ':one': 1,
+        ':cap': cap,
+        ':ttl': expireAt,
+        ':now': new Date().toISOString()
+      },
+      ReturnValues: 'UPDATED_NEW'
+    }));
+
+    const updatedCount = (res && res.Attributes && typeof res.Attributes.requestCount === 'number')
+      ? res.Attributes.requestCount
+      : getDailyCount();
+    return { allowed: true, count: updatedCount };
+  } catch (err) {
+    if (err && (err.name === 'ConditionalCheckFailedException' || err.__type === 'com.amazonaws.dynamodb.v20120810#ConditionalCheckFailedException')) {
+      return { allowed: false, count: cap };
+    }
+    // Transient DynamoDB issue: fail-safe to in-memory counter rather than dropping visitor
+    console.warn(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'warn',
+      event: 'chatbot_daily_counter_fallback',
+      message: err && err.message ? String(err.message).slice(0, 140) : 'DynamoDB counter error'
+    }));
+    return { allowed: checkAndIncrementDailyCap(), count: getDailyCount() };
+  }
 }
 
 // Injected client for unit testing
@@ -153,12 +235,13 @@ async function handleChat(req, res) {
   // Conversation history cap
   const safeHistory = Array.isArray(history) ? history.slice(-MAX_CONVERSATION_TURNS) : [];
 
-  // Daily request cap check
-  if (!checkAndIncrementDailyCap()) {
+  // Daily request cap check (atomic DynamoDB in AWS mode, in-memory locally)
+  const capCheck = await checkAndIncrementDailyCapAsync();
+  if (!capCheck.allowed) {
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       event: 'chatbot_daily_cap_reached',
-      dailyCount: getDailyCount(),
+      dailyCount: capCheck.count,
       cap: getDailyCap()
     }));
     return res.status(429).json({
@@ -247,7 +330,7 @@ async function handleChat(req, res) {
       event: 'chatbot_request_success',
       latencyMs: Date.now() - startTime,
       model,
-      dailyCount: getDailyCount(),
+      dailyCount: capCheck.count,
       inputLength: cleanMessage.length,
       replyLength: replyText.length,
       hasSources: sources.length > 0,
@@ -288,9 +371,11 @@ module.exports = {
   handleChat,
   chatRateLimiter,
   checkAndIncrementDailyCap,
+  checkAndIncrementDailyCapAsync,
   getDailyCount,
   resetDailyCounterForTests,
   setInjectedClient,
+  setDailyCounterDocClientForTests,
   checkStartupKey,
   MAX_INPUT_LENGTH,
   MAX_CONVERSATION_TURNS,

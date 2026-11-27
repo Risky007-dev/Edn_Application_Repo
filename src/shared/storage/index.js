@@ -3,16 +3,13 @@
  * Provides a uniform interface across local JSON persistence and AWS cloud drivers.
  */
 
-const localDriver = require('./localDriver');
-
 function getDriver() {
   const driverType = (process.env.STORAGE_DRIVER || 'local').toLowerCase().trim();
   if (driverType === 'aws') {
     // Lazy-load AWS driver only when explicitly requested
-    const awsDriver = require('./awsDriver');
-    return awsDriver;
+    return require('./awsDriver');
   }
-  return localDriver;
+  return require('./localDriver');
 }
 
 module.exports = {
@@ -22,6 +19,14 @@ module.exports = {
 
   getSubmissionCount(formType) {
     return getDriver().getSubmissionCount(formType);
+  },
+
+  addSubscriber(email) {
+    return getDriver().addSubscriber(email);
+  },
+
+  listSubscribers() {
+    return getDriver().listSubscribers();
   },
 
   createUploadPresignedPost(filename, mimeType) {

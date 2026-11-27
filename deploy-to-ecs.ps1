@@ -153,9 +153,9 @@ Write-Host "✓ Deployment Complete!" -ForegroundColor Green
 Write-Host "════════════════════════════════════════" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "1. Configure email secrets in AWS Secrets Manager:"
-Write-Host "   aws secretsmanager create-secret --name popcorn-maths/sender-email --secret-string 'your-email@gmail.com' --region $AWS_REGION"
-Write-Host "   aws secretsmanager create-secret --name popcorn-maths/sender-password --secret-string 'your-app-password' --region $AWS_REGION"
+Write-Host "1. Email delivery uses Amazon SESv2 via IAM task role permissions (no SMTP/SENDER_PASSWORD secret required)."
+Write-Host "   Verify your SES identity and set SENDER_EMAIL / CASSIE_NOTIFICATION_EMAIL in task environment variables."
+Write-Host "   (For the recommended CloudFormation + Lambda deployment, see DEPLOYMENT_PLAN.md and infra/OWNER_RUNBOOK.md.)"
 Write-Host ""
 Write-Host "2. Check service status:"
 Write-Host "   aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --region $AWS_REGION"
