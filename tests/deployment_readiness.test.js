@@ -332,19 +332,43 @@ async function run() {
       appStackYaml.includes('AWS::CloudFront::Function') &&
       appStackYaml.includes('Default: 302') &&
       appStackYaml.includes('https://tutortime.ai/services/popcorn-math'));
+    check('03b-app-stack.yaml grants BOTH Function URL permissions (InvokeFunctionUrl + InvokeFunction InvokedViaFunctionUrl)',
+      appStackYaml.includes('Action: lambda:InvokeFunctionUrl') &&
+      appStackYaml.includes('FunctionUrlAuthType: NONE') &&
+      appStackYaml.includes('Action: lambda:InvokeFunction') &&
+      appStackYaml.includes('InvokedViaFunctionUrl: true'));
+    check('03b-app-stack.yaml passes ANTHROPIC_API_KEY_SECRET_ARN and removes CloudFormation dynamic ref for anthropic-api-key',
+      appStackYaml.includes('ANTHROPIC_API_KEY_SECRET_ARN:') &&
+      !appStackYaml.includes('anthropic-api-key:SecretString'));
 
-    const stagingParams = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'infra/params/staging.json'), 'utf8'));
+    const securityStackYaml = fs.readFileSync(path.join(REPO_ROOT, 'infra/02-security-cicd-stack.yaml'), 'utf8');
+    check('02-security-cicd-stack.yaml scopes GitHubDeployRole trust to main + production (no staging) and allows CloudFront invalidation + safe data updates',
+      securityStackYaml.includes('ref:refs/heads/main') &&
+      securityStackYaml.includes('environment:production') &&
+      !securityStackYaml.includes('environment:staging') &&
+      securityStackYaml.includes('cloudfront:CreateInvalidation') &&
+      securityStackYaml.includes('cloudfront:GetInvalidation') &&
+      securityStackYaml.includes('dynamodb:UpdateTimeToLive') &&
+      !securityStackYaml.includes('dynamodb:DeleteTable') &&
+      !securityStackYaml.includes('s3:DeleteBucket'));
+
+    const ciWorkflowYaml = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/ci-deploy.yml'), 'utf8');
+    check('ci-deploy.yml deploys directly to production on push to main with zero staging jobs, data change-set guard, CF invalidation, and auto-rollback',
+      !ciWorkflowYaml.includes('deploy-staging') &&
+      ciWorkflowYaml.includes('tutortime-production-deploy') &&
+      ciWorkflowYaml.includes('create-change-set') &&
+      ciWorkflowYaml.includes('create-invalidation') &&
+      ciWorkflowYaml.includes('FIRST DEPLOY FAILED') &&
+      ciWorkflowYaml.includes('PREV_TAG'));
+
     const prodParams = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'infra/params/production.json'), 'utf8'));
-    check('Staging params enforce EMAIL_DRIVER=mock, SiteNoIndex=true, CreatePortalTable=true, CreateSubscribersTable=true',
-      stagingParams.appStack.parameters.EmailDriver === 'mock' &&
-      stagingParams.appStack.parameters.SiteNoIndex === 'true' &&
-      stagingParams.dataStack.parameters.CreatePortalTable === 'true' &&
-      stagingParams.dataStack.parameters.CreateSubscribersTable === 'true');
-    check('Production params safely update existing tutortime-production-infra (CreatePortalTable=false, CreateSubscribersTable=false, PopcornRedirectStatusCode=302)',
+    check('Production params safely update existing tutortime-production-infra with LambdaReservedConcurrency=0 and DNS cutover flags false',
       prodParams.dataStack.stackName === 'tutortime-production-infra' &&
       prodParams.dataStack.parameters.CreatePortalTable === 'false' &&
       prodParams.dataStack.parameters.CreateSubscribersTable === 'false' &&
+      prodParams.appStack.parameters.LambdaReservedConcurrency === '0' &&
       prodParams.appStack.parameters.PopcornRedirectStatusCode === '302' &&
+      prodParams.appStack.parameters.ManageNewSubdomainDnsRecords === 'false' &&
       prodParams.appStack.parameters.ManageLiveDnsRecords === 'false');
     check('No OTel lab template exists (per owner approval)',
       !fs.existsSync(path.join(REPO_ROOT, 'infra/optional-ecs-otel-lab.yaml')));

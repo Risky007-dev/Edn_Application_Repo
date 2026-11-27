@@ -168,9 +168,27 @@ app.get('/sitemap.xml', (req, res) => {
 app.use('/api', generalApiLimiter);
 app.use('/api', formPipeline);
 
-// AI Chatbot Route (Task 3)
-const { handleChat, chatRateLimiter } = require('./src/shared/chatbot/chatController');
+// AI Chatbot Route (Task 3) & Non-Blocking Runtime Secret Cache Warmup
+const { handleChat, chatRateLimiter, warmAnthropicApiKeyCache } = require('./src/shared/chatbot/chatController');
 app.post('/api/chat', chatRateLimiter, handleChat);
+
+// Warm cached Anthropic secret before SSR HTML renders when Secrets Manager ARN is configured
+// (0ms cache hit after cold start; never delays /health, /api/*, or static assets; never throws)
+app.use(async (req, res, next) => {
+  if (
+    req.method === 'GET' &&
+    !req.path.startsWith('/css/') &&
+    !req.path.startsWith('/js/') &&
+    !req.path.startsWith('/assets/') &&
+    !req.path.startsWith('/fonts/') &&
+    !req.path.startsWith('/api/') &&
+    !isCheckinHost(req) &&
+    (process.env.ANTHROPIC_API_KEY_SECRET_ARN || process.env.ANTHROPIC_API_KEY_SECRET_ID)
+  ) {
+    await warmAnthropicApiKeyCache();
+  }
+  next();
+});
 
 // Explicit Static Asset Serving (pages, css, js, assets, fonts only)
 app.use('/css', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/css')));

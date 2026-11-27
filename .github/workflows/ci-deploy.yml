@@ -1,4 +1,4 @@
-name: CI & Zero-VM CloudFormation Deploy (Lambda + CloudFront)
+name: CI & Zero-VM Production Deploy (Lambda + CloudFront)
 
 on:
   pull_request:
@@ -7,16 +7,8 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      target_environment:
-        description: 'Environment to deploy (staging or production)'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - production
       rollback_image_tag:
-        description: 'Optional existing immutable ECR tag (e.g. git-abc1234) for instant rollback without rebuild'
+        description: 'Optional existing immutable ECR tag (e.g. git-abc123456789) for manual rollback without rebuild'
         required: false
         default: ''
         type: string
@@ -28,18 +20,21 @@ permissions:
   id-token: write
   contents: read
 
+# Strictly one production deploy pipeline at a time; PR validations remain isolated per PR.
 concurrency:
-  group: tutortime-deploy-${{ github.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('tutortime-pr-{0}', github.event.number) || 'tutortime-production-deploy' }}
   cancel-in-progress: false
 
 env:
   AWS_REGION: us-east-2
   EDGE_CERT_REGION: us-east-1
   ECR_REPOSITORY: tutortime-app
+  TUTORTIME_ZONE_ID: Z04729501Z8GNOKNPRCKY
 
 jobs:
   # ============================================================================
   # 1. Code Quality, Full Automated Tests, CloudFormation Lint & Container Smoke
+  #    Runs on Pull Requests, pushes to main, and manual dispatches.
   # ============================================================================
   validate-and-test:
     name: Test, CFN Lint & Container Smoke Check
@@ -112,6 +107,7 @@ jobs:
 
   # ============================================================================
   # 2. Build & Push Immutable git-<sha> Container Image via GitHub OIDC
+  #    Pull requests NEVER run this job.
   # ============================================================================
   build-and-push:
     name: Build & Push Immutable ECR Image
@@ -149,98 +145,18 @@ jobs:
           docker push "${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
   # ============================================================================
-  # 3. Deploy Staging (Mock Email, NoIndex, Preview Banner) + Live Smoke Test
+  # 3. Direct Production Deploy (No Staging, No Manual Approval)
+  #    Data Change-Set Gate -> Deploy App & Ops -> CloudFront Invalidation ->
+  #    Live Smoke Test -> Automatic Rollback to Last Good Image on Failure
   # ============================================================================
-  deploy-staging:
-    name: Deploy Staging (CloudFormation)
+  deploy-production:
+    name: Deploy Production (CloudFormation + Auto-Rollback)
     needs: [validate-and-test, build-and-push]
     if: |
       always() &&
       needs.validate-and-test.result == 'success' &&
       (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') &&
-      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'staging'))
-    runs-on: ubuntu-latest
-    environment:
-      name: staging
-      url: https://staging.tutortime.ai
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Resolve Immutable Image Tag
-        id: tag
-        run: |
-          TAG="${{ inputs.rollback_image_tag || needs.build-and-push.outputs.image_tag }}"
-          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy Staging CloudFormation Stacks (01 -> 02 -> 03a -> 03b -> 04)
-        env:
-          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
-          ALERT_EMAIL: ${{ vars.OPS_ALERT_EMAIL }}
-        run: |
-          to_overrides() {
-            node -e "const p=require('./infra/params/staging.json')[\"$1\"].parameters; console.log(Object.entries(p).map(([k,v])=>k+'='+v).join(' '));"
-          }
-
-          aws cloudformation deploy --region "$AWS_REGION" \
-            --stack-name tutortime-staging-data \
-            --template-file infra/01-data-stack.yaml \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides dataStack)
-
-          aws cloudformation deploy --region "$AWS_REGION" \
-            --stack-name tutortime-staging-security \
-            --template-file infra/02-security-cicd-stack.yaml \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides securityStack)
-
-          aws cloudformation deploy --region "$EDGE_CERT_REGION" \
-            --stack-name tutortime-staging-edge-cert \
-            --template-file infra/03a-edge-cert-stack.yaml \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides edgeCertStack)
-
-          CERT_ARN=$(aws cloudformation describe-stacks --region "$EDGE_CERT_REGION" \
-            --stack-name tutortime-staging-edge-cert \
-            --query "Stacks[0].Outputs[?OutputKey=='EdgeCertificateArn'].OutputValue" --output text)
-
-          aws cloudformation deploy --region "$AWS_REGION" \
-            --stack-name tutortime-staging-app \
-            --template-file infra/03b-app-stack.yaml \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides appStack) ImageTag="$IMAGE_TAG" EdgeCertificateArn="$CERT_ARN"
-
-          aws cloudformation deploy --region "$AWS_REGION" \
-            --stack-name tutortime-staging-ops \
-            --template-file infra/04-ops-budget-stack.yaml \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides opsStack) AlertEmail="$ALERT_EMAIL"
-
-      - name: Run Live Staging Smoke Tests
-        run: |
-          node scripts/smoke-test.js \
-            --base-url=https://staging.tutortime.ai \
-            --portal-url=https://checkin-staging.tutortime.ai \
-            --expect-noindex=true \
-            --expect-preview-banner=true
-
-  # ============================================================================
-  # 4. Deploy Production (Manual Owner Approval Gate -> Promotes Exact Same SHA)
-  # ============================================================================
-  deploy-production:
-    name: Deploy Production (CloudFormation - Manual Approval)
-    needs: [validate-and-test, build-and-push, deploy-staging]
-    if: |
-      always() &&
-      needs.validate-and-test.result == 'success' &&
-      (needs.deploy-staging.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'production'))
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -255,45 +171,139 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Resolve Immutable Image Tag
-        id: tag
+      - name: Resolve Target Image Tag & Capture Last Known-Good Image Tag
+        id: release
         run: |
-          TAG="${{ inputs.rollback_image_tag || needs.build-and-push.outputs.image_tag }}"
-          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          TARGET_TAG="${{ inputs.rollback_image_tag || needs.build-and-push.outputs.image_tag }}"
+          if [ -z "$TARGET_TAG" ]; then
+            echo "ERROR: Target image tag is empty." >&2
+            exit 1
+          fi
+          echo "target_tag=${TARGET_TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy Production CloudFormation Stacks (01 in-place -> 02 -> 03a -> 03b -> 04)
+          PREV_TAG=$(aws cloudformation describe-stacks \
+            --region "$AWS_REGION" \
+            --stack-name tutortime-production-app \
+            --query "Stacks[0].Outputs[?OutputKey=='DeployedImageTag'].OutputValue | [0]" \
+            --output text 2>/dev/null || true)
+          if [ "$PREV_TAG" = "None" ]; then
+            PREV_TAG=""
+          fi
+          echo "previous_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Target image tag:   ${TARGET_TAG}"
+          echo "Previous image tag: ${PREV_TAG:-(first deploy)}"
+
+      - name: Guard Stack 01 (Data) via Change Set — Fail on Any Replacement or Removal
+        run: |
+          CS_NAME="ci-data-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          PARAMS_JSON=$(node -e "const p=require('./infra/params/production.json').dataStack.parameters; console.log(JSON.stringify(Object.entries(p).map(([k,v])=>({ParameterKey:k,ParameterValue:String(v)}))));")
+
+          aws cloudformation create-change-set \
+            --region "$AWS_REGION" \
+            --stack-name tutortime-production-infra \
+            --change-set-name "$CS_NAME" \
+            --change-set-type UPDATE \
+            --template-body file://infra/01-data-stack.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameters "$PARAMS_JSON"
+
+          # Wait for change set creation (empty change sets exit non-zero on wait, so inspect status explicitly)
+          aws cloudformation wait change-set-create-complete \
+            --region "$AWS_REGION" \
+            --stack-name tutortime-production-infra \
+            --change-set-name "$CS_NAME" || true
+
+          CS_JSON=$(aws cloudformation describe-change-set \
+            --region "$AWS_REGION" \
+            --stack-name tutortime-production-infra \
+            --change-set-name "$CS_NAME" \
+            --output json)
+
+          ACTION=$(node -e '
+            const cs = JSON.parse(process.argv[1]);
+            const status = cs.Status || "";
+            const reason = cs.StatusReason || "";
+            if (status === "FAILED" && /didn.t contain changes|No updates are to be performed/i.test(reason)) {
+              console.log("NOOP");
+              process.exit(0);
+            }
+            if (status !== "CREATE_COMPLETE") {
+              console.error("Change set failed:", status, reason);
+              process.exit(2);
+            }
+            const changes = Array.isArray(cs.Changes) ? cs.Changes : [];
+            const unsafe = changes.filter(c => {
+              const rc = c.ResourceChange || {};
+              return rc.Action === "Remove" || rc.Replacement === "True" || rc.Replacement === "Conditional";
+            });
+            if (unsafe.length > 0) {
+              console.error("BLOCKED: Data stack change set would replace or remove resources:");
+              for (const u of unsafe) {
+                const rc = u.ResourceChange || {};
+                console.error(` - ${rc.LogicalResourceId} (${rc.ResourceType}): Action=${rc.Action}, Replacement=${rc.Replacement}`);
+              }
+              process.exit(3);
+            }
+            console.log("EXECUTE");
+          ' "$CS_JSON") || RC=$?
+
+          if [ "${RC:-0}" -ne 0 ]; then
+            aws cloudformation delete-change-set \
+              --region "$AWS_REGION" \
+              --stack-name tutortime-production-infra \
+              --change-set-name "$CS_NAME" || true
+            exit "${RC}"
+          fi
+
+          if [ "$ACTION" = "NOOP" ]; then
+            echo "Stack 01 (tutortime-production-infra) has no pending changes."
+            aws cloudformation delete-change-set \
+              --region "$AWS_REGION" \
+              --stack-name tutortime-production-infra \
+              --change-set-name "$CS_NAME" || true
+          else
+            echo "Stack 01 change set verified safe (zero replacements, zero removals). Executing..."
+            aws cloudformation execute-change-set \
+              --region "$AWS_REGION" \
+              --stack-name tutortime-production-infra \
+              --change-set-name "$CS_NAME"
+            aws cloudformation wait stack-update-complete \
+              --region "$AWS_REGION" \
+              --stack-name tutortime-production-infra
+          fi
+
+      - name: Verify Bootstrapped Security Stack (02) & Edge Certificate (03a)
+        id: prereqs
+        run: |
+          # Stack 02 (tutortime-production-security) is bootstrapped out-of-band so CI never modifies its own IAM role.
+          aws cloudformation describe-stacks \
+            --region "$AWS_REGION" \
+            --stack-name tutortime-production-security \
+            --query "Stacks[0].StackStatus" --output text
+
+          CERT_ARN=$(aws cloudformation describe-stacks \
+            --region "$EDGE_CERT_REGION" \
+            --stack-name tutortime-production-edge-cert \
+            --query "Stacks[0].Outputs[?OutputKey=='EdgeCertificateArn'].OutputValue | [0]" \
+            --output text)
+          if [ -z "$CERT_ARN" ] || [ "$CERT_ARN" = "None" ]; then
+            echo "ERROR: Stack 03a (tutortime-production-edge-cert in us-east-1) is not provisioned." >&2
+            exit 1
+          fi
+          echo "cert_arn=${CERT_ARN}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Production App (03b) & Ops (04)
+        id: deploy_app
         env:
-          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+          IMAGE_TAG: ${{ steps.release.outputs.target_tag }}
+          CERT_ARN: ${{ steps.prereqs.outputs.cert_arn }}
           ALERT_EMAIL: ${{ vars.OPS_ALERT_EMAIL }}
         run: |
           to_overrides() {
             node -e "const p=require('./infra/params/production.json')[\"$1\"].parameters; console.log(Object.entries(p).map(([k,v])=>k+'='+v).join(' '));"
           }
 
-          # Stack 01 updates existing `tutortime-production-infra` in-place (zero data replacement)
-          aws cloudformation deploy --region "$AWS_REGION" \
-            --stack-name tutortime-production-infra \
-            --template-file infra/01-data-stack.yaml \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides dataStack)
-
-          aws cloudformation deploy --region "$AWS_REGION" \
-            --stack-name tutortime-production-security \
-            --template-file infra/02-security-cicd-stack.yaml \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides securityStack)
-
-          aws cloudformation deploy --region "$EDGE_CERT_REGION" \
-            --stack-name tutortime-production-edge-cert \
-            --template-file infra/03a-edge-cert-stack.yaml \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides $(to_overrides edgeCertStack)
-
-          CERT_ARN=$(aws cloudformation describe-stacks --region "$EDGE_CERT_REGION" \
-            --stack-name tutortime-production-edge-cert \
-            --query "Stacks[0].Outputs[?OutputKey=='EdgeCertificateArn'].OutputValue" --output text)
+          echo "attempted=true" >> "$GITHUB_OUTPUT"
 
           aws cloudformation deploy --region "$AWS_REGION" \
             --stack-name tutortime-production-app \
@@ -307,14 +317,47 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides $(to_overrides opsStack) AlertEmail="$ALERT_EMAIL"
 
-      - name: Run Live Production Smoke Tests
-        run: |
+          CF_DIST_ID=$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+            --stack-name tutortime-production-app \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue | [0]" --output text)
           CF_DOMAIN=$(aws cloudformation describe-stacks --region "$AWS_REGION" \
             --stack-name tutortime-production-app \
-            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomainName'].OutputValue" --output text)
-          LIVE_DNS=$(node -e "console.log(require('./infra/params/production.json').appStack.parameters.ManageLiveDnsRecords)")
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomainName'].OutputValue | [0]" --output text)
+
+          echo "cf_dist_id=${CF_DIST_ID}" >> "$GITHUB_OUTPUT"
+          echo "cf_domain=${CF_DOMAIN}" >> "$GITHUB_OUTPUT"
+
+      - name: Invalidate CloudFront Distribution Cache
+        id: invalidate_cf
+        env:
+          CF_DIST_ID: ${{ steps.deploy_app.outputs.cf_dist_id }}
+        run: |
+          INV_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "$CF_DIST_ID" \
+            --paths "/*" \
+            --query "Invalidation.Id" --output text)
+          echo "Created CloudFront invalidation: ${INV_ID}"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$CF_DIST_ID" \
+            --id "$INV_ID"
+
+      - name: Run Live Production Smoke Tests
+        id: smoke_test
+        env:
+          CF_DOMAIN: ${{ steps.deploy_app.outputs.cf_domain }}
+        run: |
           REDIR_CODE=$(node -e "console.log(require('./infra/params/production.json').appStack.parameters.PopcornRedirectStatusCode)")
-          if [ "$LIVE_DNS" = "true" ]; then
+          LIVE_ALIAS=$(aws route53 list-resource-record-sets \
+            --hosted-zone-id "$TUTORTIME_ZONE_ID" \
+            --query "ResourceRecordSets[?Name=='tutortime.ai.' && Type=='A'].AliasTarget.DNSName | [0]" \
+            --output text 2>/dev/null || true)
+
+          # Strip trailing dot and compare case-insensitively to CloudFront distribution domain
+          CLEAN_ALIAS=$(echo "${LIVE_ALIAS}" | sed 's/\.$//' | tr '[:upper:]' '[:lower:]')
+          CLEAN_CF=$(echo "${CF_DOMAIN}" | tr '[:upper:]' '[:lower:]')
+
+          if [ -n "$CLEAN_ALIAS" ] && [ "$CLEAN_ALIAS" = "$CLEAN_CF" ]; then
+            echo "Live DNS points to CloudFront (${CF_DOMAIN}); running full custom-domain smoke tests..."
             node scripts/smoke-test.js \
               --base-url=https://tutortime.ai \
               --portal-url=https://checkin.tutortime.ai \
@@ -323,15 +366,62 @@ jobs:
               --expect-noindex=false \
               --expect-preview-banner=false
           else
-            echo "Pre-cutover deploy verified via CloudFront endpoint: https://${CF_DOMAIN}"
+            echo "Pre-cutover deploy detected (tutortime.ai does not yet alias ${CF_DOMAIN}); testing via CloudFront endpoint..."
             node scripts/smoke-test.js \
               --base-url="https://${CF_DOMAIN}" \
               --expect-noindex=false \
               --expect-preview-banner=false
           fi
 
+      - name: Automatic Rollback to Last Good Image on Failure
+        if: failure() && steps.deploy_app.outputs.attempted == 'true'
+        env:
+          PREV_TAG: ${{ steps.release.outputs.previous_tag }}
+          TARGET_TAG: ${{ steps.release.outputs.target_tag }}
+          CERT_ARN: ${{ steps.prereqs.outputs.cert_arn }}
+        run: |
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$TARGET_TAG" ]; then
+            echo "FIRST DEPLOY FAILED (or no distinct previous good image tag exists)." >&2
+            echo "Stopping without rollback so the root cause can be inspected." >&2
+            exit 1
+          fi
+
+          echo "Deployment or smoke test failed for ${TARGET_TAG}. Rolling back to last known-good image: ${PREV_TAG}..."
+          to_overrides() {
+            node -e "const p=require('./infra/params/production.json')[\"$1\"].parameters; console.log(Object.entries(p).map(([k,v])=>k+'='+v).join(' '));"
+          }
+
+          aws cloudformation deploy --region "$AWS_REGION" \
+            --stack-name tutortime-production-app \
+            --template-file infra/03b-app-stack.yaml \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides $(to_overrides appStack) ImageTag="$PREV_TAG" EdgeCertificateArn="$CERT_ARN"
+
+          CF_DIST_ID=$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+            --stack-name tutortime-production-app \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue | [0]" --output text)
+          CF_DOMAIN=$(aws cloudformation describe-stacks --region "$AWS_REGION" \
+            --stack-name tutortime-production-app \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomainName'].OutputValue | [0]" --output text)
+
+          INV_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "$CF_DIST_ID" \
+            --paths "/*" \
+            --query "Invalidation.Id" --output text)
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$CF_DIST_ID" \
+            --id "$INV_ID"
+
+          echo "Rollback to ${PREV_TAG} complete and CloudFront invalidated. Verifying health..."
+          node scripts/smoke-test.js \
+            --base-url="https://${CF_DOMAIN}" \
+            --expect-noindex=false \
+            --expect-preview-banner=false
+          echo "Production restored to ${PREV_TAG}. Exiting non-zero to flag the failed release ${TARGET_TAG}."
+          exit 1
+
   # ============================================================================
-  # 5. Weekly Read-Only CloudFormation Drift Detection
+  # 4. Weekly Read-Only CloudFormation Drift Detection
   # ============================================================================
   weekly-drift-check:
     name: Weekly CloudFormation Drift Detection

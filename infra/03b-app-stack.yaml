@@ -103,13 +103,14 @@ Parameters:
 
   ManageNewSubdomainDnsRecords:
     Type: String
-    Default: 'true'
+    Default: 'false'
     AllowedValues:
       - 'true'
       - 'false'
     Description: >
-      Create Route 53 Alias records for brand-new hostnames that do not yet exist in Route 53
-      (staging.tutortime.ai, checkin-staging.tutortime.ai on staging; www.tutortime.ai on prod).
+      Keep 'false' when web DNS records (including www.tutortime.ai) are managed via
+      atomic Route 53 cutover so future CloudFormation pushes or rollbacks never conflict
+      with or undo live DNS records.
 
   ManageLiveDnsRecords:
     Type: String
@@ -330,7 +331,6 @@ Resources:
   # ----------------------------------------------------------------------------
   AppFunction:
     Type: AWS::Lambda::Function
-    DependsOn: AppLogGroup
     Properties:
       FunctionName: !Sub 'tutortime-${EnvironmentName}-app'
       Description: !Sub 'Tutor Time & Popcorn Math modular monolith (${EnvironmentName}) running via Lambda Web Adapter.'
@@ -392,11 +392,11 @@ Resources:
           FAULT_INJECTION_ENABLED: !Ref FaultInjectionEnabled
           GUIDE_MASCOT_IMAGE_PATH: !Ref GuideMascotImagePath
           BUCKET_MASCOT_IMAGE_PATH: !Ref BucketMascotImagePath
-          # Literal Secrets Manager dynamic references (never nested inside Fn::Sub)
-          ANTHROPIC_API_KEY: !If
-            - IsProduction
-            - '{{resolve:secretsmanager:tutortime/production/anthropic-api-key:SecretString:value}}'
-            - '{{resolve:secretsmanager:tutortime/staging/anthropic-api-key:SecretString:value}}'
+          # Anthropic API key is fetched lazily at runtime from Secrets Manager (cached in memory;
+          # zero plaintext key in Lambda env vars, immediate pickup after out-of-band secret update)
+          ANTHROPIC_API_KEY_SECRET_ARN:
+            Fn::ImportValue: !Sub '${SecurityStackName}-AnthropicApiKeySecretArn'
+          # Auto-generated service secrets (literal Secrets Manager dynamic references)
           ADMIN_API_KEY: !If
             - IsProduction
             - '{{resolve:secretsmanager:tutortime/production/admin-api-key:SecretString:value}}'
@@ -417,6 +417,8 @@ Resources:
 
   # ----------------------------------------------------------------------------
   # 3. Lambda Function URL (Locked Behind CloudFront X-Origin-Verify Secret)
+  #    AWS requires BOTH lambda:InvokeFunctionUrl (FunctionUrlAuthType: NONE)
+  #    AND lambda:InvokeFunction (InvokedViaFunctionUrl: true) for AuthType: NONE.
   # ----------------------------------------------------------------------------
   AppFunctionUrl:
     Type: AWS::Lambda::Url
@@ -432,6 +434,14 @@ Resources:
       Action: lambda:InvokeFunctionUrl
       Principal: '*'
       FunctionUrlAuthType: NONE
+
+  AppFunctionUrlInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AppFunction
+      Action: lambda:InvokeFunction
+      Principal: '*'
+      InvokedViaFunctionUrl: true
 
   # ----------------------------------------------------------------------------
   # 4. CloudFront Edge Functions (Host Forwarding + 302 Popcorn Math Forward)

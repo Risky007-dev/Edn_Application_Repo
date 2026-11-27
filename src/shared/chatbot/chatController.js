@@ -8,6 +8,7 @@
 const { Anthropic } = require('@anthropic-ai/sdk');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const { getSystemPrompt } = require('./systemPrompt');
@@ -24,6 +25,180 @@ const MAX_INPUT_LENGTH = Number(process.env.CHATBOT_MAX_INPUT_LENGTH || 500);
 const MAX_CONVERSATION_TURNS = 10;
 const TIMEOUT_MS = 15000;
 const DAILY_COUNTER_TTL_SECONDS = 7 * 24 * 60 * 60;
+const DEFAULT_SECRET_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_SECRET_EMPTY_CACHE_TTL_MS = 30 * 1000;
+
+// Runtime Secrets Manager Anthropic API Key Cache (zero plaintext key in Lambda env vars)
+let cachedSecretsManagerClient = null;
+let injectedSecretsManagerClient = null;
+let secretCache = {
+  secretId: '',
+  value: '',
+  loaded: false,
+  expiresAt: 0
+};
+let inFlightSecretFetch = null;
+
+function setSecretsManagerClientForTests(client) {
+  injectedSecretsManagerClient = client || null;
+}
+
+function resetSecretCacheForTests() {
+  secretCache = { secretId: '', value: '', loaded: false, expiresAt: 0 };
+  inFlightSecretFetch = null;
+}
+
+function getSecretsManagerClient() {
+  if (injectedSecretsManagerClient) return injectedSecretsManagerClient;
+  if (!cachedSecretsManagerClient) {
+    const region = process.env.AWS_REGION || 'us-east-2';
+    cachedSecretsManagerClient = new SecretsManagerClient({ region });
+  }
+  return cachedSecretsManagerClient;
+}
+
+function getConfiguredSecretId() {
+  return String(
+    process.env.ANTHROPIC_API_KEY_SECRET_ARN ||
+    process.env.ANTHROPIC_API_KEY_SECRET_ID ||
+    ''
+  ).trim();
+}
+
+function getSecretCacheTtlMs() {
+  const parsed = Number(process.env.CHATBOT_SECRET_CACHE_TTL_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SECRET_CACHE_TTL_MS;
+}
+
+function getSecretEmptyCacheTtlMs() {
+  const parsed = Number(process.env.CHATBOT_SECRET_EMPTY_CACHE_TTL_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SECRET_EMPTY_CACHE_TTL_MS;
+}
+
+function parseAnthropicSecretString(secretString) {
+  if (typeof secretString !== 'string') return '';
+  const trimmed = secretString.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed.value === 'string') {
+        return parsed.value.trim();
+      }
+      if (parsed && typeof parsed.apiKey === 'string') {
+        return parsed.apiKey.trim();
+      }
+      return '';
+    } catch (_) {
+      return '';
+    }
+  }
+  return trimmed;
+}
+
+/**
+ * Resolves the Anthropic API key at runtime:
+ *  1. Direct ANTHROPIC_API_KEY env var (local development & unit tests).
+ *  2. Cached AWS Secrets Manager GetSecretValue lookup when ANTHROPIC_API_KEY_SECRET_ARN is set.
+ * Never throws and never logs secret values — if missing or unreachable, returns '' so ONLY the chatbot goes offline.
+ */
+async function resolveAnthropicApiKey({ forceRefresh = false } = {}) {
+  const envKey = String(process.env.ANTHROPIC_API_KEY || '').trim();
+  if (envKey) {
+    return envKey;
+  }
+
+  const secretId = getConfiguredSecretId();
+  if (!secretId) {
+    return '';
+  }
+
+  const now = Date.now();
+  if (
+    !forceRefresh &&
+    secretCache.loaded &&
+    secretCache.secretId === secretId &&
+    now < secretCache.expiresAt
+  ) {
+    return secretCache.value;
+  }
+
+  if (inFlightSecretFetch) {
+    return inFlightSecretFetch;
+  }
+
+  inFlightSecretFetch = (async () => {
+    try {
+      const client = getSecretsManagerClient();
+      const res = await client.send(new GetSecretValueCommand({ SecretId: secretId }));
+      const resolved = parseAnthropicSecretString(res && res.SecretString);
+      const ttl = resolved ? getSecretCacheTtlMs() : getSecretEmptyCacheTtlMs();
+      secretCache = {
+        secretId,
+        value: resolved,
+        loaded: true,
+        expiresAt: Date.now() + ttl
+      };
+      if (!resolved) {
+        console.warn(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: 'warn',
+          event: 'chatbot_secret_empty',
+          message: '[Chatbot] Configured Anthropic Secrets Manager secret is empty; chatbot remains offline.'
+        }));
+      }
+      return resolved;
+    } catch (err) {
+      secretCache = {
+        secretId,
+        value: '',
+        loaded: true,
+        expiresAt: Date.now() + getSecretEmptyCacheTtlMs()
+      };
+      console.warn(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        event: 'chatbot_secret_fetch_failed',
+        errorCode: (err && (err.name || err.code)) || 'SecretsManagerError'
+      }));
+      return '';
+    } finally {
+      inFlightSecretFetch = null;
+    }
+  })();
+
+  return inFlightSecretFetch;
+}
+
+/**
+ * Synchronous check used by SSR layout rendering to decide whether the chatbot
+ * widget renders as online or offline without blocking or crashing page loads.
+ */
+function isChatbotKeyAvailableSync() {
+  if (String(process.env.ANTHROPIC_API_KEY || '').trim()) {
+    return true;
+  }
+  const secretId = getConfiguredSecretId();
+  if (!secretId) {
+    return false;
+  }
+  return Boolean(secretCache.loaded && secretCache.secretId === secretId && secretCache.value);
+}
+
+/**
+ * Warms the runtime Secrets Manager cache when ANTHROPIC_API_KEY_SECRET_ARN is configured.
+ * Safe to invoke on startup or request middleware (no-op when unconfigured; never throws).
+ */
+async function warmAnthropicApiKeyCache() {
+  if (String(process.env.ANTHROPIC_API_KEY || '').trim()) {
+    return true;
+  }
+  if (!getConfiguredSecretId()) {
+    return false;
+  }
+  const key = await resolveAnthropicApiKey();
+  return Boolean(key);
+}
 
 // Daily Request Cap Management (In-Memory fallback for local mode & tests)
 let dailyCounter = {
@@ -147,12 +322,12 @@ function setInjectedClient(client) {
 let hasWarnedMissingKey = false;
 function checkStartupKey() {
   const isEnabled = config.features?.chatbot?.enabled ?? true;
-  if (isEnabled && !process.env.ANTHROPIC_API_KEY && !injectedClient && !hasWarnedMissingKey) {
+  if (isEnabled && !process.env.ANTHROPIC_API_KEY && !getConfiguredSecretId() && !injectedClient && !hasWarnedMissingKey) {
     console.warn(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: 'warn',
       event: 'chatbot_startup_key_missing',
-      message: '[Chatbot] Notice: ANTHROPIC_API_KEY is not configured. Chatbot widget is dormant and /api/chat will return unavailable.'
+      message: '[Chatbot] Notice: ANTHROPIC_API_KEY and ANTHROPIC_API_KEY_SECRET_ARN are not configured. Chatbot widget is dormant and /api/chat will return unavailable.'
     }));
     hasWarnedMissingKey = true;
   }
@@ -190,8 +365,8 @@ async function handleChat(req, res) {
     });
   }
 
-  // API Key check
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // API Key check (direct env var or cached runtime Secrets Manager lookup)
+  const apiKey = injectedClient ? '' : await resolveAnthropicApiKey();
   if (!apiKey && !injectedClient) {
     return res.status(503).json({
       success: false,
@@ -376,6 +551,11 @@ module.exports = {
   resetDailyCounterForTests,
   setInjectedClient,
   setDailyCounterDocClientForTests,
+  resolveAnthropicApiKey,
+  isChatbotKeyAvailableSync,
+  warmAnthropicApiKeyCache,
+  setSecretsManagerClientForTests,
+  resetSecretCacheForTests,
   checkStartupKey,
   MAX_INPUT_LENGTH,
   MAX_CONVERSATION_TURNS,

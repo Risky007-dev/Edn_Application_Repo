@@ -6,6 +6,7 @@
 
 const config = require('../config');
 const { renderChatWidget } = require('../chatbot/widget');
+const { isChatbotKeyAvailableSync } = require('../chatbot/chatController');
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -27,7 +28,7 @@ function renderLayout({ title, description, bodyHtml, currentPath = '/', extraSc
   const canonicalUrl = `${escapeHtml(siteOrigin)}${escapeHtml(currentPath)}`;
   const showPreviewBanner = config.features?.localPreviewBanner && process.env.NODE_ENV !== 'production';
   const showChatbot = config.features?.chatbot?.enabled ?? true;
-  const chatbotAvailable = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ENABLE_MOCK_CHATBOT_FRONTEND === 'true');
+  const chatbotAvailable = Boolean(isChatbotKeyAvailableSync() || process.env.ENABLE_MOCK_CHATBOT_FRONTEND === 'true');
 
   return `<!DOCTYPE html>
 <html lang="en" data-type="${escapeHtml(pageType)}">

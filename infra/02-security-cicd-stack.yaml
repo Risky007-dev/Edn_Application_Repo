@@ -335,7 +335,7 @@ Resources:
     Condition: ShouldCreateDeployRole
     Properties:
       RoleName: tutortime-github-actions-deploy-role
-      Description: Passwordless OIDC deployment role for GitHub Actions (main, staging, production).
+      Description: Passwordless OIDC deployment role for GitHub Actions (main and production).
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -350,7 +350,6 @@ Resources:
               StringLike:
                 token.actions.githubusercontent.com:sub:
                   - !Sub 'repo:${GitHubRepository}:ref:refs/heads/main'
-                  - !Sub 'repo:${GitHubRepository}:environment:staging'
                   - !Sub 'repo:${GitHubRepository}:environment:production'
       Policies:
         - PolicyName: tutortime-cicd-deploy-policy
@@ -399,6 +398,57 @@ Resources:
                   - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/tutortime-*/*'
                   - !Sub 'arn:${AWS::Partition}:cloudformation:us-east-1:${AWS::AccountId}:stack/tutortime-*/*'
 
+              - Sid: CloudFormationListExportsReadOnly
+                Effect: Allow
+                Action:
+                  - cloudformation:ListExports
+                Resource: '*'
+
+              - Sid: DynamoDBDataStackSafeUpdates
+                Effect: Allow
+                Action:
+                  - dynamodb:DescribeTable
+                  - dynamodb:DescribeTimeToLive
+                  - dynamodb:DescribeContinuousBackups
+                  - dynamodb:UpdateTable
+                  - dynamodb:UpdateTimeToLive
+                  - dynamodb:UpdateContinuousBackups
+                  - dynamodb:ListTagsOfResource
+                  - dynamodb:TagResource
+                  - dynamodb:UntagResource
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/tutortime-*'
+
+              - Sid: S3UploadsBucketSafeUpdates
+                Effect: Allow
+                Action:
+                  - s3:GetBucket*
+                  - s3:GetEncryptionConfiguration
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutBucketCORS
+                  - s3:PutLifecycleConfiguration
+                  - s3:PutBucketPolicy
+                  - s3:PutEncryptionConfiguration
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:PutBucketTagging
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::tutortime-*'
+
+              - Sid: DataStackManagedPolicyUpdates
+                Effect: Allow
+                Action:
+                  - iam:GetPolicy
+                  - iam:GetPolicyVersion
+                  - iam:ListPolicyVersions
+                  - iam:CreatePolicyVersion
+                  - iam:DeletePolicyVersion
+                  - iam:SetDefaultPolicyVersion
+                  - iam:TagPolicy
+                  - iam:UntagPolicy
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/TutorTime-Application-Policy-*'
+
               - Sid: LambdaAndEdgeDeployment
                 Effect: Allow
                 Action:
@@ -407,6 +457,7 @@ Resources:
                   - lambda:UpdateFunctionConfiguration
                   - lambda:GetFunction
                   - lambda:GetFunctionConfiguration
+                  - lambda:GetPolicy
                   - lambda:DeleteFunction
                   - lambda:CreateFunctionUrlConfig
                   - lambda:UpdateFunctionUrlConfig
@@ -416,6 +467,7 @@ Resources:
                   - lambda:RemovePermission
                   - lambda:PutFunctionConcurrency
                   - lambda:DeleteFunctionConcurrency
+                  - lambda:ListTags
                   - lambda:TagResource
                   - lambda:UntagResource
                 Resource:
@@ -432,6 +484,7 @@ Resources:
                   - cloudfront:CreateFunction
                   - cloudfront:UpdateFunction
                   - cloudfront:DescribeFunction
+                  - cloudfront:GetFunction
                   - cloudfront:PublishFunction
                   - cloudfront:DeleteFunction
                   - cloudfront:CreateResponseHeadersPolicy
@@ -439,11 +492,15 @@ Resources:
                   - cloudfront:GetResponseHeadersPolicy
                   - cloudfront:DeleteResponseHeadersPolicy
                   - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                  - cloudfront:ListInvalidations
                   - cloudfront:TagResource
+                  - cloudfront:ListTagsForResource
                   - acm:RequestCertificate
                   - acm:DescribeCertificate
                   - acm:DeleteCertificate
                   - acm:AddTagsToCertificate
+                  - acm:ListTagsForCertificate
                 Resource: '*'
 
               - Sid: Route53ValidationAndRecords
@@ -464,29 +521,39 @@ Resources:
                   - logs:PutRetentionPolicy
                   - logs:DeleteLogGroup
                   - logs:DescribeLogGroups
+                  - logs:DescribeMetricFilters
                   - logs:PutMetricFilter
                   - logs:DeleteMetricFilter
                   - logs:TagResource
+                  - logs:ListTagsForResource
                   - events:PutRule
                   - events:DeleteRule
                   - events:DescribeRule
                   - events:PutTargets
                   - events:RemoveTargets
+                  - events:ListTargetsByRule
+                  - events:TagResource
+                  - events:ListTagsForResource
                   - cloudwatch:PutMetricAlarm
                   - cloudwatch:DeleteAlarms
                   - cloudwatch:DescribeAlarms
                   - cloudwatch:PutDashboard
+                  - cloudwatch:GetDashboard
                   - cloudwatch:DeleteDashboards
+                  - cloudwatch:TagResource
+                  - cloudwatch:ListTagsForResource
                   - sns:CreateTopic
                   - sns:DeleteTopic
                   - sns:GetTopicAttributes
                   - sns:SetTopicAttributes
                   - sns:Subscribe
                   - sns:Unsubscribe
-                  - budgets:CreateBudget
+                  - sns:TagResource
+                  - sns:ListTagsForResource
                   - budgets:ModifyBudget
-                  - budgets:DeleteBudget
                   - budgets:ViewBudget
+                  - budgets:TagResource
+                  - budgets:ListTagsForResource
                 Resource: '*'
 
               - Sid: SecretsManagerReadForCfnResolve
