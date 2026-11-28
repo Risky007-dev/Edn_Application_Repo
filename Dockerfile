@@ -31,9 +31,11 @@ RUN chmod 0755 /opt/extensions/lambda-adapter
 
 WORKDIR /app
 
-# Deterministic production dependency install
+# Deterministic production dependency install; remove unused global npm/npx CLI from runtime image
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev && \
+    npm cache clean --force && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Copy runtime application files (never copy env files into container image)
 COPY server.js ./
