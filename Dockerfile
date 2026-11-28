@@ -18,13 +18,15 @@ RUN apk add --no-cache curl musl-dev && \
     rm -f /tmp/lwa.tar.gz
 
 WORKDIR /src
-RUN RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --bin lambda-adapter && \
-    strip target/release/lambda-adapter
+RUN CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=gcc \
+    RUSTFLAGS="-C target-feature=+crt-static" \
+    cargo build --release --target x86_64-unknown-linux-musl --bin lambda-adapter && \
+    strip target/x86_64-unknown-linux-musl/release/lambda-adapter
 
 FROM node:24-alpine
 
 # AWS Lambda Web Adapter extension (no-op outside AWS Lambda)
-COPY --from=lwa-builder /src/target/release/lambda-adapter /opt/extensions/lambda-adapter
+COPY --from=lwa-builder /src/target/x86_64-unknown-linux-musl/release/lambda-adapter /opt/extensions/lambda-adapter
 RUN chmod 0755 /opt/extensions/lambda-adapter
 
 WORKDIR /app
