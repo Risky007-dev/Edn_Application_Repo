@@ -72,9 +72,16 @@ jobs:
         run: |
           ! grep -rnE --exclude='ci-deploy.yml' 'arn:aws:[^:]+:[^:]*:[0-9]{12}:|AKIA[0-9A-Z]{16}|sk-ant-api[0-9]{2}-' infra/ .github/ Dockerfile ecs-task-definition*.json
 
+      - name: Setup Docker Buildx (with GitHub Actions layer cache)
+        uses: docker/setup-buildx-action@v4
+
       - name: Build Container Image & Run Local Smoke Test (Offline Mode)
         run: |
-          docker build -t tutortime-ci-test:local .
+          docker buildx build \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --load \
+            -t tutortime-ci-test:local .
           docker run -d --name tt-smoke -p 5001:5001 \
             -e STORAGE_DRIVER=local \
             -e EMAIL_DRIVER=mock \
@@ -136,13 +143,20 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Setup Docker Buildx (reuse cached Lambda Web Adapter layer)
+        uses: docker/setup-buildx-action@v4
+
       - name: Build & Push Immutable Image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
         run: |
-          docker build -t "${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}" .
-          docker push "${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          docker buildx build \
+            --provenance=false \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --push \
+            -t "${REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}" .
 
   # ============================================================================
   # 3. Direct Production Deploy (No Staging, No Manual Approval)

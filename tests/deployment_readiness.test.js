@@ -91,7 +91,9 @@ async function run() {
     const ecsOtel = fs.readFileSync(path.join(REPO_ROOT, 'ecs-task-definition-with-otel.json'), 'utf8');
     const ecsPlain = fs.readFileSync(path.join(REPO_ROOT, 'ecs-task-definition.json'), 'utf8');
 
-    check('Dockerfile includes AWS Lambda Web Adapter binary', dockerfile.includes('aws-lambda-adapter'));
+    check('Dockerfile includes AWS Lambda Web Adapter binary',
+      dockerfile.includes('/opt/extensions/lambda-adapter') &&
+      (dockerfile.includes('aws-lambda-adapter') || dockerfile.includes('aws-lambda-web-adapter')));
     check('Dockerfile copies docs so /privacy works in containers', /COPY\s+docs(\/legal)?\s+\.\/docs(\/legal)?/.test(dockerfile));
     check('Dockerfile does NOT copy .env or .env.example into container', !/\.env/.test(dockerfile));
     check('Dockerfile runs as non-root USER node', /^USER\s+node/m.test(dockerfile));

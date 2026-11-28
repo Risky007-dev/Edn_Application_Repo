@@ -1,12 +1,31 @@
 # ==============================================================================
 # Tutor Time & Popcorn Math — Zero-VM Container Image (AWS Lambda + Local Docker)
-# Ships AWS Lambda Web Adapter so the exact same immutable image runs on
-# AWS Lambda Function URL (behind CloudFront) AND locally via `docker run`.
+# Builds AWS Lambda Web Adapter 0.8.4 from official GitHub source (SHA-256 verified)
+# so CI never hits public.ecr.aws anonymous 429 rate limits.
 # ==============================================================================
+FROM rust:1-alpine AS lwa-builder
+
+ARG LWA_VERSION=0.8.4
+ARG LWA_SHA256=3b86a37ef566162752e817e3c3c98e6c90d4591d4b5f18056dc91e589adf4a27
+
+RUN apk add --no-cache curl musl-dev && \
+    curl --fail --retry 5 --retry-delay 2 -sSL \
+      "https://github.com/awslabs/aws-lambda-web-adapter/archive/refs/tags/v${LWA_VERSION}.tar.gz" \
+      -o /tmp/lwa.tar.gz && \
+    echo "${LWA_SHA256}  /tmp/lwa.tar.gz" | sha256sum -c - && \
+    mkdir -p /src && \
+    tar -xzf /tmp/lwa.tar.gz -C /src --strip-components=1 && \
+    rm -f /tmp/lwa.tar.gz
+
+WORKDIR /src
+RUN RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --bin lambda-adapter && \
+    strip target/release/lambda-adapter
+
 FROM node:24-alpine
 
 # AWS Lambda Web Adapter extension (no-op outside AWS Lambda)
-COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.4 /lambda-adapter /opt/extensions/lambda-adapter
+COPY --from=lwa-builder /src/target/release/lambda-adapter /opt/extensions/lambda-adapter
+RUN chmod 0755 /opt/extensions/lambda-adapter
 
 WORKDIR /app
 
