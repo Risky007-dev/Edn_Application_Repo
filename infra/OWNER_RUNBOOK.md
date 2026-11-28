@@ -1,196 +1,276 @@
-# Tutor Time & Popcorn Math: AWS Infrastructure & Migration Runbook
+# Tutor Time & Popcorn Math — Zero-VM Production Deployment & Operations Runbook
 
-> **DOCUMENT STATUS:** DRAFT / PENDING OWNER REVIEW  
-> **SCOPE:** Operational runbook for deploying `infra/tutortime-stack.yaml`, transitioning from `STORAGE_DRIVER=local` to `STORAGE_DRIVER=aws`, stack verification, and emergency rollback procedures without data loss.
-
----
-
-## 1. Prerequisites & Decisions Owner Must Make First
-
-Before creating any cloud resources, the business owner must confirm and decide the following:
-
-1. **Custom Domain & SES Verification (REQUIRED parameter: `SesIdentityArn`)**:
-   - Confirm whether the notification email address (`ADMIN_NOTIFICATION_EMAIL`) and sender address (`SENDER_EMAIL`) are on your verified domain in Amazon SES.
-   - Note down the SES Identity ARN: `arn:aws:ses:us-east-2:<AWS_ACCOUNT_ID>:identity/<YOUR_DOMAIN_OR_EMAIL>`. This parameter is REQUIRED (no default); CloudFormation deployment will fail if omitted.
-   - Confirm SES Production Access status (in SES sandbox, emails can only be sent to pre-verified addresses).
-2. **Data Retention Policy (`TODO(legal)`)**:
-   - Determine how long applicant CV PDFs should be stored in S3 before automatic deletion.
-   - The default parameter in CloudFormation is set to `90` days. If you prefer `180` or `365` days, adjust `CVRetentionDays` accordingly.
-3. **S3 Bucket Naming**:
-   - S3 bucket names are globally unique. Choose a name such as `tutortime-cv-uploads-<random-suffix>` or leave blank to let CloudFormation generate one automatically.
-4. **Target Site Origin (REQUIRED parameter: `SiteOrigin`)**:
-   - Determine the allowed web origin for CORS direct browser uploads (e.g., `https://popcornmaths.com` or `https://www.popcornmaths.com`). Must match pattern `^https://[a-zA-Z0-9.-]+$`. This parameter is REQUIRED (no default); CloudFormation deployment will fail if omitted.
-5. **Existing EC2 IAM Role**:
-   - Identify the existing IAM role currently attached to your server instance (`<EXISTING_ROLE_NAME>`). Note: you attach the policy to the **role**, not to an instance profile.
+> **DOCUMENT STATUS:** PRODUCTION-DIRECT RUNBOOK (Matches [`DEPLOYMENT_PLAN.md`](../DEPLOYMENT_PLAN.md))  
+> **ARCHITECTURE:** Zero-VM **AWS Lambda (Container + AWS Lambda Web Adapter 0.8.4) + Amazon CloudFront** (`us-east-2` compute/data + `us-east-1` edge ACM TLS cert)  
+> **DEPLOY MODEL:** Every push to `main` automatically runs tests → builds immutable image → verifies Stack `01` Change Set has zero replacements/removals → deploys production → invalidates CloudFront (`/*`) → runs live smoke tests → rolls back automatically to the last good image on failure (first deploy stops and reports). **No staging, no manual approval, one deploy at a time, pull requests never deploy.**  
+> **HARD SAFETY RULES:** Never touch `MX`, `TXT`, `DKIM`, `DMARC`, or mail Lambdas. Delete no AWS resources or data *(sole owner-approved exception: delete only the stale `A` record on `mail.tutortime.ai` at go-live after verifying zero MX/CNAME/SES dependency)*. No old-server cleanup.
 
 ---
 
-## 2. Step-by-Step Deployment Procedure
+## Phase 0 — Pre-Flight Verification, Backups & DNS Export
 
-### Step 1: Review CloudFormation Template
-Inspect `infra/tutortime-stack.yaml` to ensure resource definitions, parameter defaults, and retention policies align with your requirements.
-
-### Step 2: Validate the Template
-Run template validation using the AWS CLI in `us-east-2`:
+### 0.1 Confirm AWS Account & Identity
 ```bash
-aws cloudformation validate-template \
+aws sts get-caller-identity
+```
+Verify the AWS Account ID ends in `2392` and you are authenticated as an IAM user (not root).
+
+### 0.2 On-Demand DynamoDB Backups & Enable PITR on `popcorn-maths-subscribers`
+```bash
+STAMP=$(date -u +"%Y%m%d-%H%M%S")
+
+for TABLE in tutortime-submissions tutortime-portal popcorn-maths-subscribers; do
+  echo "Creating on-demand backup for ${TABLE}..."
+  aws dynamodb create-backup \
+    --region us-east-2 \
+    --table-name "$TABLE" \
+    --backup-name "${TABLE}-pre-deploy-${STAMP}"
+done
+
+aws dynamodb update-continuous-backups \
   --region us-east-2 \
-  --template-body file://infra/tutortime-stack.yaml
+  --table-name popcorn-maths-subscribers \
+  --point-in-time-recovery-specification PointInTimeRecoveryEnabled=true
 ```
 
-### Step 3: Deploy the CloudFormation Stack
-Create the stack with the chosen parameter values (replace placeholders). Note that `SiteOrigin` and `SesIdentityArn` are **REQUIRED** parameters with no default values (omitting them will cause stack creation to fail validation). Note also the `--capabilities CAPABILITY_IAM` flag:
+### 0.3 Export Both Route 53 Hosted Zones (Outside Repo)
 ```bash
-# popcornmaths.com is assumed; the owner must confirm the domain first.
-aws cloudformation create-stack \
-  --stack-name tutortime-production-infra \
+mkdir -p "$HOME/tutortime-dns-backups"
+STAMP=$(date -u +"%Y%m%d-%H%M%S")
+
+aws route53 list-resource-record-sets \
+  --hosted-zone-id Z04729501Z8GNOKNPRCKY \
+  > "$HOME/tutortime-dns-backups/tutortime.ai-${STAMP}.json"
+
+aws route53 list-resource-record-sets \
+  --hosted-zone-id Z06398441PSCZ7Z00DXBZ \
+  > "$HOME/tutortime-dns-backups/popcornmaths.com-${STAMP}.json"
+```
+
+### 0.4 Audit Portal Usernames (Read-Only, Zero Passwords Shown)
+```bash
+aws dynamodb scan \
   --region us-east-2 \
-  --template-body file://infra/tutortime-stack.yaml \
-  --parameters \
-      ParameterKey=EnvironmentName,ParameterValue=production \
-      ParameterKey=DynamoDBTableName,ParameterValue=tutortime-submissions \
-      ParameterKey=SiteOrigin,ParameterValue=https://popcornmaths.com \
-      ParameterKey=CVRetentionDays,ParameterValue=90 \
-      ParameterKey=SesIdentityArn,ParameterValue=arn:aws:ses:us-east-2:<ACCOUNT_ID>:identity/popcornmaths.com \
-  --capabilities CAPABILITY_IAM
+  --table-name tutortime-portal \
+  --filter-expression "entityType = :u" \
+  --expression-attribute-values '{":u":{"S":"USER"}}' \
+  --projection-expression "PK, username, mustChangePassword, updatedAt" \
+  --output table
+```
+Flag any developer or demo-password accounts for owner review before go-live (do not display password hashes or delete records).
+
+---
+
+## Phase 1 — Bootstrap Core AWS Stacks BEFORE Merging to `main`
+
+> **CRITICAL:** Complete Phases 1 and 2 **BEFORE** merging `feature/local-completion` into `main`, because pushing to `main` automatically deploys to production.
+
+Helper to turn `infra/params/production.json` into `--parameter-overrides`:
+```bash
+to_overrides() {
+  node -e "const p=require('./infra/params/production.json')[\"$1\"].parameters; console.log(Object.entries(p).map(([k,v])=>k+'='+v).join(' '));"
+}
 ```
 
-Wait for stack creation to complete:
+### 1.1 Stack `01` (`tutortime-production-infra`) — Mandatory Change-Set Inspection
 ```bash
-aws cloudformation wait stack-create-complete \
+CS_NAME="tutortime-data-bootstrap-$(date -u +%Y%m%d%H%M%S)"
+
+aws cloudformation create-change-set \
+  --region us-east-2 \
   --stack-name tutortime-production-infra \
-  --region us-east-2
+  --change-set-name "$CS_NAME" \
+  --change-set-type UPDATE \
+  --template-body file://infra/01-data-stack.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameters "$(node -e "const p=require('./infra/params/production.json').dataStack.parameters; console.log(JSON.stringify(Object.entries(p).map(([k,v])=>({ParameterKey:k,ParameterValue:String(v)}))));")"
+
+aws cloudformation wait change-set-create-complete \
+  --region us-east-2 \
+  --stack-name tutortime-production-infra \
+  --change-set-name "$CS_NAME"
+
+# STOP IMMEDIATELY IF ANY RESOURCE SHOWS Action=Remove OR Replacement=True/Conditional!
+aws cloudformation describe-change-set \
+  --region us-east-2 \
+  --stack-name tutortime-production-infra \
+  --change-set-name "$CS_NAME" \
+  --query "Changes[].ResourceChange.{Action:Action,LogicalId:LogicalResourceId,Type:ResourceType,Replacement:Replacement}" \
+  --output table
 ```
 
-Query the stack outputs to get the generated Bucket Name and IAM Policy ARN:
+Only if zero replacements and zero removals are shown:
 ```bash
+aws cloudformation execute-change-set \
+  --region us-east-2 \
+  --stack-name tutortime-production-infra \
+  --change-set-name "$CS_NAME"
+
+aws cloudformation wait stack-update-complete \
+  --region us-east-2 \
+  --stack-name tutortime-production-infra
+```
+
+### 1.2 Stack `02` (`tutortime-production-security`, `us-east-2`)
+Provisions immutable ECR repo `tutortime-app`, 4 Secrets Manager secrets, `LambdaExecutionRole`, GitHub OIDC Provider, and `GitHubDeployRole`:
+```bash
+aws cloudformation deploy \
+  --region us-east-2 \
+  --stack-name tutortime-production-security \
+  --template-file infra/02-security-cicd-stack.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --no-fail-on-empty-changeset \
+  --parameter-overrides $(to_overrides securityStack)
+
 aws cloudformation describe-stacks \
-  --stack-name tutortime-production-infra \
   --region us-east-2 \
+  --stack-name tutortime-production-security \
   --query "Stacks[0].Outputs" \
   --output table
 ```
 
-### Step 4: Verify the CloudFormation Stack
-Confirm that all stack resources were created cleanly:
+### 1.3 Stack `03a` (`tutortime-production-edge-cert`, `us-east-1`)
+Auto-validates via Route 53 CNAMEs for all 5 SANs (`tutortime.ai`, `www.tutortime.ai`, `checkin.tutortime.ai`, `popcornmaths.com`, `www.popcornmaths.com`) without touching any web `A` or mail DNS records:
 ```bash
-# 1. Check overall stack status (should return CREATE_COMPLETE)
-aws cloudformation describe-stacks \
-  --stack-name tutortime-production-infra \
-  --region us-east-2 \
-  --query "Stacks[0].StackStatus" \
-  --output text
-
-# 2. List all created resources
-aws cloudformation list-stack-resources \
-  --stack-name tutortime-production-infra \
-  --region us-east-2 \
-  --output table
+aws cloudformation deploy \
+  --region us-east-1 \
+  --stack-name tutortime-production-edge-cert \
+  --template-file infra/03a-edge-cert-stack.yaml \
+  --no-fail-on-empty-changeset \
+  --parameter-overrides $(to_overrides edgeCertStack)
 ```
-
-### Step 5: Attach the Scoped Policy to the Existing Role
-Attach the generated managed policy to your existing IAM role (attach to the **role**, not the instance profile):
-```bash
-aws iam attach-role-policy \
-  --role-name <EXISTING_ROLE_NAME> \
-  --policy-arn <APP_MANAGED_POLICY_ARN>
-```
-
-### Step 6: Update Server Environment Variables
-On the application server, edit `<ENV_FILE_PATH>` (located in `<APP_DIR>`) and configure:
-```env
-# Storage Configuration
-STORAGE_DRIVER=aws
-AWS_REGION=us-east-2
-DYNAMODB_TABLE_NAME=tutortime-submissions
-UPLOADS_BUCKET_NAME=<UPLOADS_BUCKET_NAME_FROM_STACK_OUTPUTS>
-
-# Email Notifications
-ADMIN_NOTIFICATION_EMAIL=cassie@tutortime.example
-# popcornmaths.com is assumed; the owner must confirm the domain first.
-SENDER_EMAIL=notifications@popcornmaths.com
-SEND_CONFIRMATIONS=false
-```
-
-### Step 7: Restart Application & Verify Live Health
-Restart the application process using your production process manager:
-```bash
-<RESTART_COMMAND>
-```
-
-Confirm that the server logs indicate initialization of the AWS driver.
-
-### Step 8: Test with a Single Live Submission
-1. Open the website in your browser.
-2. Submit a test enquiry via `/contact` or `/book`.
-3. Check the DynamoDB table to verify the record was written:
-```bash
-aws dynamodb query \
-  --region us-east-2 \
-  --table-name tutortime-submissions \
-  --key-condition-expression "formType = :ft" \
-  --expression-attribute-values '{":ft": {"S": "CONTACT"}}' \
-  --limit 1
-```
-4. Verify that the record contains top-level form fields, a timestamped sort key, and `PENDING_REVIEW` status.
 
 ---
 
-## 3. Stack Rollback Procedure (No Deletion of Retained Resources)
+## Phase 2 — Configure GitHub Repository Variables & Anthropic Secret
 
-If you need to tear down or roll back the CloudFormation infrastructure, follow these steps.
-Because `SubmissionsTable` and `UploadsBucket` have `DeletionPolicy: Retain` explicitly configured in `infra/tutortime-stack.yaml`, deleting the stack deletes **only** the managed IAM policy; your DynamoDB table and S3 bucket with all customer submissions and CV uploads are **retained and protected from deletion**.
+> **OIDC Trust Security (No GitHub Environment Used):** `GitHubDeployRole` uses strict `StringEquals` on `token.actions.githubusercontent.com:sub` matching ONLY `repo:Risky007-dev/Edn_Application_Repo:ref:refs/heads/main` (zero wildcards, zero GitHub environments). Pull requests and feature branches cannot assume the deploy role.
 
-> [!NOTE]
-> **Stack Re-creation Note (Retained Fixed Resource Names):**  
-> Because the DynamoDB table and S3 bucket are retained after stack deletion and use fixed names, attempting to re-create the stack later with the same parameters will fail with an "already exists" error.
-> The owner must decide between two options:
-> 1. **Use different resource names:** Provide new unique names via `DynamoDBTableName` and `UploadsBucketName` parameters when creating the new stack.
-> 2. **Import existing resources:** Use CloudFormation's resource import feature to attach the existing retained table and bucket to the new stack.
-> The owner decides which approach to take.
+1. **Set Repository Variable & Secret:**
+   - **Variable** (`gh variable set AWS_DEPLOY_ROLE_ARN`): `GitHubDeployRoleArn` output from Stack `02`.
+   - **Secret** (`gh secret set OPS_ALERT_EMAIL`): Owner alert email for CloudWatch/SNS/Budget alerts (stored as an Actions Secret so it never appears in public repo variables or logs).
+2. **Populate Anthropic API Key Out-of-Band in Secrets Manager:**
+   After setting a hard spend cap in the Anthropic Console:
+   ```bash
+   aws secretsmanager put-secret-value \
+     --region us-east-2 \
+     --secret-id tutortime/production/anthropic-api-key \
+     --secret-string '{"value":"YOUR_CAPPED_ANTHROPIC_API_KEY"}'
+   ```
+   Because Lambda reads `ANTHROPIC_API_KEY_SECRET_ARN` lazily at runtime with a 30s empty-secret cache TTL (5 min positive TTL), updating this secret takes effect automatically without redeploying CloudFormation. If left empty or unreachable, **only the chatbot goes offline** (HTTP `503`) while all other pages, forms, email, and portal features continue normally.
 
-### Step 1: Revert Application to Local Storage
-Switch the application back to flat-file storage before removing cloud policies:
+---
+
+## Phase 3 — Merge via Pull Request & Pre-Cutover CloudFront Testing
+
+1. Confirm [`infra/params/production.json`](params/production.json) has `ManageNewSubdomainDnsRecords="false"`, `ManageLiveDnsRecords="false"`, and `LambdaReservedConcurrency="0"`.
+2. Open a Pull Request `feature/local-completion` → `main`:
+   - `validate-and-test` runs automatically (tests, `cfn-lint`, Docker container smoke test, Trivy scan). **Pull requests never deploy.**
+3. Merge the PR into `main` → GitHub Actions automatically runs:
+   - `validate-and-test` → `build-and-push` (`tutortime-app:git-<sha>`) → `deploy-production` (Stack 01 Change-Set guard → Stack 03b + Stack 04 → CloudFront `/*` invalidation → live smoke test).
+4. **Verify Everything Through CloudFront Using Real Hostnames (Pre-Cutover):**
+   ```bash
+   CF_DOMAIN=$(aws cloudformation describe-stacks --region us-east-2 \
+     --stack-name tutortime-production-app \
+     --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomainName'].OutputValue" --output text)
+   CF_IP=$(dig +short "$CF_DOMAIN" | head -n 1)
+
+   # Confirm raw Lambda Function URL bypass is blocked (403)
+   FN_URL=$(aws cloudformation describe-stacks --region us-east-2 \
+     --stack-name tutortime-production-app \
+     --query "Stacks[0].Outputs[?OutputKey=='AppFunctionUrlEndpoint'].OutputValue" --output text)
+   curl -sS -o /dev/null -w "Direct Function URL (expect 403): %{http_code}\n" "$FN_URL"
+
+   # Test real hostnames directly against CloudFront IP before DNS cutover
+   curl -sSI --resolve "tutortime.ai:443:${CF_IP}" "https://tutortime.ai/health"
+   curl -sSI --resolve "www.tutortime.ai:443:${CF_IP}" "https://www.tutortime.ai/"
+   curl -sSI --resolve "checkin.tutortime.ai:443:${CF_IP}" "https://checkin.tutortime.ai/login"
+   curl -sSI --resolve "popcornmaths.com:443:${CF_IP}" "https://popcornmaths.com/"
+   curl -sSI --resolve "www.popcornmaths.com:443:${CF_IP}" "https://www.popcornmaths.com/"
+   ```
+   Verify pages, `/privacy`, `/readiness-check`, forms + SES email delivery, `/office` portal login, `/api/chat`, and `302`/`301` edge redirects.
+
+---
+
+## Phase 4 — Minimal-Downtime Atomic Route 53 Cutover
+
+*(Note: Legacy ALB `web-elb` is already deleted, so `popcornmaths.com` / `www.popcornmaths.com` currently have dangling Alias records, and `tutortime.ai` / `checkin.tutortime.ai` / `mail.tutortime.ai` point to the retired crashed legacy server.)*
+
+Using Route 53 `UPSERT` switches web traffic atomically (~0s DNS gap) while keeping `ManageNewSubdomainDnsRecords="false"` and `ManageLiveDnsRecords="false"` in `infra/params/production.json` so **future pushes to `main` and rollbacks can never conflict with or undo live DNS**.
+
+**NEVER touch `MX`, `TXT`, `DMARC`, `_domainkey` DKIM `CNAME`s, `bounce.tutortime.ai`, or `inbound-test.tutortime.ai`.** *(One owner-approved go-live exception: delete ONLY the stale `A` record on `mail.tutortime.ai` once confirmed that zero MX/CNAME/SES rules depend on it.)*
+
 ```bash
-# Revert STORAGE_DRIVER on the server
-sed -i 's/STORAGE_DRIVER=aws/STORAGE_DRIVER=local/' <ENV_FILE_PATH>
-<RESTART_COMMAND>
+CF_DOMAIN=$(aws cloudformation describe-stacks --region us-east-2 \
+  --stack-name tutortime-production-app \
+  --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomainName'].OutputValue" --output text)
+
+# Zone 1: tutortime.ai (tutortime.ai, www.tutortime.ai, checkin.tutortime.ai -> CloudFront A + AAAA)
+cat << EOF > /tmp/cutover-tutortime.json
+{
+  "Comment": "Atomic web-only cutover to CloudFront (mail records untouched)",
+  "Changes": [
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "tutortime.ai.",         "Type": "A",    "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "tutortime.ai.",         "Type": "AAAA", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "www.tutortime.ai.",     "Type": "A",    "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "www.tutortime.ai.",     "Type": "AAAA", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "checkin.tutortime.ai.", "Type": "A",    "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "checkin.tutortime.ai.", "Type": "AAAA", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } }
+  ]
+}
+EOF
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z04729501Z8GNOKNPRCKY \
+  --change-batch file:///tmp/cutover-tutortime.json
+
+# Zone 2: popcornmaths.com (popcornmaths.com, www.popcornmaths.com -> CloudFront A + AAAA; edge 302 forward)
+cat << EOF > /tmp/cutover-popcorn.json
+{
+  "Comment": "Atomic web-only cutover of popcornmaths.com to CloudFront edge 302 redirect (DKIM untouched)",
+  "Changes": [
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "popcornmaths.com.",     "Type": "A",    "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "popcornmaths.com.",     "Type": "AAAA", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "www.popcornmaths.com.", "Type": "A",    "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "www.popcornmaths.com.", "Type": "AAAA", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "${CF_DOMAIN}.", "EvaluateTargetHealth": false } } }
+  ]
+}
+EOF
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z06398441PSCZ7Z00DXBZ \
+  --change-batch file:///tmp/cutover-popcorn.json
 ```
 
-### Step 2: Detach the Managed Policy from the Existing Role
-Detach the policy from your existing IAM role prior to stack deletion:
+### Post-Cutover Verification & `302 -> 301` Flip
 ```bash
-aws iam detach-role-policy \
-  --role-name <EXISTING_ROLE_NAME> \
-  --policy-arn <APP_MANAGED_POLICY_ARN>
+node scripts/smoke-test.js \
+  --base-url=https://tutortime.ai \
+  --portal-url=https://checkin.tutortime.ai \
+  --redirect-url=https://popcornmaths.com \
+  --expect-redirect-status=302 \
+  --expect-noindex=false \
+  --expect-preview-banner=false
 ```
+Once verified and approved, flip `"PopcornRedirectStatusCode": "302"` → `"301"` in [`infra/params/production.json`](params/production.json) and push to `main`.
 
-### Step 3: Delete the CloudFormation Stack
-Delete the stack:
-```bash
-aws cloudformation delete-stack \
-  --stack-name tutortime-production-infra \
-  --region us-east-2
-```
+---
 
-Wait for stack deletion to complete:
-```bash
-aws cloudformation wait stack-delete-complete \
-  --stack-name tutortime-production-infra \
-  --region us-east-2
-```
+## Phase 5 — Rollback Procedures (Zero Data Loss)
 
-### Step 4: Verify Retained Resources Were NOT Deleted
-Confirm that the DynamoDB table and S3 bucket remain safely intact:
-```bash
-# 1. Verify DynamoDB table still exists with all data intact
-aws dynamodb describe-table \
-  --table-name tutortime-submissions \
-  --region us-east-2 \
-  --query "Table.TableStatus" \
-  --output text
+All stateful stores (`SubmissionsTable`, `UploadsBucket`, `AppEcrRepository`) enforce `DeletionPolicy: Retain` and `UpdateReplacePolicy: Retain`, and all 3 DynamoDB tables have PITR + on-demand pre-deploy backups.
 
-# 2. Verify S3 bucket still exists with all uploaded files intact
-aws s3api head-bucket \
-  --bucket <UPLOADS_BUCKET_NAME>
-```
+### 5.1 Automatic CI Rollback
+If any subsequent push to `main` fails during Stack `03b` deploy, CloudFront invalidation, or live smoke testing, `.github/workflows/ci-deploy.yml` automatically redeploys `tutortime-production-app` to the last known-good `DeployedImageTag`, invalidates CloudFront (`/*`), and verifies health. *(On a first deploy with no prior image, CI stops and reports failure without touching anything.)*
+
+### 5.2 Manual Instant Rollback (No Rebuild — ~60 Seconds)
+1. **GitHub → Actions → `CI & Zero-VM Production Deploy (Lambda + CloudFront)` → Run workflow**.
+2. Enter the previous known-good immutable ECR tag in `rollback_image_tag` (e.g. `git-abc123456789` — ECR retains the last 15 images).
+3. Or run `git revert <bad-commit>` and push to `main`.
+
+### 5.3 Emergency Kill-Switches
+- **Chatbot offline without touching the rest of the site:** Set `FeaturesChatbotEnabled="false"` in `production.json` (or clear `tutortime/production/anthropic-api-key` to `{"value":""}` in Secrets Manager — takes effect within 5 min cache TTL).
+- **Pause SES emails while keeping DynamoDB saves:** Set `EmailDriver="mock"` in `production.json`.
+
+### 5.4 DNS Rollback
+Restore prior `A` records verbatim from `$HOME/tutortime-dns-backups/tutortime.ai-*.json` and `popcornmaths.com-*.json` using `aws route53 change-resource-record-sets` (`Action: UPSERT`).
+
+> **Legacy Resources Policy:** Per owner directive, **no AWS resources or old servers are deleted** as part of this deployment.

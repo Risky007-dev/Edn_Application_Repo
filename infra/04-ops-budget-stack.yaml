@@ -1,0 +1,422 @@
+# ==============================================================================
+# STACK 04 — OBSERVABILITY, ALARMS & COST GUARDRAILS: Tutor Time & Popcorn Math
+# Region: us-east-2
+# ==============================================================================
+# Provisions:
+#   - SNS Alert Topic (+ owner email subscription)
+#   - AWS Budgets monthly spend cap (default $15/mo; 80% ACTUAL & 100% FORECASTED)
+#   - Optional Cost Anomaly Detection (toggleable once root enables Cost Explorer)
+#   - CloudWatch Alarms for Lambda errors, throttles, p95 latency, DynamoDB errors
+#   - Zero-PII CloudWatch Log Metric Filters for booking email failures, chatbot
+#     errors, and chatbot daily cap exhaustion
+#   - Single-pane CloudWatch Operations Dashboard
+# ==============================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Tutor Time & Popcorn Math (Stack 04 - Observability & Cost Guardrails):
+  AWS Budgets cap, SNS alerts, Lambda/DynamoDB/SES/Chatbot alarms, and dashboard.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+    Description: Target environment name.
+
+  DataStackName:
+    Type: String
+    Default: tutortime-production-infra
+    Description: Name of Stack 01 (Data).
+
+  AppStackName:
+    Type: String
+    Default: tutortime-production-app
+    Description: Name of Stack 03b (App).
+
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: Owner email address receiving SNS operational alerts and AWS Budget warnings.
+
+  CreateMonthlyBudget:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Set 'true' on production stack to provision the account-wide monthly AWS Budget alert.
+
+  MonthlyBudgetLimitUSD:
+    Type: Number
+    Default: 15
+    MinValue: 5
+    MaxValue: 500
+    Description: Monthly AWS spend alert ceiling in USD (default $15/mo).
+
+  EnableCostAnomalyDetection:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: >
+      Set 'true' only after root account enables IAM access to Billing & Cost Management
+      (Cost Explorer API currently returns AccessDeniedException for IAM user).
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
+  ShouldCreateBudget: !And [!Equals [!Ref CreateMonthlyBudget, 'true'], !Condition HasAlertEmail]
+  ShouldEnableCostAnomaly: !And [!Equals [!Ref EnableCostAnomalyDetection, 'true'], !Condition HasAlertEmail]
+
+Resources:
+  # ----------------------------------------------------------------------------
+  # 1. SNS Operations Alert Topic
+  # ----------------------------------------------------------------------------
+  OpsAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'tutortime-${EnvironmentName}-ops-alerts'
+      DisplayName: !Sub 'Tutor Time ${EnvironmentName} Ops Alerts'
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  OpsAlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref OpsAlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # ----------------------------------------------------------------------------
+  # 2. AWS Budgets Monthly Spend Cap (80% Actual + 100% Forecasted)
+  # ----------------------------------------------------------------------------
+  MonthlySpendBudget:
+    Type: AWS::Budgets::Budget
+    Condition: ShouldCreateBudget
+    Properties:
+      Budget:
+        BudgetName: TutorTime-Monthly-Spend-Cap
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetLimitUSD
+          Unit: USD
+        CostTypes:
+          IncludeCredit: false
+          IncludeDiscount: true
+          IncludeOtherSubscription: true
+          IncludeRecurring: true
+          IncludeRefund: false
+          IncludeSubscription: true
+          IncludeSupport: true
+          IncludeTax: true
+          IncludeUpfront: true
+          UseBlended: false
+      NotificationsWithSubscribers:
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: ACTUAL
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: FORECASTED
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
+  # ----------------------------------------------------------------------------
+  # 3. Optional AWS Cost Anomaly Monitor & Daily Alert ($5 threshold)
+  # ----------------------------------------------------------------------------
+  CostAnomalyMonitor:
+    Type: AWS::CE::AnomalyMonitor
+    Condition: ShouldEnableCostAnomaly
+    Properties:
+      MonitorName: TutorTime-Service-Anomaly-Monitor
+      MonitorType: DIMENSIONAL
+      MonitorDimension: SERVICE
+
+  CostAnomalySubscription:
+    Type: AWS::CE::AnomalySubscription
+    Condition: ShouldEnableCostAnomaly
+    Properties:
+      SubscriptionName: TutorTime-Daily-Anomaly-Alerts
+      Frequency: DAILY
+      Threshold: 5
+      MonitorArnList:
+        - !Ref CostAnomalyMonitor
+      Subscribers:
+        - Type: EMAIL
+          Address: !Ref AlertEmail
+
+  # ----------------------------------------------------------------------------
+  # 4. Zero-PII CloudWatch Log Metric Filters (Booking Email & Chatbot Health)
+  # ----------------------------------------------------------------------------
+  EmailFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Fn::ImportValue: !Sub '${AppStackName}-AppLogGroupName'
+      FilterPattern: '{ $.event = "form_notification_email_failed" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub 'TutorTime/${EnvironmentName}'
+          MetricName: FormNotificationEmailFailed
+          MetricValue: '1'
+          DefaultValue: 0
+
+  ChatbotErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Fn::ImportValue: !Sub '${AppStackName}-AppLogGroupName'
+      FilterPattern: '{ $.event = "chatbot_request_error" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub 'TutorTime/${EnvironmentName}'
+          MetricName: ChatbotRequestError
+          MetricValue: '1'
+          DefaultValue: 0
+
+  ChatbotDailyCapMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Fn::ImportValue: !Sub '${AppStackName}-AppLogGroupName'
+      FilterPattern: '{ $.event = "chatbot_daily_cap_reached" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub 'TutorTime/${EnvironmentName}'
+          MetricName: ChatbotDailyCapReached
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # ----------------------------------------------------------------------------
+  # 5. CloudWatch Alarms
+  # ----------------------------------------------------------------------------
+  LambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tutortime-${EnvironmentName}-lambda-errors'
+      AlarmDescription: Alerts when Lambda function invocation errors reach >= 3 in 5 minutes.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Fn::ImportValue: !Sub '${AppStackName}-AppFunctionName'
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OpsAlertTopic
+
+  LambdaThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tutortime-${EnvironmentName}-lambda-throttles'
+      AlarmDescription: Alerts immediately if Lambda concurrency is throttled.
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Fn::ImportValue: !Sub '${AppStackName}-AppFunctionName'
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OpsAlertTopic
+
+  LambdaHighLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tutortime-${EnvironmentName}-lambda-p95-latency'
+      AlarmDescription: Alerts when p95 Lambda duration exceeds 10 seconds over 5 minutes.
+      Namespace: AWS/Lambda
+      MetricName: Duration
+      Dimensions:
+        - Name: FunctionName
+          Value:
+            Fn::ImportValue: !Sub '${AppStackName}-AppFunctionName'
+      ExtendedStatistic: p95
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OpsAlertTopic
+
+  FormEmailFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tutortime-${EnvironmentName}-form-email-failed'
+      AlarmDescription: Alerts immediately if a consultation or form notification email to Cassie fails.
+      Namespace: !Sub 'TutorTime/${EnvironmentName}'
+      MetricName: FormNotificationEmailFailed
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OpsAlertTopic
+
+  ChatbotErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tutortime-${EnvironmentName}-chatbot-errors'
+      AlarmDescription: Alerts when Tutor Time Helper encounters >= 3 Anthropic API errors in 5 minutes.
+      Namespace: !Sub 'TutorTime/${EnvironmentName}'
+      MetricName: ChatbotRequestError
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OpsAlertTopic
+
+  ChatbotDailyCapAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tutortime-${EnvironmentName}-chatbot-daily-cap'
+      AlarmDescription: Notifies owner when the daily chatbot request guardrail cap is hit.
+      Namespace: !Sub 'TutorTime/${EnvironmentName}'
+      MetricName: ChatbotDailyCapReached
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OpsAlertTopic
+
+  SubmissionsTableSystemErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tutortime-${EnvironmentName}-submissions-ddb-errors'
+      AlarmDescription: Alerts on DynamoDB system errors on the submissions table.
+      Namespace: AWS/DynamoDB
+      MetricName: SystemErrors
+      Dimensions:
+        - Name: TableName
+          Value:
+            Fn::ImportValue: !Sub '${DataStackName}-SubmissionsTableName'
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref OpsAlertTopic
+
+  # ----------------------------------------------------------------------------
+  # 6. Operations Dashboard
+  # ----------------------------------------------------------------------------
+  TutorTimeOpsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub 'TutorTime-${EnvironmentName}-Operations'
+      DashboardBody: !Sub
+        - |
+          {
+            "widgets": [
+              {
+                "type": "metric",
+                "x": 0, "y": 0, "width": 12, "height": 6,
+                "properties": {
+                  "title": "Lambda Invocations, Errors & Throttles",
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    ["AWS/Lambda", "Invocations", "FunctionName", "${FnName}"],
+                    [".", "Errors", ".", "."],
+                    [".", "Throttles", ".", "."]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12, "y": 0, "width": 12, "height": 6,
+                "properties": {
+                  "title": "Lambda Duration (p50 / p95 ms)",
+                  "region": "${AWS::Region}",
+                  "period": 300,
+                  "metrics": [
+                    ["AWS/Lambda", "Duration", "FunctionName", "${FnName}", {"stat": "p50"}],
+                    [".", ".", ".", ".", {"stat": "p95"}]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 0, "y": 6, "width": 12, "height": 6,
+                "properties": {
+                  "title": "Booking Email Failures & Chatbot Health",
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    ["TutorTime/${EnvironmentName}", "FormNotificationEmailFailed"],
+                    [".", "ChatbotRequestError"],
+                    [".", "ChatbotDailyCapReached"]
+                  ]
+                }
+              },
+              {
+                "type": "metric",
+                "x": 12, "y": 6, "width": 12, "height": 6,
+                "properties": {
+                  "title": "DynamoDB Consumed Capacity (Submissions & Portal)",
+                  "region": "${AWS::Region}",
+                  "stat": "Sum",
+                  "period": 300,
+                  "metrics": [
+                    ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", "TableName", "${SubTable}"],
+                    [".", "ConsumedReadCapacityUnits", ".", "${SubTable}"],
+                    [".", "ConsumedWriteCapacityUnits", ".", "${PortalTable}"],
+                    [".", "ConsumedReadCapacityUnits", ".", "${PortalTable}"]
+                  ]
+                }
+              }
+            ]
+          }
+        - FnName:
+            Fn::ImportValue: !Sub '${AppStackName}-AppFunctionName'
+          SubTable:
+            Fn::ImportValue: !Sub '${DataStackName}-SubmissionsTableName'
+          PortalTable:
+            Fn::ImportValue: !Sub '${DataStackName}-PortalTableName'
+
+Outputs:
+  OpsAlertTopicArn:
+    Description: SNS topic ARN for operational alarms.
+    Value: !Ref OpsAlertTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-OpsAlertTopicArn'
+
+  DashboardName:
+    Description: CloudWatch Operations Dashboard name.
+    Value: !Ref TutorTimeOpsDashboard

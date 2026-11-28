@@ -1,14 +1,22 @@
 /**
  * Chatbot Controller & Claude API Orchestrator
  * Integrates official Anthropic Claude SDK with server-side web search,
- * strict safety guardrails, daily usage caps, rate limiting, and zero-PII logging.
+ * strict safety guardrails, daily usage caps (in-memory locally, atomic DynamoDB
+ * counter in AWS Lambda/multi-instance mode), rate limiting, and zero-PII logging.
  */
 
 const { Anthropic } = require('@anthropic-ai/sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const rateLimit = require('express-rate-limit');
 const config = require('../config');
 const { getSystemPrompt } = require('./systemPrompt');
 const siteKnowledge = require('./knowledge.json');
+const {
+  validateChatReadinessResult,
+  getRecommendationForResult
+} = require('../readiness/recommendationRules');
 
 // Configuration constants
 const DEFAULT_MODEL = 'claude-haiku-5-5';
@@ -16,12 +24,194 @@ const WEB_SEARCH_TOOL_TYPE = 'web_search_20260318';
 const MAX_INPUT_LENGTH = Number(process.env.CHATBOT_MAX_INPUT_LENGTH || 500);
 const MAX_CONVERSATION_TURNS = 10;
 const TIMEOUT_MS = 15000;
+const DAILY_COUNTER_TTL_SECONDS = 7 * 24 * 60 * 60;
+const DEFAULT_SECRET_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_SECRET_EMPTY_CACHE_TTL_MS = 30 * 1000;
 
-// Daily Request Cap Management (In-Memory, zero-persistence)
+// Runtime Secrets Manager Anthropic API Key Cache (zero plaintext key in Lambda env vars)
+let cachedSecretsManagerClient = null;
+let injectedSecretsManagerClient = null;
+let secretCache = {
+  secretId: '',
+  value: '',
+  loaded: false,
+  expiresAt: 0
+};
+let inFlightSecretFetch = null;
+
+function setSecretsManagerClientForTests(client) {
+  injectedSecretsManagerClient = client || null;
+}
+
+function resetSecretCacheForTests() {
+  secretCache = { secretId: '', value: '', loaded: false, expiresAt: 0 };
+  inFlightSecretFetch = null;
+}
+
+function getSecretsManagerClient() {
+  if (injectedSecretsManagerClient) return injectedSecretsManagerClient;
+  if (!cachedSecretsManagerClient) {
+    const region = process.env.AWS_REGION || 'us-east-2';
+    cachedSecretsManagerClient = new SecretsManagerClient({ region });
+  }
+  return cachedSecretsManagerClient;
+}
+
+function getConfiguredSecretId() {
+  return String(
+    process.env.ANTHROPIC_API_KEY_SECRET_ARN ||
+    process.env.ANTHROPIC_API_KEY_SECRET_ID ||
+    ''
+  ).trim();
+}
+
+function getSecretCacheTtlMs() {
+  const parsed = Number(process.env.CHATBOT_SECRET_CACHE_TTL_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SECRET_CACHE_TTL_MS;
+}
+
+function getSecretEmptyCacheTtlMs() {
+  const parsed = Number(process.env.CHATBOT_SECRET_EMPTY_CACHE_TTL_MS);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_SECRET_EMPTY_CACHE_TTL_MS;
+}
+
+function parseAnthropicSecretString(secretString) {
+  if (typeof secretString !== 'string') return '';
+  const trimmed = secretString.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed.value === 'string') {
+        return parsed.value.trim();
+      }
+      if (parsed && typeof parsed.apiKey === 'string') {
+        return parsed.apiKey.trim();
+      }
+      return '';
+    } catch (_) {
+      return '';
+    }
+  }
+  return trimmed;
+}
+
+/**
+ * Resolves the Anthropic API key at runtime:
+ *  1. Direct ANTHROPIC_API_KEY env var (local development & unit tests).
+ *  2. Cached AWS Secrets Manager GetSecretValue lookup when ANTHROPIC_API_KEY_SECRET_ARN is set.
+ * Never throws and never logs secret values — if missing or unreachable, returns '' so ONLY the chatbot goes offline.
+ */
+async function resolveAnthropicApiKey({ forceRefresh = false } = {}) {
+  const envKey = String(process.env.ANTHROPIC_API_KEY || '').trim();
+  if (envKey) {
+    return envKey;
+  }
+
+  const secretId = getConfiguredSecretId();
+  if (!secretId) {
+    return '';
+  }
+
+  const now = Date.now();
+  if (
+    !forceRefresh &&
+    secretCache.loaded &&
+    secretCache.secretId === secretId &&
+    now < secretCache.expiresAt
+  ) {
+    return secretCache.value;
+  }
+
+  if (inFlightSecretFetch) {
+    return inFlightSecretFetch;
+  }
+
+  inFlightSecretFetch = (async () => {
+    try {
+      const client = getSecretsManagerClient();
+      const res = await client.send(new GetSecretValueCommand({ SecretId: secretId }));
+      const resolved = parseAnthropicSecretString(res && res.SecretString);
+      const ttl = resolved ? getSecretCacheTtlMs() : getSecretEmptyCacheTtlMs();
+      secretCache = {
+        secretId,
+        value: resolved,
+        loaded: true,
+        expiresAt: Date.now() + ttl
+      };
+      if (!resolved) {
+        console.warn(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: 'warn',
+          event: 'chatbot_secret_empty',
+          message: '[Chatbot] Configured Anthropic Secrets Manager secret is empty; chatbot remains offline.'
+        }));
+      }
+      return resolved;
+    } catch (err) {
+      secretCache = {
+        secretId,
+        value: '',
+        loaded: true,
+        expiresAt: Date.now() + getSecretEmptyCacheTtlMs()
+      };
+      console.warn(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        event: 'chatbot_secret_fetch_failed',
+        errorCode: (err && (err.name || err.code)) || 'SecretsManagerError'
+      }));
+      return '';
+    } finally {
+      inFlightSecretFetch = null;
+    }
+  })();
+
+  return inFlightSecretFetch;
+}
+
+/**
+ * Synchronous check used by SSR layout rendering to decide whether the chatbot
+ * widget renders as online or offline without blocking or crashing page loads.
+ */
+function isChatbotKeyAvailableSync() {
+  if (String(process.env.ANTHROPIC_API_KEY || '').trim()) {
+    return true;
+  }
+  const secretId = getConfiguredSecretId();
+  if (!secretId) {
+    return false;
+  }
+  return Boolean(secretCache.loaded && secretCache.secretId === secretId && secretCache.value);
+}
+
+/**
+ * Warms the runtime Secrets Manager cache when ANTHROPIC_API_KEY_SECRET_ARN is configured.
+ * Safe to invoke on startup or request middleware (no-op when unconfigured; never throws).
+ */
+async function warmAnthropicApiKeyCache() {
+  if (String(process.env.ANTHROPIC_API_KEY || '').trim()) {
+    return true;
+  }
+  if (!getConfiguredSecretId()) {
+    return false;
+  }
+  const key = await resolveAnthropicApiKey();
+  return Boolean(key);
+}
+
+// Daily Request Cap Management (In-Memory fallback for local mode & tests)
 let dailyCounter = {
   dateStr: new Date().toISOString().slice(0, 10),
   count: 0
 };
+
+let cachedCounterDocClient = null;
+let injectedCounterDocClient = null;
+
+function setDailyCounterDocClientForTests(docClient) {
+  injectedCounterDocClient = docClient || null;
+}
 
 function getDailyCap() {
   return Number(process.env.CHATBOT_DAILY_REQUEST_CAP || 200);
@@ -51,6 +241,77 @@ function resetDailyCounterForTests() {
   dailyCounter = { dateStr: new Date().toISOString().slice(0, 10), count: 0 };
 }
 
+function shouldUseDynamoDailyCounter() {
+  if (injectedCounterDocClient) return true;
+  if (injectedClient) return false;
+  return (process.env.STORAGE_DRIVER || 'local').toLowerCase().trim() === 'aws';
+}
+
+function getCounterDocClient() {
+  if (injectedCounterDocClient) return injectedCounterDocClient;
+  if (!cachedCounterDocClient) {
+    const region = process.env.AWS_REGION || 'us-east-2';
+    cachedCounterDocClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
+  }
+  return cachedCounterDocClient;
+}
+
+/**
+ * Enforces the daily chatbot request cap.
+ * In AWS Lambda / multi-replica deployments (STORAGE_DRIVER=aws), uses a single
+ * atomic conditional UpdateItem counter in DynamoDB (zero PII, 7-day TTL) so
+ * cold starts and concurrent containers cannot bypass CHATBOT_DAILY_REQUEST_CAP.
+ * Falls back gracefully to the in-memory counter on local mode or transient errors.
+ */
+async function checkAndIncrementDailyCapAsync() {
+  if (!shouldUseDynamoDailyCounter()) {
+    return { allowed: checkAndIncrementDailyCap(), count: getDailyCount() };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cap = getDailyCap();
+  const tableName = process.env.DYNAMODB_TABLE_NAME || 'tutortime-submissions';
+  const expireAt = Math.floor(Date.now() / 1000) + DAILY_COUNTER_TTL_SECONDS;
+
+  try {
+    const docClient = getCounterDocClient();
+    const res = await docClient.send(new UpdateCommand({
+      TableName: tableName,
+      Key: {
+        formType: 'SYSTEM_COUNTER',
+        'createdAt#id': `CHATBOT_DAILY#${today}`
+      },
+      UpdateExpression: 'SET requestCount = if_not_exists(requestCount, :zero) + :one, expireAt = :ttl, updatedAt = :now',
+      ConditionExpression: 'attribute_not_exists(requestCount) OR requestCount < :cap',
+      ExpressionAttributeValues: {
+        ':zero': 0,
+        ':one': 1,
+        ':cap': cap,
+        ':ttl': expireAt,
+        ':now': new Date().toISOString()
+      },
+      ReturnValues: 'UPDATED_NEW'
+    }));
+
+    const updatedCount = (res && res.Attributes && typeof res.Attributes.requestCount === 'number')
+      ? res.Attributes.requestCount
+      : getDailyCount();
+    return { allowed: true, count: updatedCount };
+  } catch (err) {
+    if (err && (err.name === 'ConditionalCheckFailedException' || err.__type === 'com.amazonaws.dynamodb.v20120810#ConditionalCheckFailedException')) {
+      return { allowed: false, count: cap };
+    }
+    // Transient DynamoDB issue: fail-safe to in-memory counter rather than dropping visitor
+    console.warn(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'warn',
+      event: 'chatbot_daily_counter_fallback',
+      message: err && err.message ? String(err.message).slice(0, 140) : 'DynamoDB counter error'
+    }));
+    return { allowed: checkAndIncrementDailyCap(), count: getDailyCount() };
+  }
+}
+
 // Injected client for unit testing
 let injectedClient = null;
 function setInjectedClient(client) {
@@ -61,12 +322,12 @@ function setInjectedClient(client) {
 let hasWarnedMissingKey = false;
 function checkStartupKey() {
   const isEnabled = config.features?.chatbot?.enabled ?? true;
-  if (isEnabled && !process.env.ANTHROPIC_API_KEY && !injectedClient && !hasWarnedMissingKey) {
+  if (isEnabled && !process.env.ANTHROPIC_API_KEY && !getConfiguredSecretId() && !injectedClient && !hasWarnedMissingKey) {
     console.warn(JSON.stringify({
       timestamp: new Date().toISOString(),
       level: 'warn',
       event: 'chatbot_startup_key_missing',
-      message: '[Chatbot] Notice: ANTHROPIC_API_KEY is not configured. Chatbot widget is dormant and /api/chat will return unavailable.'
+      message: '[Chatbot] Notice: ANTHROPIC_API_KEY and ANTHROPIC_API_KEY_SECRET_ARN are not configured. Chatbot widget is dormant and /api/chat will return unavailable.'
     }));
     hasWarnedMissingKey = true;
   }
@@ -104,8 +365,8 @@ async function handleChat(req, res) {
     });
   }
 
-  // API Key check
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  // API Key check (direct env var or cached runtime Secrets Manager lookup)
+  const apiKey = injectedClient ? '' : await resolveAnthropicApiKey();
   if (!apiKey && !injectedClient) {
     return res.status(503).json({
       success: false,
@@ -113,7 +374,7 @@ async function handleChat(req, res) {
     });
   }
 
-  const { message, history = [] } = req.body || {};
+  const { message, history = [], readinessResult = null } = req.body || {};
 
   // Input validation: empty or invalid message
   if (!message || typeof message !== 'string' || !message.trim()) {
@@ -133,15 +394,29 @@ async function handleChat(req, res) {
     });
   }
 
+  // Strict server-side validation of optional readinessResult ({ subject, score, band } only)
+  const readinessValidation = validateChatReadinessResult(readinessResult);
+  if (!readinessValidation.valid) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid readiness result context. Only subject, score (0–10), and band are permitted.'
+    });
+  }
+
+  const verifiedRecommendation = readinessValidation.value
+    ? getRecommendationForResult(readinessValidation.value)
+    : null;
+
   // Conversation history cap
   const safeHistory = Array.isArray(history) ? history.slice(-MAX_CONVERSATION_TURNS) : [];
 
-  // Daily request cap check
-  if (!checkAndIncrementDailyCap()) {
+  // Daily request cap check (atomic DynamoDB in AWS mode, in-memory locally)
+  const capCheck = await checkAndIncrementDailyCapAsync();
+  if (!capCheck.allowed) {
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       event: 'chatbot_daily_cap_reached',
-      dailyCount: getDailyCount(),
+      dailyCount: capCheck.count,
       cap: getDailyCap()
     }));
     return res.status(429).json({
@@ -166,11 +441,24 @@ async function handleChat(req, res) {
     }
     messages.push({ role: 'user', content: cleanMessage });
 
+    // Append server-verified recommendation context (strictly from allowlisted rule table, zero raw user strings)
+    let effectiveSystemPrompt = systemPromptFull;
+    if (verifiedRecommendation) {
+      effectiveSystemPrompt += `\n\nVERIFIED READINESS CHECK CONTEXT (NON-IDENTIFYING, IN-MEMORY ONLY):\n` +
+        `- Subject: ${verifiedRecommendation.subject}\n` +
+        `- Sample Score: ${verifiedRecommendation.score} / 10\n` +
+        `- Readiness Band: ${verifiedRecommendation.band}\n` +
+        `- Primary Recommended Service: ${verifiedRecommendation.primary.name} (${verifiedRecommendation.primary.href})\n` +
+        `- Secondary Option: ${verifiedRecommendation.secondary.name} (${verifiedRecommendation.secondary.href})\n` +
+        `- Guidance Note: ${verifiedRecommendation.rationale}\n` +
+        `- Important: Do NOT invent dates, schedules, availability, or prices. Point parents to /book or WhatsApp to confirm details.`;
+    }
+
     // Call Anthropic Messages API with web search tool enabled
     const response = await client.messages.create({
       model,
       max_tokens: 1024,
-      system: systemPromptFull,
+      system: effectiveSystemPrompt,
       messages,
       tools: [
         {
@@ -211,22 +499,29 @@ async function handleChat(req, res) {
       replyText = 'Hello! I am here to help you learn about Tutor Time with Teacher Cassie and Popcorn Math. How can I assist you today?';
     }
 
-    // Structured audit logging: count and latency ONLY, NEVER message content
+    // Structured audit logging: count and latency ONLY, NEVER message content or scores
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       event: 'chatbot_request_success',
       latencyMs: Date.now() - startTime,
       model,
-      dailyCount: getDailyCount(),
+      dailyCount: capCheck.count,
       inputLength: cleanMessage.length,
       replyLength: replyText.length,
-      hasSources: sources.length > 0
+      hasSources: sources.length > 0,
+      hasReadinessResult: Boolean(verifiedRecommendation)
     }));
 
     return res.status(200).json({
       success: true,
       reply: replyText,
-      sources: sources.slice(0, 5)
+      sources: sources.slice(0, 5),
+      ...(verifiedRecommendation ? {
+        recommendation: {
+          primary: verifiedRecommendation.primary.name,
+          secondary: verifiedRecommendation.secondary.name
+        }
+      } : {})
     });
 
   } catch (err) {
@@ -251,9 +546,16 @@ module.exports = {
   handleChat,
   chatRateLimiter,
   checkAndIncrementDailyCap,
+  checkAndIncrementDailyCapAsync,
   getDailyCount,
   resetDailyCounterForTests,
   setInjectedClient,
+  setDailyCounterDocClientForTests,
+  resolveAnthropicApiKey,
+  isChatbotKeyAvailableSync,
+  warmAnthropicApiKeyCache,
+  setSecretsManagerClientForTests,
+  resetSecretCacheForTests,
   checkStartupKey,
   MAX_INPUT_LENGTH,
   MAX_CONVERSATION_TURNS,

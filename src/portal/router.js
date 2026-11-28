@@ -58,9 +58,32 @@ function currentMonthIso() {
   return new Date().toISOString().slice(0, 7);
 }
 
+function isTrustProxyEnabled() {
+  const raw = String(process.env.TRUST_PROXY || '').trim().toLowerCase();
+  if (raw === 'true') return true;
+  const hops = Number(raw);
+  return Number.isInteger(hops) && hops > 0;
+}
+
+function getEffectiveHost(req) {
+  const headers = (req && req.headers) || {};
+  let rawHost = headers.host || '';
+  if (isTrustProxyEnabled() && headers['x-forwarded-host']) {
+    rawHost = String(headers['x-forwarded-host']).split(',')[0].trim();
+  }
+  return String(rawHost).split(':')[0].trim().toLowerCase();
+}
+
+function getConfiguredPortalHosts() {
+  return String(process.env.PORTAL_HOST || 'checkin.tutortime.ai')
+    .split(',')
+    .map(h => h.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function isCheckinHost(req) {
-  const host = String(req.headers && req.headers.host || '').split(':')[0].toLowerCase();
-  return host === 'checkin.tutortime.ai';
+  const host = getEffectiveHost(req);
+  return Boolean(host) && getConfiguredPortalHosts().includes(host);
 }
 
 function getBasePrefix(req) {
@@ -72,7 +95,7 @@ function getPortalOrigin(req) {
     return process.env.PORTAL_BASE_URL.replace(/\/+$/, '');
   }
   const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
-  const host = req.headers.host || 'checkin.tutortime.ai';
+  const host = getEffectiveHost(req) || getConfiguredPortalHosts()[0] || 'checkin.tutortime.ai';
   return `${proto}://${host}`;
 }
 
@@ -80,6 +103,7 @@ function setPrivateHeaders(req, res, next) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Referrer-Policy', 'no-referrer');
   next();
 }
 
@@ -845,5 +869,8 @@ function createPortalRouters(options = {}) {
 
 module.exports = {
   createPortalRouters,
-  isCheckinHost
+  isCheckinHost,
+  getEffectiveHost,
+  getConfiguredPortalHosts,
+  getConfiguredPortalHost: () => getConfiguredPortalHosts()[0] || 'checkin.tutortime.ai'
 };

@@ -7,13 +7,25 @@ const {
   handleChat,
   setInjectedClient,
   resetDailyCounterForTests,
+  resolveAnthropicApiKey,
+  isChatbotKeyAvailableSync,
+  warmAnthropicApiKeyCache,
+  setSecretsManagerClientForTests,
+  resetSecretCacheForTests,
   MAX_INPUT_LENGTH,
   checkAndIncrementDailyCap,
   DEFAULT_MODEL,
   WEB_SEARCH_TOOL_TYPE
 } = require('../src/shared/chatbot/chatController');
+const { renderLayout } = require('../src/shared/templates/layout');
 const { SYSTEM_PROMPT, getSystemPrompt } = require('../src/shared/chatbot/systemPrompt');
 const { renderChatWidget } = require('../src/shared/chatbot/widget');
+const {
+  validateChatReadinessResult,
+  getRecommendationForResult,
+  RECOMMENDATION_RULE_TABLE
+} = require('../src/shared/readiness/recommendationRules');
+const { renderReadinessCheckPage } = require('../src/shared/templates/pages');
 const config = require('../src/shared/config');
 const fs = require('fs');
 const path = require('path');
@@ -205,6 +217,180 @@ async function run() {
   await handleChat({ body: { message: 'Model override check' } }, resModel);
   assert('CHATBOT_MODEL env var overrides default model', capturedModel === 'claude-haiku-test-override');
   delete process.env.CHATBOT_MODEL;
+
+  console.log('\n--- 9. Readiness Result Recommendations & Strict Validation ---');
+  assert('Configurable recommendation rule table defines all 4 bands', RECOMMENDATION_RULE_TABLE.length === 4);
+
+  // Verify approved band rules:
+  // 0-4: One-on-One Tutoring primary, Sunday Workshops secondary
+  // 5-6: Sunday Workshops primary, One-on-One Tutoring secondary
+  // 7-8: Sunday Workshops primary, Seasonal Pop-Ups secondary
+  // 9-10: Seasonal Pop-Ups primary, Sunday Workshops secondary
+  const ruleExpectations = [
+    { subject: 'Mathematics', score: 3, band: 'Just Starting', primary: 'One-on-One Tutoring', secondary: 'Sunday Workshops' },
+    { subject: 'Language Arts', score: 5, band: 'Getting There', primary: 'Sunday Workshops', secondary: 'One-on-One Tutoring' },
+    { subject: 'Mathematics', score: 8, band: 'Looking Good', primary: 'Sunday Workshops', secondary: 'Seasonal Pop-Ups' },
+    { subject: 'Language Arts', score: 10, band: 'Exam Star', primary: 'Seasonal Pop-Ups', secondary: 'Sunday Workshops' }
+  ];
+
+  for (const exp of ruleExpectations) {
+    const rec = getRecommendationForResult({ subject: exp.subject, score: exp.score, band: exp.band });
+    assert(`Rule table maps ${exp.subject} ${exp.score}/10 (${exp.band}) -> ${exp.primary} / ${exp.secondary}`,
+      Boolean(rec) && rec.primary.name === exp.primary && rec.secondary.name === exp.secondary);
+  }
+
+  // Verify invalid readinessResult payloads are rejected with HTTP 400
+  let capturedSystem = '';
+  setInjectedClient({
+    messages: {
+      create: async (params) => {
+        capturedSystem = params.system || '';
+        return { content: [{ type: 'text', text: 'Great effort! Based on your result we recommend Sunday Workshops.' }] };
+      }
+    }
+  });
+  resetDailyCounterForTests();
+
+  const resRecValid = createMockRes();
+  await handleChat({
+    body: {
+      message: 'What do you recommend?',
+      readinessResult: { subject: 'Mathematics', score: 6, band: 'Getting There' }
+    }
+  }, resRecValid);
+  assert('POST /api/chat accepts valid { subject, score, band } readinessResult (HTTP 200)',
+    resRecValid.statusCode === 200 && resRecValid.body.recommendation.primary === 'Sunday Workshops' && resRecValid.body.recommendation.secondary === 'One-on-One Tutoring');
+  assert('System prompt sent to mocked Claude includes verified Primary & Secondary recommendations',
+    capturedSystem.includes('Primary Recommended Service: Sunday Workshops') &&
+    capturedSystem.includes('Secondary Option: One-on-One Tutoring') &&
+    capturedSystem.includes('Sample Score: 6 / 10'));
+
+  const resRecExtraKey = createMockRes();
+  await handleChat({
+    body: {
+      message: 'Recommend something',
+      readinessResult: { subject: 'Mathematics', score: 6, band: 'Getting There', childName: 'Leo' }
+    }
+  }, resRecExtraKey);
+  assert('POST /api/chat rejects extra/PII key (childName) in readinessResult with HTTP 400', resRecExtraKey.statusCode === 400);
+
+  const resRecHiddenSubject = createMockRes();
+  await handleChat({
+    body: {
+      message: 'Recommend something',
+      readinessResult: { subject: 'Science', score: 8, band: 'Looking Good' }
+    }
+  }, resRecHiddenSubject);
+  assert('POST /api/chat rejects hidden subject (Science) in readinessResult with HTTP 400', resRecHiddenSubject.statusCode === 400);
+
+  const resRecMismatch = createMockRes();
+  await handleChat({
+    body: {
+      message: 'Recommend something',
+      readinessResult: { subject: 'Language Arts', score: 10, band: 'Just Starting' }
+    }
+  }, resRecMismatch);
+  assert('POST /api/chat rejects mismatched score and band in readinessResult with HTTP 400', resRecMismatch.statusCode === 400);
+
+  assert('validateChatReadinessResult rejects non-integer score', !validateChatReadinessResult({ subject: 'Mathematics', score: 7.5, band: 'Looking Good' }).valid);
+
+  // Verify non-AI recommendation data embedded on /readiness-check & zero browser storage in chatbot.js
+  const readinessHtml = renderReadinessCheckPage();
+  assert('/readiness-check embeds recommendation rule config for non-AI result rendering',
+    readinessHtml.includes('id="readiness-recommendations-data"') &&
+    readinessHtml.includes('Sunday Workshops') &&
+    readinessHtml.includes('Seasonal Pop-Ups'));
+
+  const chatbotClientJs = fs.readFileSync(path.join(__dirname, '../MyWebApp/src/main/webapp/js/chatbot.js'), 'utf8');
+  assert('chatbot.js listens for tt:open-chat-with-results and uses zero browser storage',
+    chatbotClientJs.includes('tt:open-chat-with-results') &&
+    !chatbotClientJs.includes('localStorage') &&
+    !chatbotClientJs.includes('sessionStorage') &&
+    !chatbotClientJs.includes('document.cookie'));
+
+  console.log('\n--- 10. Runtime Secrets Manager Loading, Caching & Isolated Chatbot Downtime ---');
+  const origSecretArn = process.env.ANTHROPIC_API_KEY_SECRET_ARN;
+  const origCacheTtl = process.env.CHATBOT_SECRET_CACHE_TTL_MS;
+  const origEmptyTtl = process.env.CHATBOT_SECRET_EMPTY_CACHE_TTL_MS;
+  delete process.env.ANTHROPIC_API_KEY;
+  setInjectedClient(null);
+  resetSecretCacheForTests();
+
+  process.env.ANTHROPIC_API_KEY_SECRET_ARN = 'arn:aws:secretsmanager:us-east-2:000000000000:secret:tutortime/production/anthropic-api-key-test';
+  process.env.CHATBOT_SECRET_CACHE_TTL_MS = '60000';
+  process.env.CHATBOT_SECRET_EMPTY_CACHE_TTL_MS = '60000';
+
+  // 10a. Successful JSON secret fetch + in-memory cache reuse
+  let smCalls = 0;
+  setSecretsManagerClientForTests({
+    send: async () => {
+      smCalls++;
+      return { SecretString: JSON.stringify({ value: 'sk-ant-runtime-cached-test-key' }) };
+    }
+  });
+  const firstKey = await resolveAnthropicApiKey();
+  const secondKey = await resolveAnthropicApiKey();
+  assert('Runtime Secrets Manager fetch parses {"value":"..."} JSON cleanly',
+    firstKey === 'sk-ant-runtime-cached-test-key' && secondKey === 'sk-ant-runtime-cached-test-key');
+  assert('Secrets Manager value is cached in memory (only 1 SDK call across 2 lookups)', smCalls === 1);
+  assert('isChatbotKeyAvailableSync() returns true after secret cache warms', isChatbotKeyAvailableSync() === true);
+  const onlineLayoutHtml = renderLayout({ title: 'Secret Online Test', bodyHtml: '<p>OK</p>' });
+  assert('SSR layout renders active chatbot widget when runtime secret is cached',
+    !onlineLayoutHtml.includes('data-chatbot-unavailable="true"'));
+
+  // 10b. Cache expiration triggers refresh
+  process.env.CHATBOT_SECRET_CACHE_TTL_MS = '5';
+  resetSecretCacheForTests();
+  smCalls = 0;
+  await resolveAnthropicApiKey();
+  await new Promise((r) => setTimeout(r, 20));
+  await resolveAnthropicApiKey();
+  assert('Expired cache refreshes secret from Secrets Manager', smCalls === 2);
+
+  // 10c. Empty secret {"value":""} puts ONLY chatbot offline (HTTP 503) without crashing SSR
+  process.env.CHATBOT_SECRET_EMPTY_CACHE_TTL_MS = '60000';
+  resetSecretCacheForTests();
+  smCalls = 0;
+  setSecretsManagerClientForTests({
+    send: async () => {
+      smCalls++;
+      return { SecretString: JSON.stringify({ value: '' }) };
+    }
+  });
+  const warmedEmpty = await warmAnthropicApiKeyCache();
+  assert('Empty Secrets Manager secret reports unavailable without throwing', warmedEmpty === false && isChatbotKeyAvailableSync() === false);
+  const resEmptySecret = createMockRes();
+  await handleChat({ body: { message: 'Hello with empty secret' } }, resEmptySecret);
+  assert('POST /api/chat returns HTTP 503 when Secrets Manager key is empty',
+    resEmptySecret.statusCode === 503 && resEmptySecret.body.error.includes('currently unavailable'));
+  assert('Empty secret result is negatively cached (only 1 SDK call)', smCalls === 1);
+  const offlineLayoutHtml = renderLayout({ title: 'Secret Offline Test', bodyHtml: '<p>Page still up</p>' });
+  assert('SSR page still renders normally while marking ONLY chatbot widget offline',
+    offlineLayoutHtml.includes('Page still up') && offlineLayoutHtml.includes('data-chatbot-unavailable="true"'));
+
+  // 10d. Secrets Manager error degrades cleanly to chatbot-only 503
+  resetSecretCacheForTests();
+  setSecretsManagerClientForTests({
+    send: async () => {
+      const err = new Error('Simulated AccessDeniedException');
+      err.name = 'AccessDeniedException';
+      throw err;
+    }
+  });
+  const resSmError = createMockRes();
+  await handleChat({ body: { message: 'Hello during Secrets Manager outage' } }, resSmError);
+  assert('Secrets Manager error returns HTTP 503 for chatbot without crashing process',
+    resSmError.statusCode === 503 && isChatbotKeyAvailableSync() === false);
+
+  // Restore secret manager test state
+  setSecretsManagerClientForTests(null);
+  resetSecretCacheForTests();
+  if (origSecretArn !== undefined) process.env.ANTHROPIC_API_KEY_SECRET_ARN = origSecretArn;
+  else delete process.env.ANTHROPIC_API_KEY_SECRET_ARN;
+  if (origCacheTtl !== undefined) process.env.CHATBOT_SECRET_CACHE_TTL_MS = origCacheTtl;
+  else delete process.env.CHATBOT_SECRET_CACHE_TTL_MS;
+  if (origEmptyTtl !== undefined) process.env.CHATBOT_SECRET_EMPTY_CACHE_TTL_MS = origEmptyTtl;
+  else delete process.env.CHATBOT_SECRET_EMPTY_CACHE_TTL_MS;
 
   // Clean up env
   if (originalApiKey) {

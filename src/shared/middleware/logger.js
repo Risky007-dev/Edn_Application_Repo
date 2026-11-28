@@ -2,10 +2,18 @@
  * Structured JSON Request Logger & Tracing Harness
  * Ingests X-Amzn-Trace-Id when present, generates synthetic fallback UUID otherwise,
  * echoes X-Trace-Id and Server-Timing response headers for observability research.
- * HARD RULE: Never log personal data, IP addresses, user agents, or form bodies.
+ * HARD RULE: Never log personal data, IP addresses, user agents, query params, or private /p/:token links.
  */
 
 const crypto = require('crypto');
+
+/**
+ * Strip query strings and redact private parent portal bearer tokens (/p/<token>).
+ */
+function sanitizeLogPath(rawUrl) {
+  const pathOnly = String(rawUrl || '/').split('?')[0];
+  return pathOnly.replace(/(^|\/)p\/[^/]+(\/.*)?$/i, '$1p/[redacted]$2');
+}
 
 function requestLogger(req, res, next) {
   const startNs = process.hrtime.bigint();
@@ -31,7 +39,7 @@ function requestLogger(req, res, next) {
     const logEntry = {
       timestamp: new Date().toISOString(),
       method: req.method,
-      path: req.originalUrl || req.url,
+      path: sanitizeLogPath(req.originalUrl || req.url),
       status: res.statusCode,
       duration,
       traceId
@@ -44,4 +52,6 @@ function requestLogger(req, res, next) {
   next();
 }
 
+requestLogger.sanitizeLogPath = sanitizeLogPath;
+requestLogger.sanitizeLoggedPath = sanitizeLogPath;
 module.exports = requestLogger;

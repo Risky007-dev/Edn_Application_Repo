@@ -7,9 +7,12 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Trust Proxy Configuration (default off)
-if (process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1') {
+// Trust Proxy Configuration (default off; supports 'true' or numeric hop count e.g. '1', '2')
+const rawTrustProxy = String(process.env.TRUST_PROXY || '').trim().toLowerCase();
+if (rawTrustProxy === 'true') {
   app.set('trust proxy', 1);
+} else if (/^[1-9]\d*$/.test(rawTrustProxy)) {
+  app.set('trust proxy', Number(rawTrustProxy));
 }
 
 // Shared Infrastructure & Modular Middleware
@@ -44,11 +47,33 @@ const {
   renderPopcornFaqPage
 } = require('./src/popcorn/popcornRebuild');
 const { sanitizeInterestHint } = require('./src/shared/finder/serviceFinder');
+const { resolveEmailDriver } = require('./src/shared/email/formNotificationService');
+const { createPortalRouters, isCheckinHost } = require('./src/portal/router');
 
 // Middleware
 app.use(requestLogger);
 app.use(helmetMiddleware);
 app.use(bodyParser.json());
+
+// Operational Health Probe (zero-IO, unthrottled; exempt from CloudFront origin header so
+// AWS Lambda Web Adapter localhost readiness probes always succeed)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
+// CloudFront Origin Verification Gate (active ONLY when ORIGIN_VERIFY_SECRET is set;
+// blocks direct invocations of the raw Lambda Function URL bypassing CloudFront)
+app.use((req, res, next) => {
+  const expectedOriginSecret = process.env.ORIGIN_VERIFY_SECRET;
+  if (!expectedOriginSecret) {
+    return next();
+  }
+  const providedOriginSecret = req.headers['x-origin-verify'];
+  if (!timingSafeCompare(providedOriginSecret, expectedOriginSecret)) {
+    return res.status(403).send('Forbidden');
+  }
+  next();
+});
 
 // Deny requests for sensitive file extensions, legacy paths, or path traversal
 app.use((req, res, next) => {
@@ -68,11 +93,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Operational Health & Tracing Benchmark Probes (zero-IO, unthrottled)
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', uptime: process.uptime() });
-});
-
+// Additional Operational Health & Tracing Benchmark Probes
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', uptime: process.uptime() });
 });
@@ -126,7 +147,7 @@ const CANONICAL_PUBLIC_ROUTES = [
 
 app.get('/robots.txt', (req, res) => {
   const siteOrigin = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || 'https://popcornmaths.com').replace(/\/+$/, '');
-  if ((req.headers.host || '').split(':')[0].toLowerCase() === 'checkin.tutortime.ai') {
+  if (process.env.SITE_NOINDEX === 'true' || isCheckinHost(req)) {
     return res.type('text/plain').send('User-agent: *\nDisallow: /\n');
   }
   res.type('text/plain').send(
@@ -147,9 +168,27 @@ app.get('/sitemap.xml', (req, res) => {
 app.use('/api', generalApiLimiter);
 app.use('/api', formPipeline);
 
-// AI Chatbot Route (Task 3)
-const { handleChat, chatRateLimiter } = require('./src/shared/chatbot/chatController');
+// AI Chatbot Route (Task 3) & Non-Blocking Runtime Secret Cache Warmup
+const { handleChat, chatRateLimiter, warmAnthropicApiKeyCache } = require('./src/shared/chatbot/chatController');
 app.post('/api/chat', chatRateLimiter, handleChat);
+
+// Warm cached Anthropic secret before SSR HTML renders when Secrets Manager ARN is configured
+// (0ms cache hit after cold start; never delays /health, /api/*, or static assets; never throws)
+app.use(async (req, res, next) => {
+  if (
+    req.method === 'GET' &&
+    !req.path.startsWith('/css/') &&
+    !req.path.startsWith('/js/') &&
+    !req.path.startsWith('/assets/') &&
+    !req.path.startsWith('/fonts/') &&
+    !req.path.startsWith('/api/') &&
+    !isCheckinHost(req) &&
+    (process.env.ANTHROPIC_API_KEY_SECRET_ARN || process.env.ANTHROPIC_API_KEY_SECRET_ID)
+  ) {
+    await warmAnthropicApiKeyCache();
+  }
+  next();
+});
 
 // Explicit Static Asset Serving (pages, css, js, assets, fonts only)
 app.use('/css', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/css')));
@@ -159,7 +198,6 @@ app.use('/fonts', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/
 app.use('/finalnewmathapo-01.png', express.static(path.join(__dirname, 'MyWebApp/src/main/webapp/finalnewmathapo-01.png')));
 
 // Private Attendance & Invoicing Portal (unlisted /office, checkin.tutortime.ai, and /p/:token)
-const { createPortalRouters, isCheckinHost } = require('./src/portal/router');
 const { officeRouter, parentRouter } = createPortalRouters();
 app.use('/p', parentRouter);
 app.use('/office', officeRouter);
@@ -170,38 +208,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database file path (supports test isolation via SUBSCRIBERS_DB_FILE)
-const dbFile = process.env.SUBSCRIBERS_DB_FILE || path.join(__dirname, 'subscribers.json');
-
-// Initialize database file if it doesn't exist
-if (!fs.existsSync(dbFile)) {
-  fs.writeFileSync(dbFile, JSON.stringify({ subscribers: [] }, null, 2));
-}
-
-// Helper function to read subscribers
-function getSubscribers() {
-  try {
-    const data = fs.readFileSync(dbFile, 'utf8');
-    return JSON.parse(data).subscribers || [];
-  } catch (err) {
-    console.error('Error reading subscribers:', err);
-    return [];
-  }
-}
-
-// Helper function to save subscribers atomically
-function saveSubscribers(subscribers) {
-  try {
-    const tmpFile = `${dbFile}.${process.pid}.${Date.now()}.tmp`;
-    fs.writeFileSync(tmpFile, JSON.stringify({ subscribers }, null, 2));
-    fs.renameSync(tmpFile, dbFile);
-    return true;
-  } catch (err) {
-    console.error('Error saving subscribers:', err);
-    return false;
-  }
-}
-
 // Helper function to validate email
 function isValidEmail(email) {
   if (typeof email !== 'string') return false;
@@ -211,10 +217,19 @@ function isValidEmail(email) {
   return pattern.test(trimmed);
 }
 
-// Helper function to send confirmation email (zero-PII logging)
+// Helper function to send confirmation email (zero-PII logging; respects EMAIL_DRIVER=mock)
 async function sendConfirmationEmail(recipientEmail) {
   if (!recipientEmail) {
     console.log('✉️  Confirmation email queued');
+    return true;
+  }
+  if (resolveEmailDriver() === 'mock') {
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'info',
+      event: 'subscribe_confirmation_mock_sent',
+      driver: 'mock'
+    }));
     return true;
   }
   try {
@@ -375,30 +390,13 @@ app.post('/subscribe', formSubmissionLimiter, async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const subscribers = getSubscribers();
 
-    // Check if already subscribed
-    if (subscribers.some(s => s.email === cleanEmail)) {
+    // Persist via pluggable storage driver (local subscribers.json or DynamoDB)
+    const result = await storage.addSubscriber(cleanEmail);
+    if (result && result.duplicate) {
       return res.status(409).json({
         success: false,
         message: 'Email already subscribed'
-      });
-    }
-
-    // Add new subscriber
-    const newSubscriber = {
-      email: cleanEmail,
-      subscribedAt: new Date().toISOString(),
-      confirmed: false
-    };
-
-    subscribers.push(newSubscriber);
-
-    // Save to file
-    if (!saveSubscribers(subscribers)) {
-      return res.status(500).json({
-        success: false,
-        message: 'Error saving email. Try again later.'
       });
     }
 
@@ -421,7 +419,7 @@ app.post('/subscribe', formSubmissionLimiter, async (req, res) => {
 });
 
 // GET /subscribers - Get all subscribers (admin endpoint, requires X-Admin-Key)
-app.get('/subscribers', generalApiLimiter, (req, res) => {
+app.get('/subscribers', generalApiLimiter, async (req, res) => {
   const expectedKey = process.env.ADMIN_API_KEY;
   if (!expectedKey) {
     return res.status(404).send('Not Found');
@@ -433,7 +431,7 @@ app.get('/subscribers', generalApiLimiter, (req, res) => {
   }
 
   try {
-    const subscribers = getSubscribers();
+    const subscribers = await storage.listSubscribers();
     return res.json({
       total: subscribers.length,
       subscribers: subscribers
@@ -458,13 +456,14 @@ app.use((req, res) => {
 
 // Start server
 const server = app.listen(PORT, () => {
+  const storageMode = storage.getCurrentDriverName();
   console.log(`
 ╔════════════════════════════════════╗
 ║    🍿 Popcorn Maths Server 🍿    ║
 ╚════════════════════════════════════╝
 
 ✅ Server running on http://localhost:${PORT}
-📧 Email storage: ${dbFile}
+📧 Storage driver: ${storageMode}
 📊 View subscribers: http://localhost:${PORT}/subscribers
 
 Press Ctrl+C to stop the server

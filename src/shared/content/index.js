@@ -10,6 +10,11 @@
  */
 
 const brand = require('../brand');
+const {
+  SERVICE_CATALOG,
+  RECOMMENDATION_RULE_TABLE,
+  RECOMMENDATION_UI_COPY
+} = require('../readiness/recommendationRules');
 
 const CONTENT = {
   global: {
@@ -64,7 +69,7 @@ const CONTENT = {
       subhead: { text: 'Personalised Academic Support. Innovative Learning. Real Results.', status: 'APPROVED' },
       ctaBook: { text: 'Book a Consultation', status: 'APPROVED' },
       ctaExplore: { text: 'Explore Our Programmes', status: 'APPROVED' },
-      mascotGreeting: { text: "Hi! I'm your Tutor Time guide. Ready to explore learning that pops?", status: 'PROPOSED-COPY' },
+      mascotGreeting: { text: "Hi! I'm your Tutor Time guide. Ready to explore learning that pops?", status: 'APPROVED' },
       options: [
         {
           key: 'tutoring',
@@ -110,11 +115,24 @@ const CONTENT = {
       buttonText: { text: 'Register Interest', status: 'APPROVED' }
     },
     readinessCta: {
-      tag: { text: 'Primary Exit Exam Practice', status: 'PROPOSED-COPY' },
-      title: { text: 'Prepare with Our Free CPEA Readiness Check', status: 'PROPOSED-COPY' },
-      desc: { text: '12 interactive sample questions in Language Arts, Mathematics, Science, and Social Studies designed for Caribbean primary students. Fun, pressure-free practice with instant feedback and badges!', status: 'PROPOSED-COPY' },
-      buttonText: { text: 'Take Readiness Check', status: 'PROPOSED-COPY' },
-      disclaimer: { text: 'Sample questions: not an official CPEA paper.', status: 'PROPOSED-COPY' }
+      tag: { text: 'Primary Exit Exam Practice', status: 'APPROVED' },
+      title: { text: 'Prepare with Our Free CPEA Readiness Check', status: 'APPROVED' },
+      desc: { text: 'Choose Mathematics or Language Arts for 10 interactive sample questions designed for Caribbean primary students. Fun, pressure-free practice with instant feedback and badges!', status: 'APPROVED' },
+      buttonText: { text: 'Take Readiness Check', status: 'APPROVED' },
+      disclaimer: { text: 'Sample questions: not an official CPEA paper.', status: 'APPROVED' }
+    }
+  },
+
+  readinessPage: {
+    subhead: { text: 'Pick Mathematics or Language Arts for a fun 10-question sample practice check designed for Caribbean primary students.', status: 'APPROVED' },
+    pickerHeading: { text: 'Choose Your Practice Track', status: 'APPROVED' },
+    pickerSubhead: { text: 'Each track draws 10 randomized sample questions with instant explanations, stars, and a printable summary.', status: 'APPROVED' },
+    mathCardDesc: { text: '10 sample questions covering geometry, fractions, word problems, charts, time, and mental arithmetic.', status: 'APPROVED' },
+    laCardDesc: { text: '10 sample questions covering reading passages, vocabulary, grammar, punctuation, and literary devices.', status: 'APPROVED' },
+    recommendations: {
+      services: SERVICE_CATALOG,
+      rules: RECOMMENDATION_RULE_TABLE,
+      uiCopy: RECOMMENDATION_UI_COPY
     }
   },
 
@@ -190,6 +208,9 @@ const CONTENT = {
   bookPage: {
     title: { text: 'Book a Consultation', status: 'APPROVED' },
     subhead: { text: 'Schedule an initial discussion to find the right academic pathway for your child.', status: 'APPROVED' },
+    readinessAttachHeading: { text: 'Optional: Share Your Readiness Check Summary', status: 'APPROVED' },
+    readinessAttachCheckboxLabel: { text: 'Attach my non-identifying Readiness Check summary (subject, score, and band — no child name) to this consultation request.', status: 'APPROVED' },
+    readinessAttachPrivacyNote: { text: 'Unchecked by default. Only shared with Teacher Cassie if you tick the box above and submit this form.', status: 'APPROVED' },
     serviceOptions: [
       'One-on-One Tutoring',
       'Small Group Tutoring',
@@ -313,14 +334,6 @@ const CONTENT = {
       venue: 'West End Parish Classroom',
       schedule: 'Saturdays, 1:00 PM – 2:30 PM',
       ages: 'Ages 5–11',
-      status: 'Active Cohort'
-    },
-    {
-      id: 'virtual',
-      name: 'Online / Virtual Cohort',
-      venue: 'Interactive Live Video Classroom',
-      schedule: 'Tuesdays & Thursdays, 4:30 PM – 5:30 PM',
-      ages: 'Ages 7–13',
       status: 'Active Cohort'
     }
   ]

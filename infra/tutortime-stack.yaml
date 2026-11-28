@@ -1,23 +1,24 @@
 # ==============================================================================
 # INFRASTRUCTURE SPECIFICATION: Tutor Time & Popcorn Math
-# STATUS: PRODUCTION READY (Approved for Sprint 2 Deployment)
+# STATUS: PRODUCTION & STAGING READY (Single-Stack Blueprint)
 # ==============================================================================
-# This template defines the AWS resources required for production storage
-# (DynamoDB), secure CV uploads (private S3 with TLS enforcement), and
-# least-privilege IAM permissions.
+# This template defines the AWS resources required for data persistence
+# (DynamoDB Submissions, Portal, and Subscribers), secure CV uploads (private
+# S3 with TLS enforcement & multi-origin CORS), and least-privilege IAM permissions.
 #
 # HARD RULES:
 # - No account IDs, regions, IPs, or credentials hardcoded.
 # - DeletionPolicy: Retain on data stores (DynamoDB & S3).
-# - Strict least privilege: PutItem/Query only on DynamoDB table, PutObject only
-#   on cv-uploads/* in S3, and SendEmail only on the specified SES identity ARN.
-# - S3 Bucket: All 4 public access blocks enabled, SSE AES256, TLS-only policy.
+# - Strict least privilege: scoped DynamoDB tables, PutObject only on
+#   cv-uploads/* in S3, and SES SendEmail on verified identity ARNs + sandbox checks.
+# - Supports both production and staging ("practice") stacks side-by-side in
+#   the same region without table name collisions.
 # ==============================================================================
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  DRAFT: Tutor Time with Teacher Cassie - Cloud Data Persistence,
-  Secure S3 Uploads, and Scoped IAM Access Policy.
+  Tutor Time with Teacher Cassie - Cloud Data Persistence (Production/Staging),
+  Secure S3 Uploads, TTL Retention, and Scoped IAM Access Policy.
 
 Parameters:
   EnvironmentName:
@@ -26,16 +27,32 @@ Parameters:
     AllowedValues:
       - production
       - staging
-    Description: Deployment target environment name.
+    Description: Deployment target environment name (use 'staging' for a practice copy).
 
   DynamoDBTableName:
     Type: String
-    Default: tutortime-submissions
-    Description: Name of the DynamoDB table for form submissions.
+    Default: ''
+    Description: >
+      Optional explicit DynamoDB table name for form submissions.
+      Leave empty for 'tutortime-submissions' in production or 'tutortime-staging-submissions' in staging.
+
+  PortalTableName:
+    Type: String
+    Default: ''
+    Description: >
+      Optional explicit DynamoDB table name for the private portal.
+      Leave empty for 'tutortime-portal' in production or 'tutortime-portal-staging' in staging.
+
+  SubscribersTableName:
+    Type: String
+    Default: ''
+    Description: >
+      Optional explicit DynamoDB table name for newsletter subscribers.
+      Leave empty for 'popcorn-maths-subscribers' in production or 'tutortime-staging-subscribers' in staging.
 
   UploadsBucketName:
     Type: String
-    Default: ""
+    Default: ''
     Description: >
       Optional explicit name for the private uploads S3 bucket.
       Leave empty for automatic CloudFormation naming.
@@ -43,34 +60,59 @@ Parameters:
   SiteOrigin:
     Type: String
     AllowedPattern: '^https://[a-zA-Z0-9.-]+$'
-    ConstraintDescription: Must be an HTTPS origin (e.g., https://example.com).
-    Description: Allowed origin for S3 presigned POST CORS requests (REQUIRED; no default).
+    ConstraintDescription: Must be an HTTPS origin (e.g., https://tutortime.ai).
+    Description: Primary HTTPS origin allowed for S3 presigned POST CORS requests (REQUIRED; no default).
+
+  AdditionalCorsOrigin:
+    Type: String
+    Default: ''
+    AllowedPattern: '^(|https://[a-zA-Z0-9.-]+)$'
+    ConstraintDescription: Must be empty or a valid HTTPS origin (e.g., https://www.tutortime.ai).
+    Description: Optional secondary HTTPS origin allowed for S3 presigned POST CORS uploads.
 
   CVRetentionDays:
     Type: Number
     Default: 180
+    MinValue: 30
+    MaxValue: 3650
     Description: >
-      Number of days to retain uploaded CV documents before lifecycle expiration (Confirmed 6 months / 180 days per PRIVACY_POLICY.md).
+      Number of days to retain uploaded CV documents before lifecycle expiration (Confirmed 6 months / 180 days).
 
   SesIdentityArn:
     Type: String
     Description: >
-      ARN of the verified SES domain or email identity for notification delivery
+      Primary ARN of the verified SES domain or email identity for notification delivery
       (e.g., arn:aws:ses:us-east-2:<AWS_ACCOUNT_ID>:identity/<SITE_DOMAIN>) (REQUIRED; no default).
 
+  AdditionalSesIdentityArns:
+    Type: CommaDelimitedList
+    Default: ''
+    Description: >
+      Optional comma-separated list of additional verified SES identity ARNs
+      (e.g., when main site notifications and portal notices send from separate domains).
+
 Conditions:
-  HasBucketName: !Not [!Equals [!Ref UploadsBucketName, ""]]
+  IsProduction: !Equals [!Ref EnvironmentName, 'production']
+  HasSubmissionsTableName: !Not [!Equals [!Ref DynamoDBTableName, '']]
+  HasPortalTableName: !Not [!Equals [!Ref PortalTableName, '']]
+  HasSubscribersTableName: !Not [!Equals [!Ref SubscribersTableName, '']]
+  HasBucketName: !Not [!Equals [!Ref UploadsBucketName, '']]
+  HasAdditionalCorsOrigin: !Not [!Equals [!Ref AdditionalCorsOrigin, '']]
+  HasAdditionalSesArns: !Not [!Equals [!Join ['', !Ref AdditionalSesIdentityArns], '']]
 
 Resources:
   # ----------------------------------------------------------------------------
-  # 1. DynamoDB Submissions Table (On-Demand / Pay-Per-Request)
+  # 1. DynamoDB Submissions Table (On-Demand, PITR & Automated TTL on expireAt)
   # ----------------------------------------------------------------------------
   SubmissionsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: !Ref DynamoDBTableName
+      TableName: !If
+        - HasSubmissionsTableName
+        - !Ref DynamoDBTableName
+        - !If [IsProduction, 'tutortime-submissions', !Sub 'tutortime-${EnvironmentName}-submissions']
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: formType
@@ -86,6 +128,9 @@ Resources:
         SSEEnabled: true
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expireAt
+        Enabled: true
       Tags:
         - Key: Application
           Value: TutorTime
@@ -93,14 +138,17 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ----------------------------------------------------------------------------
-  # 1b. DynamoDB Private Portal Table (Attendance, Students, Sessions, Settings)
+  # 1b. DynamoDB Private Portal Table (Parameterized per Environment)
   # ----------------------------------------------------------------------------
   PortalTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: tutortime-portal
+      TableName: !If
+        - HasPortalTableName
+        - !Ref PortalTableName
+        - !If [IsProduction, 'tutortime-portal', !Sub 'tutortime-portal-${EnvironmentName}']
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: PK
@@ -139,6 +187,35 @@ Resources:
           Value: !Ref EnvironmentName
 
   # ----------------------------------------------------------------------------
+  # 1c. DynamoDB Newsletter Subscribers Table (Parameterized per Environment)
+  # ----------------------------------------------------------------------------
+  SubscribersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !If
+        - HasSubscribersTableName
+        - !Ref SubscribersTableName
+        - !If [IsProduction, 'popcorn-maths-subscribers', !Sub 'tutortime-${EnvironmentName}-subscribers']
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Application
+          Value: TutorTime
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  # ----------------------------------------------------------------------------
   # 2. Private S3 Bucket for Presigned CV Uploads
   # ----------------------------------------------------------------------------
   UploadsBucket:
@@ -146,7 +223,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !If [HasBucketName, !Ref UploadsBucketName, !Ref "AWS::NoValue"]
+      BucketName: !If [HasBucketName, !Ref UploadsBucketName, !Ref 'AWS::NoValue']
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -156,14 +233,18 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+            BucketKeyEnabled: true
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders:
-              - "*"
+              - '*'
             AllowedMethods:
               - POST
-            AllowedOrigins:
-              - !Ref SiteOrigin
+            AllowedOrigins: !If
+              - HasAdditionalCorsOrigin
+              - - !Ref SiteOrigin
+                - !Ref AdditionalCorsOrigin
+              - - !Ref SiteOrigin
             MaxAge: 3000
       LifecycleConfiguration:
         Rules:
@@ -191,32 +272,34 @@ Resources:
         Statement:
           - Sid: DenyNonTLSRequests
             Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
+            Principal: '*'
+            Action: 's3:*'
             Resource:
               - !GetAtt UploadsBucket.Arn
-              - !Sub "${UploadsBucket.Arn}/*"
+              - !Sub '${UploadsBucket.Arn}/*'
             Condition:
               Bool:
                 aws:SecureTransport: false
 
   # ----------------------------------------------------------------------------
-  # 4. Scoped IAM Managed Policy (Attached to Existing EC2 Instance Role)
+  # 4. Scoped IAM Managed Policy (ECS Task Role / App Runner / EC2 Role)
   # ----------------------------------------------------------------------------
   AppManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub "TutorTime-Application-Policy-${EnvironmentName}"
+      ManagedPolicyName: !Sub 'TutorTime-Application-Policy-${EnvironmentName}'
       Description: Least-privilege access for Tutor Time application running on EC2.
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          # DynamoDB: Put and Query only on this specific table
+          # DynamoDB: Put, Query, GetItem and UpdateItem on Submissions & atomic counters
           - Sid: DynamoDBSubmissionsAccess
             Effect: Allow
             Action:
               - dynamodb:PutItem
               - dynamodb:Query
+              - dynamodb:GetItem
+              - dynamodb:UpdateItem
             Resource:
               - !GetAtt SubmissionsTable.Arn
 
@@ -232,7 +315,17 @@ Resources:
               - dynamodb:Scan
             Resource:
               - !GetAtt PortalTable.Arn
-              - !Sub "${PortalTable.Arn}/index/*"
+              - !Sub '${PortalTable.Arn}/index/*'
+
+          # DynamoDB: Durable newsletter subscribers access
+          - Sid: DynamoDBSubscribersAccess
+            Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:GetItem
+              - dynamodb:Scan
+            Resource:
+              - !GetAtt SubscribersTable.Arn
 
           # S3: PutObject only within cv-uploads/ prefix
           - Sid: S3CvUploadsPutAccess
@@ -240,9 +333,9 @@ Resources:
             Action:
               - s3:PutObject
             Resource:
-              - !Sub "${UploadsBucket.Arn}/cv-uploads/*"
+              - !Sub '${UploadsBucket.Arn}/cv-uploads/*'
 
-          # SES: SendEmail only for the verified SES identity
+          # SES: SendEmail on primary verified SES identity
           - Sid: SESNotificationEmailAccess
             Effect: Allow
             Action:
@@ -250,22 +343,75 @@ Resources:
             Resource:
               - !Ref SesIdentityArn
 
+          # SES: Optional additional verified SES identities (e.g. secondary domain)
+          - !If
+            - HasAdditionalSesArns
+            - Sid: SESAdditionalIdentityEmailAccess
+              Effect: Allow
+              Action:
+                - ses:SendEmail
+              Resource: !Ref AdditionalSesIdentityArns
+            - !Ref 'AWS::NoValue'
+
+          # SES: Read-only sandbox & verified-identity status checks used by src/portal/emailService.js
+          - Sid: SESSandboxCheckReadAccess
+            Effect: Allow
+            Action:
+              - ses:GetAccount
+              - ses:GetEmailIdentity
+            Resource: '*'
+
 Outputs:
   SubmissionsTableName:
     Description: DynamoDB table name for form submissions.
     Value: !Ref SubmissionsTable
     Export:
-      Name: !Sub "${AWS::StackName}-SubmissionsTableName"
+      Name: !Sub '${AWS::StackName}-SubmissionsTableName'
+
+  SubmissionsTableArn:
+    Description: ARN of DynamoDB form submissions table.
+    Value: !GetAtt SubmissionsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SubmissionsTableArn'
+
+  PortalTableName:
+    Description: DynamoDB table name for Kashamar's private attendance & invoicing portal.
+    Value: !Ref PortalTable
+    Export:
+      Name: !Sub '${AWS::StackName}-PortalTableName'
+
+  PortalTableArn:
+    Description: ARN of DynamoDB private portal table.
+    Value: !GetAtt PortalTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-PortalTableArn'
+
+  SubscribersTableName:
+    Description: DynamoDB table name for newsletter subscribers.
+    Value: !Ref SubscribersTable
+    Export:
+      Name: !Sub '${AWS::StackName}-SubscribersTableName'
+
+  SubscribersTableArn:
+    Description: ARN of DynamoDB newsletter subscribers table.
+    Value: !GetAtt SubscribersTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SubscribersTableArn'
 
   UploadsBucketName:
     Description: Name of private S3 bucket for CV uploads.
     Value: !Ref UploadsBucket
     Export:
-      Name: !Sub "${AWS::StackName}-UploadsBucketName"
+      Name: !Sub '${AWS::StackName}-UploadsBucketName'
+
+  UploadsBucketArn:
+    Description: ARN of private S3 bucket for CV uploads.
+    Value: !GetAtt UploadsBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-UploadsBucketArn'
 
   AppManagedPolicyArn:
-    Description: ARN of managed IAM policy to attach to EC2 instance role.
+    Description: ARN of managed IAM policy to attach to the application runtime role.
     Value: !Ref AppManagedPolicy
     Export:
-      Name: !Sub "${AWS::StackName}-AppManagedPolicyArn"
-
+      Name: !Sub '${AWS::StackName}-AppManagedPolicyArn'

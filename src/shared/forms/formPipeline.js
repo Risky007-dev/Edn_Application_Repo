@@ -11,6 +11,10 @@
 const express = require('express');
 const router = express.Router();
 const storage = require('../storage');
+const {
+  sendFormNotification,
+  dispatchEmail
+} = require('../email/formNotificationService');
 const { formSubmissionLimiter, timingSafeCompare } = require('../middleware/security');
 const {
   validateHoneypot,
@@ -110,29 +114,49 @@ router.post('/forms/:formType', formSubmissionLimiter, async (req, res) => {
       submissionMetrics.other += 1;
     }
 
-    // 7. Admin notification only (no applicant confirmation emails in SES sandbox)
-    const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
-    if (adminEmail) {
-      await storage.sendNotificationEmail(
-        adminEmail,
-        `New ${formType} submission received`,
-        `<p>A new ${formType} submission was received with ID: ${record.id}.</p>`
-      );
+    // 7. Cassie / Admin notification email (decoupled from storage driver; failures MUST NOT lose saved booking)
+    let emailNotificationSent = false;
+    try {
+      const notifyResult = await sendFormNotification(formType, record);
+      emailNotificationSent = Boolean(notifyResult && notifyResult.success);
+    } catch (emailErr) {
+      // Zero-PII structured error logging: never log personal fields
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        event: 'form_notification_email_failed',
+        formType,
+        recordId: record.id,
+        message: emailErr && emailErr.message ? String(emailErr.message).slice(0, 160) : 'Email notification failed'
+      }));
     }
 
     // Applicant confirmation email strictly behind SEND_CONFIRMATIONS=false (default: off)
     if (process.env.SEND_CONFIRMATIONS === 'true' && req.body.email) {
-      await storage.sendNotificationEmail(
-        req.body.email,
-        'Thank you for contacting Tutor Time with Teacher Cassie',
-        '<p>We have received your enquiry and will be in touch shortly.</p>'
-      );
+      try {
+        await dispatchEmail({
+          to: req.body.email,
+          subject: 'Thank you for contacting Tutor Time with Teacher Cassie',
+          bodyHtml: '<p>We have received your enquiry and will be in touch shortly.</p>',
+          bodyText: 'We have received your enquiry and will be in touch shortly.'
+        });
+      } catch (confirmErr) {
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level: 'error',
+          event: 'form_confirmation_email_failed',
+          formType,
+          recordId: record.id,
+          message: confirmErr && confirmErr.message ? String(confirmErr.message).slice(0, 160) : 'Confirmation email failed'
+        }));
+      }
     }
 
     return res.status(201).json({
       success: true,
       message: 'Submission successfully received. Thank you!',
-      id: record.id
+      id: record.id,
+      emailNotificationSent
     });
   } catch (err) {
     console.error(`[FormPipeline Error] Failed processing ${formType}:`, err.message);

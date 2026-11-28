@@ -1,0 +1,111 @@
+{
+  "_comment": "Non-secret CloudFormation parameters for PRODUCTION (us-east-2 + us-east-1 cert). Zero secrets or AWS Account IDs stored here. Note: dataStack updates existing `tutortime-production-infra` in-place with CreatePortalTable=false and CreateSubscribersTable=false so live tutortime-portal (3 items) and popcorn-maths-subscribers (10 items) never collide.",
+  "dataStack": {
+    "stackName": "tutortime-production-infra",
+    "region": "us-east-2",
+    "template": "infra/01-data-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "production",
+      "DynamoDBTableName": "tutortime-submissions",
+      "PortalTableName": "tutortime-portal",
+      "CreatePortalTable": "false",
+      "SubscribersTableName": "popcorn-maths-subscribers",
+      "CreateSubscribersTable": "false",
+      "UploadsBucketName": "",
+      "SiteOrigin": "https://tutortime.ai",
+      "AdditionalCorsOrigin": "https://www.tutortime.ai",
+      "CVRetentionDays": "180",
+      "CreateLegacyManagedPolicy": "true"
+    }
+  },
+  "securityStack": {
+    "stackName": "tutortime-production-security",
+    "region": "us-east-2",
+    "template": "infra/02-security-cicd-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "production",
+      "DataStackName": "tutortime-production-infra",
+      "EcrRepositoryName": "tutortime-app",
+      "CreateEcrRepository": "true",
+      "CreateGitHubOidcProvider": "true",
+      "CreateGitHubDeployRole": "true",
+      "GitHubRepository": "Risky007-dev/Edn_Application_Repo",
+      "SesPrimaryDomain": "mail.tutortime.ai",
+      "SesSecondaryDomain": "tutortime.ai",
+      "SesLegacyDomain": "popcornmaths.com"
+    }
+  },
+  "edgeCertStack": {
+    "stackName": "tutortime-production-edge-cert",
+    "region": "us-east-1",
+    "template": "infra/03a-edge-cert-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "production",
+      "TutortimeHostedZoneId": "Z04729501Z8GNOKNPRCKY",
+      "PopcornHostedZoneId": "Z06398441PSCZ7Z00DXBZ",
+      "PrimaryDomain": "tutortime.ai",
+      "PortalDomain": "checkin.tutortime.ai",
+      "PopcornDomain": "popcornmaths.com"
+    }
+  },
+  "appStack": {
+    "stackName": "tutortime-production-app",
+    "region": "us-east-2",
+    "template": "infra/03b-app-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "production",
+      "DataStackName": "tutortime-production-infra",
+      "SecurityStackName": "tutortime-production-security",
+      "EcrRepositoryName": "tutortime-app",
+      "PrimaryDomain": "tutortime.ai",
+      "PortalDomain": "checkin.tutortime.ai",
+      "PopcornDomain": "popcornmaths.com",
+      "PopcornRedirectStatusCode": "302",
+      "PopcornRedirectTargetUrl": "https://tutortime.ai/services/popcorn-math",
+      "TutortimeHostedZoneId": "Z04729501Z8GNOKNPRCKY",
+      "PopcornHostedZoneId": "Z06398441PSCZ7Z00DXBZ",
+      "ManageNewSubdomainDnsRecords": "false",
+      "ManageLiveDnsRecords": "false",
+      "LambdaMemoryMB": "512",
+      "LambdaTimeoutSeconds": "25",
+      "LambdaReservedConcurrency": "0",
+      "EnableWarmerRule": "true",
+      "SiteUrl": "https://tutortime.ai",
+      "PortalBaseUrl": "https://checkin.tutortime.ai",
+      "EmailDriver": "ses",
+      "CassieNotificationEmail": "Cassie@tutortime.ai",
+      "AdminNotificationEmail": "notifications@mail.tutortime.ai",
+      "SenderEmail": "noreply@mail.tutortime.ai",
+      "PortalSenderEmail": "noreply@mail.tutortime.ai",
+      "CassieReplyToEmail": "Cassie@tutortime.ai",
+      "ContactEmail": "hello@tutortime.ai",
+      "SendConfirmations": "false",
+      "WhatsappPhoneNumber": "+12647295791",
+      "ShowLocalPreviewBanner": "false",
+      "SiteNoIndex": "false",
+      "FeaturesChatbotEnabled": "true",
+      "FeaturesReadinessCheckEnabled": "true",
+      "ChatbotModel": "claude-haiku-5-5",
+      "ChatbotDailyRequestCap": "200",
+      "FormRateLimitMax": "5",
+      "PortalLoginRateLimitMax": "5",
+      "LateIsBillable": "true",
+      "FaultInjectionEnabled": "false",
+      "GuideMascotImagePath": "",
+      "BucketMascotImagePath": ""
+    }
+  },
+  "opsStack": {
+    "stackName": "tutortime-production-ops",
+    "region": "us-east-2",
+    "template": "infra/04-ops-budget-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "production",
+      "DataStackName": "tutortime-production-infra",
+      "AppStackName": "tutortime-production-app",
+      "CreateMonthlyBudget": "true",
+      "MonthlyBudgetLimitUSD": "15",
+      "EnableCostAnomalyDetection": "false"
+    }
+  }
+}

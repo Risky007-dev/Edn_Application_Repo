@@ -6,9 +6,23 @@
  * TODO(mascot): Artist final version will be swapped in here.
  */
 
-function renderBucketMascot({ expression = 'neutral', size = 96, className = '', id = '' } = {}) {
+const config = require('../config');
+
+function renderBucketMascot({ expression = 'neutral', size = 96, className = '', id = '', assetConfig = config.mascots?.bucket } = {}) {
   const safeId = id ? ` id="${id}"` : '';
   const safeClass = ['mascot-bucket', className].filter(Boolean).join(' ');
+  const altBase = (assetConfig && assetConfig.alt) || 'Popcorn Math bucket character mascot';
+
+  // Swappable static image mode: driven by config.mascots.bucket (SVG remains default fallback)
+  const exprMap = assetConfig && assetConfig.expressions && typeof assetConfig.expressions === 'object'
+    ? assetConfig.expressions
+    : null;
+  const imgSrc = (exprMap && exprMap[expression]) || (assetConfig && assetConfig.imagePath) || null;
+
+  if (imgSrc) {
+    const exprAttr = exprMap ? ` data-expressions='${JSON.stringify(exprMap)}'` : '';
+    return `<img${safeId} src="${imgSrc}" alt="${altBase} (${expression})" class="${safeClass} mascot-bucket-img" width="${size}" height="${size}" data-expression="${expression}"${exprAttr}>`;
+  }
 
   // Dynamic expressions & arm gestures
   let mouthPath;

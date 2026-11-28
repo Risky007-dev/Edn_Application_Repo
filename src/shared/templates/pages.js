@@ -10,7 +10,8 @@ const config = require('../config');
 const { escapeHtml, renderLayout } = require('./layout');
 const { renderGuideMascot, renderSpeechBubble } = require('../components/mascotGuide');
 const { renderBucketMascot } = require('../components/mascotBucket');
-const { READINESS_QUESTIONS } = require('../content/readiness-questions');
+const { getActiveQuestions } = require('../content/readiness-questions');
+const { getClientRuleConfig } = require('../readiness/recommendationRules');
 
 // Helper for consent checkbox
 function renderConsentCheckbox() {
@@ -125,7 +126,7 @@ function renderHomePage() {
             <a href="/readiness-check" class="brand-tool-row readiness-cta-section">
               <div>
                 <strong>${escapeHtml(content.homepage.readinessCta.title.text)}</strong>
-                <span>12 interactive questions with a printable parent summary.</span>
+                <span>10-question Mathematics &amp; Language Arts sample checks with a printable parent summary.</span>
               </div>
               <span class="brand-tool-action">${escapeHtml(content.homepage.readinessCta.buttonText.text)}</span>
             </a>
@@ -527,6 +528,16 @@ function renderBookPage() {
               <textarea id="additionalNotes" name="additionalNotes" rows="4" maxlength="1000" placeholder="Tell us about specific subjects, learning objectives, or questions..." class="form-textarea"></textarea>
             </div>
 
+            <div id="book-readiness-attachment" class="readiness-attach-card" hidden>
+              <p class="readiness-attach-heading"><strong>${escapeHtml(bk.readinessAttachHeading.text)}</strong></p>
+              <p id="book-readiness-summary-preview" class="readiness-attach-preview" aria-live="polite"></p>
+              <div class="form-group form-checkbox-group">
+                <input type="checkbox" id="attachReadinessResult" class="form-checkbox">
+                <label for="attachReadinessResult" class="checkbox-label">${escapeHtml(bk.readinessAttachCheckboxLabel.text)}</label>
+              </div>
+              <p class="readiness-attach-note"><small>${escapeHtml(bk.readinessAttachPrivacyNote.text)}</small></p>
+            </div>
+
             ${renderConsentCheckbox()}
             ${renderFormStatus('book-consultation-form')}
 
@@ -861,7 +872,7 @@ function renderResourcesPage() {
         <div class="service-grid">
           <div class="service-card">
             <h3>CPEA Readiness Check</h3>
-            <p>12 interactive sample multiple-choice questions across Language Arts, Mathematics, Science, and Social Studies.</p>
+            <p>Separate 10-question Mathematics and Language Arts sample practice tracks with instant feedback and printable summaries.</p>
             <a href="/readiness-check" class="btn btn-primary">Try Readiness Check</a>
           </div>
           <div class="service-card">
@@ -913,6 +924,9 @@ function renderReadinessCheckPage() {
     });
   }
 
+  const activeQuestions = getActiveQuestions();
+  const rp = content.readinessPage;
+
   const bodyHtml = `
     <div class="readiness-page-wrapper">
       <header class="readiness-hero-section">
@@ -921,12 +935,12 @@ function renderReadinessCheckPage() {
             <span>⚠️ Sample questions: not an official CPEA paper.</span>
           </div>
           <h1 class="readiness-page-title">CPEA Exam Readiness Check</h1>
-          <p class="readiness-page-subhead">A fun, interactive practice check for Caribbean primary students (approx. age 12) across Language Arts, Mathematics, Science, and Social Studies.</p>
+          <p class="readiness-page-subhead">${escapeHtml(rp.subhead.text)}</p>
 
           <div class="readiness-mascot-row">
             <!-- TODO(mascot): Final cartoon of Kashamar will be swapped in here -->
             ${renderGuideMascot({ expression: 'happy', size: 88, id: 'readiness-mascot' })}
-            ${renderSpeechBubble({ text: "Welcome! Let's try 12 sample questions together. Take your time!", id: 'readiness-speech-text' })}
+            ${renderSpeechBubble({ text: "Welcome! Pick Mathematics or Language Arts to try 10 sample questions together.", id: 'readiness-speech-text' })}
           </div>
 
           <div class="readiness-stars-container" aria-label="Progress star trail">
@@ -938,6 +952,27 @@ function renderReadinessCheckPage() {
       <div class="container readiness-main-container">
         <div id="readiness-live-announcer" class="sr-only" aria-live="polite"></div>
         <div id="readiness-card" class="readiness-card">
+          <div id="readiness-subject-picker" class="readiness-picker" role="region" aria-label="Choose Readiness Check Subject">
+            <h2 class="readiness-picker-title">${escapeHtml(rp.pickerHeading.text)}</h2>
+            <p class="readiness-picker-subhead">${escapeHtml(rp.pickerSubhead.text)}</p>
+            <div class="readiness-picker-grid">
+              <button type="button" class="readiness-subject-card subject-card-math" data-start-subject="Mathematics">
+                <span class="subject-card-icon" aria-hidden="true">🔢</span>
+                <span class="subject-card-title">Mathematics</span>
+                <span class="subject-card-meta">10 Sample Questions &bull; Instant Feedback</span>
+                <span class="subject-card-desc">${escapeHtml(rp.mathCardDesc.text)}</span>
+                <span class="btn btn-primary subject-card-cta">Start Mathematics Check &rarr;</span>
+              </button>
+              <button type="button" class="readiness-subject-card subject-card-la" data-start-subject="Language Arts">
+                <span class="subject-card-icon" aria-hidden="true">📚</span>
+                <span class="subject-card-title">Language Arts</span>
+                <span class="subject-card-meta">10 Sample Questions &bull; Instant Feedback</span>
+                <span class="subject-card-desc">${escapeHtml(rp.laCardDesc.text)}</span>
+                <span class="btn btn-primary subject-card-cta">Start Language Arts Check &rarr;</span>
+              </button>
+            </div>
+            <p class="readiness-picker-privacy"><small>Practice happens in your browser only &mdash; no scores are saved automatically.</small></p>
+          </div>
           <noscript>
             <div class="service-notice">
               <p>Please enable JavaScript to enjoy the interactive CPEA Readiness Check.</p>
@@ -947,14 +982,17 @@ function renderReadinessCheckPage() {
       </div>
 
       <script type="application/json" id="readiness-questions-data">
-        ${JSON.stringify(READINESS_QUESTIONS)}
+        ${JSON.stringify(activeQuestions)}
+      </script>
+      <script type="application/json" id="readiness-recommendations-data">
+        ${JSON.stringify(getClientRuleConfig())}
       </script>
     </div>
   `;
 
   return renderLayout({
-    title: 'CPEA Readiness Check (Sample Practice)',
-    description: 'Sample practice questions for the Caribbean Primary Exit Assessment covering Language Arts, Mathematics, Science, and Social Studies.',
+    title: 'CPEA Readiness Check (Mathematics & Language Arts Samples)',
+    description: 'Sample practice questions for Mathematics and Language Arts (10 questions per track) for Caribbean primary students.',
     bodyHtml,
     currentPath: '/readiness-check',
     extraScripts: ['/js/readiness.js']

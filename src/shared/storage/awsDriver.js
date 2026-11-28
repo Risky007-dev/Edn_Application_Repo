@@ -1,22 +1,25 @@
 /**
  * AWS Production Storage Driver
- * Connects to Amazon DynamoDB, Amazon S3, and Amazon SESv2 using AWS SDK v3.
+ * Connects to Amazon DynamoDB (submissions + newsletter subscribers),
+ * Amazon S3 (presigned POST CV uploads), and Amazon SESv2 using AWS SDK v3.
  * Supports dependency injection for testing without cloud credentials.
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const { S3Client } = require('@aws-sdk/client-s3');
 const { createPresignedPost } = require('@aws-sdk/s3-presigned-post');
 const { SESv2Client, SendEmailCommand } = require('@aws-sdk/client-sesv2');
 const path = require('path');
+const { computeSubmissionExpireAt } = require('./retention');
 
 class AwsDriver {
   constructor(options = {}) {
     this.region = options.region || process.env.AWS_REGION || 'us-east-2';
     this.tableName = options.tableName || process.env.DYNAMODB_TABLE_NAME || 'tutortime-submissions';
+    this.subscribersTableName = options.subscribersTableName || process.env.SUBSCRIBERS_TABLE_NAME || 'popcorn-maths-subscribers';
     this.bucketName = options.bucketName || process.env.UPLOADS_BUCKET_NAME || '';
-    
+
     // Injected or default AWS clients
     this.dynamoClient = options.dynamoClient || new DynamoDBClient({ region: this.region });
     this.docClient = options.docClient || DynamoDBDocumentClient.from(this.dynamoClient);
@@ -34,13 +37,14 @@ class AwsDriver {
     const now = new Date().toISOString();
 
     // Canonical uniform record shape: identical to local driver
-    // Key fields, metadata, and form fields at top level (each stored once)
+    // Key fields, metadata, TTL expireAt, and form fields at top level (each stored once)
     const item = {
       formType,
       'createdAt#id': `${now}#${id}`,
       id,
       createdAt: now,
       status: 'PENDING_REVIEW',
+      expireAt: computeSubmissionExpireAt(formType, now),
       ...payload
     };
 
@@ -65,6 +69,52 @@ class AwsDriver {
     });
     const result = await this.docClient.send(command);
     return result.Count || 0;
+  }
+
+  async addSubscriber(email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const subscriber = {
+      email: cleanEmail,
+      subscribedAt: new Date().toISOString(),
+      confirmed: false
+    };
+
+    try {
+      await this.docClient.send(new PutCommand({
+        TableName: this.subscribersTableName,
+        Item: subscriber,
+        ConditionExpression: 'attribute_not_exists(email)'
+      }));
+      return { created: true, duplicate: false, subscriber };
+    } catch (err) {
+      if (err && (err.name === 'ConditionalCheckFailedException' || err.__type === 'com.amazonaws.dynamodb.v20120810#ConditionalCheckFailedException')) {
+        return { created: false, duplicate: true };
+      }
+      throw err;
+    }
+  }
+
+  async listSubscribers() {
+    const items = [];
+    let exclusiveStartKey;
+    do {
+      const result = await this.docClient.send(new ScanCommand({
+        TableName: this.subscribersTableName,
+        ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {})
+      }));
+      if (Array.isArray(result.Items)) {
+        for (const item of result.Items) {
+          items.push({
+            email: item.email,
+            subscribedAt: item.subscribedAt,
+            confirmed: Boolean(item.confirmed)
+          });
+        }
+      }
+      exclusiveStartKey = result.LastEvaluatedKey;
+    } while (exclusiveStartKey);
+
+    return items.sort((a, b) => String(a.subscribedAt || '').localeCompare(String(b.subscribedAt || '')));
   }
 
   async createUploadPresignedPost(filename, mimeType = 'application/pdf') {
@@ -127,4 +177,6 @@ class AwsDriver {
 
 const defaultInstance = new AwsDriver();
 defaultInstance.AwsDriver = AwsDriver;
+defaultInstance.computeExpireAt = (formType, dateOrIso) =>
+  computeSubmissionExpireAt(formType, dateOrIso instanceof Date ? dateOrIso.toISOString() : dateOrIso);
 module.exports = defaultInstance;

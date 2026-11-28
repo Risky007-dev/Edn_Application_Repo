@@ -1,0 +1,112 @@
+{
+  "_comment": "Non-secret CloudFormation parameters for STAGING (us-east-2 + us-east-1 cert). Zero secrets or AWS Account IDs stored here.",
+  "dataStack": {
+    "stackName": "tutortime-staging-data",
+    "region": "us-east-2",
+    "template": "infra/01-data-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "staging",
+      "DynamoDBTableName": "tutortime-staging-submissions",
+      "PortalTableName": "tutortime-staging-portal",
+      "CreatePortalTable": "true",
+      "SubscribersTableName": "tutortime-staging-subscribers",
+      "CreateSubscribersTable": "true",
+      "UploadsBucketName": "",
+      "SiteOrigin": "https://staging.tutortime.ai",
+      "AdditionalCorsOrigin": "",
+      "CVRetentionDays": "180",
+      "SesIdentityArn": "",
+      "CreateLegacyManagedPolicy": "false"
+    }
+  },
+  "securityStack": {
+    "stackName": "tutortime-staging-security",
+    "region": "us-east-2",
+    "template": "infra/02-security-cicd-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "staging",
+      "DataStackName": "tutortime-staging-data",
+      "EcrRepositoryName": "tutortime-app",
+      "CreateEcrRepository": "false",
+      "CreateGitHubOidcProvider": "false",
+      "CreateGitHubDeployRole": "false",
+      "GitHubRepository": "Risky007-dev/Edn_Application_Repo",
+      "SesPrimaryDomain": "mail.tutortime.ai",
+      "SesSecondaryDomain": "tutortime.ai",
+      "SesLegacyDomain": "popcornmaths.com"
+    }
+  },
+  "edgeCertStack": {
+    "stackName": "tutortime-staging-edge-cert",
+    "region": "us-east-1",
+    "template": "infra/03a-edge-cert-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "staging",
+      "TutortimeHostedZoneId": "Z04729501Z8GNOKNPRCKY",
+      "PopcornHostedZoneId": "",
+      "PrimaryDomain": "staging.tutortime.ai",
+      "PortalDomain": "checkin-staging.tutortime.ai",
+      "PopcornDomain": "popcornmaths.com"
+    }
+  },
+  "appStack": {
+    "stackName": "tutortime-staging-app",
+    "region": "us-east-2",
+    "template": "infra/03b-app-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "staging",
+      "DataStackName": "tutortime-staging-data",
+      "SecurityStackName": "tutortime-staging-security",
+      "EcrRepositoryName": "tutortime-app",
+      "PrimaryDomain": "staging.tutortime.ai",
+      "PortalDomain": "checkin-staging.tutortime.ai",
+      "PopcornDomain": "popcornmaths.com",
+      "PopcornRedirectStatusCode": "302",
+      "PopcornRedirectTargetUrl": "https://staging.tutortime.ai/services/popcorn-math",
+      "TutortimeHostedZoneId": "Z04729501Z8GNOKNPRCKY",
+      "PopcornHostedZoneId": "",
+      "ManageNewSubdomainDnsRecords": "true",
+      "ManageLiveDnsRecords": "false",
+      "LambdaMemoryMB": "512",
+      "LambdaTimeoutSeconds": "25",
+      "LambdaReservedConcurrency": "10",
+      "EnableWarmerRule": "false",
+      "SiteUrl": "https://staging.tutortime.ai",
+      "PortalBaseUrl": "https://checkin-staging.tutortime.ai",
+      "EmailDriver": "mock",
+      "CassieNotificationEmail": "staging-mock@tutortime.invalid",
+      "AdminNotificationEmail": "staging-mock@tutortime.invalid",
+      "SenderEmail": "noreply@mail.tutortime.ai",
+      "PortalSenderEmail": "noreply@mail.tutortime.ai",
+      "CassieReplyToEmail": "Cassie@tutortime.ai",
+      "ContactEmail": "hello@tutortime.ai",
+      "SendConfirmations": "false",
+      "WhatsappPhoneNumber": "+12647295791",
+      "ShowLocalPreviewBanner": "true",
+      "SiteNoIndex": "true",
+      "FeaturesChatbotEnabled": "true",
+      "FeaturesReadinessCheckEnabled": "true",
+      "ChatbotModel": "claude-haiku-5-5",
+      "ChatbotDailyRequestCap": "50",
+      "FormRateLimitMax": "50",
+      "PortalLoginRateLimitMax": "10",
+      "LateIsBillable": "true",
+      "FaultInjectionEnabled": "false",
+      "GuideMascotImagePath": "",
+      "BucketMascotImagePath": ""
+    }
+  },
+  "opsStack": {
+    "stackName": "tutortime-staging-ops",
+    "region": "us-east-2",
+    "template": "infra/04-ops-budget-stack.yaml",
+    "parameters": {
+      "EnvironmentName": "staging",
+      "DataStackName": "tutortime-staging-data",
+      "AppStackName": "tutortime-staging-app",
+      "CreateMonthlyBudget": "false",
+      "MonthlyBudgetLimitUSD": "15",
+      "EnableCostAnomalyDetection": "false"
+    }
+  }
+}

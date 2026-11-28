@@ -58,6 +58,11 @@ async function run() {
     assert('/privacy displays "Draft, pending review" banner', privacy.body.includes('Draft, pending review'));
     assert('/privacy preserves data-todo="legal" markers', privacy.body.includes('data-todo="legal"'));
     assert('/privacy renders visitor-facing Chatbot Privacy wording', privacy.body.includes('Tutor Time Helper') && privacy.body.includes('Zero Personal Data Collection'));
+    assert('/privacy discloses Readiness Check zero-storage, voluntary chatbot result sharing, and booking attachment (approved copy)',
+      privacy.body.includes('Readiness Check Result Sharing') &&
+      privacy.body.includes('Talk about my results') &&
+      privacy.body.includes('subject, score out of 10, and readiness band') &&
+      privacy.body.includes('Voluntary Consultation Booking Attachment'));
     assert('/privacy does NOT expose internal governance/audit docs', !privacy.body.includes('CONFIDENTIAL &amp; GOVERNANCE') && !privacy.body.includes('awsDriver.js') && !privacy.body.includes('TO CONFIRM WITH COUNSEL'));
 
     const terms = await httpGet('/terms');

@@ -234,7 +234,10 @@ async function runStage5Suite() {
 
     // --- GROUP 4: Service Functions (P1, P2, C1, T3, X2) UI & Logic (17) ---
     console.log('\n--- GROUP 4: Service Functions (P1, P2, C1, T3, X2) ---');
-    assert('content.popcornLocations defines 5 community/virtual cohorts', Array.isArray(content.popcornLocations) && content.popcornLocations.length === 5);
+    assert('content.popcornLocations defines 4 in-person cohorts with no Online / Virtual option',
+      Array.isArray(content.popcornLocations) &&
+      content.popcornLocations.length === 4 &&
+      !content.popcornLocations.some(loc => loc.id === 'virtual' || /online|virtual/i.test(loc.name)));
 
     const resPopcorn = await request(TEST_PORT, { path: '/services/popcorn-math' });
     assert('/services/popcorn-math renders #popcorn-location-select', resPopcorn.body.includes('id="popcorn-location-select"'));
