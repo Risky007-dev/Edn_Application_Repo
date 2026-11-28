@@ -401,6 +401,7 @@ Resources:
                   - cloudformation:DescribeStackResources
                   - cloudformation:ListStackResources
                   - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
                   - cloudformation:DetectStackDrift
                   - cloudformation:DescribeStackDriftDetectionStatus
                   - cloudformation:ValidateTemplate
