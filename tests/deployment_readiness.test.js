@@ -344,7 +344,11 @@ async function run() {
       !appStackYaml.includes('anthropic-api-key:SecretString'));
 
     const securityStackYaml = fs.readFileSync(path.join(REPO_ROOT, 'infra/02-security-cicd-stack.yaml'), 'utf8');
-    check('02-security-cicd-stack.yaml scopes GitHubDeployRole trust with StringEquals strictly to refs/heads/main (no wildcards, no environments) and allows CloudFront invalidation + safe data updates',
+    check('02-security-cicd-stack.yaml grants lambda.amazonaws.com least-privilege ECR pull policy and scopes GitHubDeployRole trust strictly to refs/heads/main',
+      securityStackYaml.includes('LambdaECRImageRetrievalPolicy') &&
+      securityStackYaml.includes('Service: lambda.amazonaws.com') &&
+      securityStackYaml.includes('ecr:BatchGetImage') &&
+      securityStackYaml.includes('ecr:GetDownloadUrlForLayer') &&
       securityStackYaml.includes("token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubRepository}:ref:refs/heads/main'") &&
       !securityStackYaml.includes('StringLike:') &&
       !securityStackYaml.includes('environment:production') &&
